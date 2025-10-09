@@ -12,7 +12,11 @@ namespace PdfBuilder.Elements
         Circle,
         Ellipse
     }
-
+    public enum EllipseOrientation
+    {
+        Horizontal, // major axis along X (default)
+        Vertical    // major axis along Y
+    }
     public class ImageElement : PdfElement
     {
         // Required: Image Data (raw bytes, or image ID if deduplicating)
@@ -43,7 +47,11 @@ namespace PdfBuilder.Elements
         public float? BorderWidth { get; set; }
         public float? CornerRadius { get; set; }      // For rounded/circle/ellipse
         public ImageClipShape ClipShape { get; set; } = ImageClipShape.None;
+       
+        public EllipseOrientation EllipseOrientation { get; set; } = EllipseOrientation.Horizontal;
 
+        // Optional: shrink the minor axis (1 = inscribed ellipse; <1 makes it "more oval")
+        public float EllipseSquash { get; set; } = 1f;
         // Shadow
         public string? ShadowColor { get; set; }
         public float? ShadowOffsetX { get; set; }
@@ -62,5 +70,8 @@ namespace PdfBuilder.Elements
             Width = width;
             Height = height;
         }
+
+        public bool KeepWithNext { get; set; } = false;
+        public bool AvoidBreakInside { get; set; } = true;
     }
 }

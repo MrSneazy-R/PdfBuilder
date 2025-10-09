@@ -66,7 +66,49 @@ namespace PdfBuilder.Document
         // Image Metadata
         public ImageBuilder MimeType(string mime) { _img.MimeType = mime; return this; }
         public ImageBuilder ImageId(string id) { _img.ImageId = id; return this; }
+        public ImageBuilder FitToMinDpi(float minDpi = 180f)
+        {
+            // read JPEG dimensions (tiny SOF parser)
+            static (int w, int h) JpegSize(byte[] data)
+            {
+                if (data.Length < 4 || data[0] != 0xFF || data[1] != 0xD8) return (1, 1);
+                for (int i = 2; i + 9 < data.Length;)
+                {
+                    if (data[i] != 0xFF) { i++; continue; }
+                    byte marker = data[i + 1];
+                    int len = (data[i + 2] << 8) + data[i + 3];
+                    if (marker == 0xC0 || marker == 0xC2)
+                    {
+                        int h = (data[i + 5] << 8) + data[i + 6];
+                        int w = (data[i + 7] << 8) + data[i + 8];
+                        return (Math.Max(1, w), Math.Max(1, h));
+                    }
+                    i += 2 + len;
+                }
+                return (1, 1);
+            }
 
+            var (pxW, pxH) = JpegSize(_img.ImageData);
+            // current effective DPI at requested size
+            float dpiW = pxW * 72f / _img.Width;
+            float dpiH = pxH * 72f / _img.Height;
+
+            // scale down if either axis is below the minimum
+            float scale = Math.Min(1f, Math.Min(dpiW / minDpi, dpiH / minDpi));
+            if (scale < 1f)
+            {
+                _img.Width *= scale;
+                _img.Height *= scale;
+            }
+            return this;
+        }
+        // Overload with orientation (used when shape == Ellipse)
+        public ImageBuilder Clip(ImageClipShape shape, EllipseOrientation orientation)
+        { _img.ClipShape = shape; _img.EllipseOrientation = orientation; return this; }
+
+        // Convenience for ellipse + optional squash (0.1–1.0)
+        public ImageBuilder ClipEllipse(EllipseOrientation orientation, float squash = 1f)
+        { _img.ClipShape = ImageClipShape.Ellipse; _img.EllipseOrientation = orientation; _img.EllipseSquash = Math.Max(0.01f, squash); return this; }
         // Add to the column and finish
         public ColumnBuilder Add()
         {

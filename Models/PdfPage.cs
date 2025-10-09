@@ -46,6 +46,11 @@ namespace PdfBuilder.Models
         public static PdfPage LetterLandscape() => new PdfPage(792f, 612f);
 
         public static PdfPage Custom(float width, float height) => new PdfPage(width, height);
+
+        // inside class PdfPage
+        public HeaderFooterSpec? HeaderFooterOverride { get; set; } = null;
+        public MasterPageSpec? MasterOverride { get; set; } = null;
+        public ColumnLayoutSpec? Columns { get; set; } = null;
     }
 
 }

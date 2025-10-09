@@ -1,106 +1,202 @@
 ﻿using PdfBuilder.Document;
 using PdfBuilder.Models;
+using PdfBuilder.Writer;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 
 namespace PdfBuilder.Elements
 {
+    // -------------------------------
+    // Enums
+    // -------------------------------
+    public enum CellOverflowPolicy
+    {
+        Wrap,       // multi-line wrapping within cell bounds
+        Clip,       // single line, clipped at cell bounds
+        Ellipsis    // single line, truncates tail with "…"
+    }
+
+    public enum CellWordBreak
+    {
+        Normal,     // wrap on whitespace / natural break points only
+        BreakWord   // allow breaking long tokens mid-word
+    }
+
+    // -------------------------------
+    // Root Table Element
+    // -------------------------------
     public class TableElement : PdfElement
     {
-        // Column definitions: constant or relative sizing
-        public List<TableColumnDefinition> Columns { get; set; } = new();
+        // ---- Table Layout ----
+        public float? TableWidth { get; set; } = null;             // null = auto-fit to content/columns
+        public List<float> ColumnWidths { get; set; } = new();     // optional fixed widths
 
-        // Header row (optional, styled)
-        public List<TableCellElement> HeaderCells { get; set; } = new();
+        // Optional caption rendered by the table renderer
+        public string? CaptionText { get; set; } = null;
+        public HorizontalAlign CaptionAlign { get; set; } = HorizontalAlign.Left;
 
-        // Table body: rows of cells (row-major order)
-        public List<List<TableCellElement>> Rows { get; set; } = new();
+        // ---- Table Styles ----
+        public Color? HeaderBackground { get; set; } = PdfDefaults.HeaderBackground;
+        public Color? AltRowBackground { get; set; } = null; // default: OFF
+        public int AltRowEvery { get; set; } = 2;            // keep a sensible cadence for when it IS enabled
+        public int AltRowStartIndex { get; set; } = 0;
+        public Color BorderColor { get; set; } = Color.Black;
+        public float BorderWidth { get; set; } = PdfDefaults.DefaultBorderWidth;
+        public float CellPadding { get; set; } = 4f;                // fallback when cell/column padding not set
+        public string DefaultFont { get; set; } = "Helvetica";
+        public float DefaultFontSize { get; set; } = 10f;
 
-        // Optional: footer row (for totals)
-        public List<TableCellElement>? FooterCells { get; set; }
+        // Per-column style defaults (optional, cell overrides win)
+        public List<TableColumnStyle> ColumnStyles { get; set; } = new();
 
-        public bool WrapText { get; set; } = false;
-        // Table-wide defaults
-        public string? FontFamily { get; set; }
-        public float? FontSize { get; set; }
-        public string? TextColor { get; set; }
+        // ---- Rows ----
+        public List<TableRow> Rows { get; set; } = new();
 
-        // Header row overrides
-        public string? HeaderFontFamily { get; set; }
-        public float? HeaderFontSize { get; set; }
-        public string? HeaderTextColor { get; set; }
-        // Table-wide and header/body/row background
-        public string? HeaderBackgroundColor { get; set; }
-        public string? RowBackgroundColor { get; set; }
-        public string FooterBackgroundColor { get; set; }
+        // ---- Pagination & Layout ----
+        public bool EnablePageBreaks { get; set; } = true;
+        public bool RepeatHeaders { get; set; } = true;
+        public int MinRowsAtPageStart { get; set; } = 1;  // orphan control
+        public int MinRowsAtPageEnd { get; set; } = 1;    // widow control
 
-        // Row heights (optional, use float? so user can leave unset)
-        public float? HeaderRowHeight { get; set; }
-        public float? RowHeight { get; set; }
-        // Footer row overrides (optional, for completeness)
-        public string? FooterFontFamily { get; set; }
-        public float? FooterFontSize { get; set; }
-        public string? FooterTextColor { get; set; }
-        // Table-wide styling
-        public float? MarginTop { get; set; }
-        public float? MarginBottom { get; set; }
-        public float? MarginLeft { get; set; }
-        public float? MarginRight { get; set; }
-        public float? PaddingTop { get; set; }
-        public float? PaddingBottom { get; set; }
-        public float? PaddingLeft { get; set; }
-        public float? PaddingRight { get; set; }
+        // Content area vertical bounds (PDF coordinates: origin at bottom-left; your builder supplies top/bottom Y)
+        public float? PageTopY { get; set; } = null;      // e.g., top Y of content region
+        public float? PageBottomY { get; set; } = null;   // e.g., bottom Y of content region
 
-        public string? BorderColor { get; set; }
-        public float? BorderWidth { get; set; }
-        public string? BackgroundColor { get; set; }
-        public float? CornerRadius { get; set; }
+        // Page-break callback: should add a page and return the new starting Y for the next segment
+        public Func<float, float>? OnPageBreak { get; set; } = null;
 
-        // Constructor: requires position and width/height of table
-        public TableElement(float x, float y, float width, float height) : base(x, y)
-        {
-            Width = width;
-            Height = height;
-        }
+        // Headers: if null, consecutive top rows with IsHeader=true form the header block
+        public int? HeaderRowCount { get; set; } = null;
 
-        // Table dimension for layout
-        public float Width { get; set; }
-        public float Height { get; set; }
+        // ---- Borders / Frames ----
+        public bool ResolveBorderConflicts { get; set; } = true; // avoid double-stroking inner borders
+        public bool DrawOuterFrame { get; set; } = true;
+        public Color OuterFrameColor { get; set; } = Color.Black;
+        public float OuterFrameWidth { get; set; } = 0.5f;
+
+        // ---- Text overflow policy (default for the table; cells may honor/override at render time if needed) ----
+        public CellOverflowPolicy OverflowPolicy { get; set; } = CellOverflowPolicy.Wrap;
+        public bool AutoSizeColumns { get; set; } = true;
+        public TableElement() : base(0, 0) { }
+        public TableElement(float x, float y) : base(x, y) { }
+        public bool KeepWithNext { get; set; } = false;
+        public bool AvoidBreakInside { get; set; } = false; // when true, force start on new page if it doesn't fit
+
     }
 
-    public class TableColumnDefinition
+    // -------------------------------
+    // Per-Column Defaults (optional)
+    // -------------------------------
+    public class TableColumnStyle
     {
-        // True = constant width, False = relative width
-        public bool IsConstant { get; set; } = false;
-        public float Value { get; set; } // If constant: width in points; If relative: weight (e.g. 1.0)
+        public int Index { get; set; }                              // 0-based column index
+        public HorizontalAlign? HAlign { get; set; } = null;
+        public VerticalAlign? VAlign { get; set; } = null;
+        public string? Font { get; set; } = null;
+        public float? FontSize { get; set; } = null;
+        public Color? TextColor { get; set; } = null;
+        public Color? Background { get; set; } = null;
+
+        // Padding defaults (per side)
+        public float? PaddingTop { get; set; } = null;
+        public float? PaddingRight { get; set; } = null;
+        public float? PaddingBottom { get; set; } = null;
+        public float? PaddingLeft { get; set; } = null;
+
+        // Optional width override for this column (if you want to override ColumnWidths entry at layout time)
+        public float? OverrideWidth { get; set; } = null;
     }
 
-    public class TableCellElement
+    // -------------------------------
+    // Row Model
+    // -------------------------------
+    public class TableRow
     {
-        // Cell content (text or future: image, checkbox, etc.)
-        public string? Text { get; set; }
-        // Alignment
-        public TableCellAlignment Alignment { get; set; } = TableCellAlignment.Left;
-        // Cell styling
-        public string? FontFamily { get; set; }
-        public float? FontSize { get; set; }
-        public bool Bold { get; set; }
-        public bool Italic { get; set; }
-        public string? FontColor { get; set; }
-        public string? BackgroundColor { get; set; }
-        public float? PaddingTop { get; set; }
-        public float? PaddingBottom { get; set; }
-        public float? PaddingLeft { get; set; }
-        public float? PaddingRight { get; set; }
-        public bool WrapText { get; set; } = false;
-        // Column/row spanning
+        public List<TableCell> Cells { get; set; } = new();
+
+        // Row-level styling
+        public Color? BackgroundColor { get; set; }
+        public float? RowHeight { get; set; } = null;
+        public bool IsHeader { get; set; } = false;
+
+        // Pagination hints
+        public bool KeepWithNext { get; set; } = false;
+
+        // Optional thicker separators for emphasis bands
+        public bool ThickTopBorder { get; set; } = false;
+        public bool ThickBottomBorder { get; set; } = false;
+        public float ThickBorderWidth { get; set; } = 1.5f;
+        public Color? ThickBorderColor { get; set; } = null;
+
+        public TableRow() { }
+        public TableRow(params TableCell[] cells) => Cells.AddRange(cells);
+    }
+
+    // -------------------------------
+    // Cell Model
+    // -------------------------------
+    public class TableCell
+    {
+        // ---- Content ----
+        public string Text { get; set; } = string.Empty;
+
+        // Typography
+        public string Font { get; set; } = "Helvetica";
+        public float FontSize { get; set; } = 10f;
+        public Color TextColor { get; set; } = Color.Black;
+        public bool Bold { get; set; } = false;
+        public bool Italic { get; set; } = false;
+        public bool Underline { get; set; } = false;
+        public bool Strikethrough { get; set; } = false;
+        public bool Overline { get; set; } = false;
+        public bool SmallCaps { get; set; } = false;
+        public float? LineHeight { get; set; } = null;     // multiplier (e.g., 1.2f)
+        public int? MaxLines { get; set; } = null;         // limit visible lines (with Wrap/Ellipsis)
+
+        public CellWordBreak WordBreak { get; set; } = CellWordBreak.Normal;
+        public float RotationDegrees { get; set; } = 0f;   // rotate text around its origin inside the cell
+
+        // ---- Alignment ----
+        public HorizontalAlign HorizontalAlign { get; set; } = HorizontalAlign.Left;
+        public VerticalAlign VerticalAlign { get; set; } = VerticalAlign.Top;
+
+        // ---- Background & Borders ----
+        public Color? BackgroundColor { get; set; } = null;
+        public float CornerRadius { get; set; } = 0f;      // rounded background/border for the cell
+
+        public Color BorderColor { get; set; } = Color.Black;
+        public float BorderWidth { get; set; } = PdfDefaults.DefaultBorderWidth;
+
+        public bool BorderTop { get; set; } = true;
+        public bool BorderBottom { get; set; } = true;
+        public bool BorderLeft { get; set; } = true;
+        public bool BorderRight { get; set; } = true;
+
+        // add fields
+        public Color? BorderColorTop { get; set; }
+        public Color? BorderColorRight { get; set; }
+        public Color? BorderColorBottom { get; set; }
+        public Color? BorderColorLeft { get; set; }
+
+        public float? BorderWidthTop { get; set; }
+        public float? BorderWidthRight { get; set; }
+        public float? BorderWidthBottom { get; set; }
+        public float? BorderWidthLeft { get; set; }
+
+        // ---- Padding ----
+        // If null → renderer should fall back to TableElement.CellPadding
+        public float? Padding { get; set; } = null;        // legacy/all-sides convenience
+        public float? PaddingTop { get; set; } = null;
+        public float? PaddingRight { get; set; } = null;
+        public float? PaddingBottom { get; set; } = null;
+        public float? PaddingLeft { get; set; } = null;
+
+        // ---- Spanning ----
         public int ColSpan { get; set; } = 1;
         public int RowSpan { get; set; } = 1;
-    }
 
-    public enum TableCellAlignment
-    {
-        Left,
-        Center,
-        Right
+        public TableCell() { }
+        public TableCell(string text) { Text = text; }
     }
 }

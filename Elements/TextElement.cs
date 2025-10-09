@@ -57,4 +57,10 @@ public class TextElement : PdfElement
 
     public TextElement() : base(0, 0) { }
     public TextElement(string text, float x, float y) : base(x, y) { Text = text; }
+
+    public bool KeepWithNext { get; set; } = false;   // P2 — simple version (no lookahead splitting)
+    public bool AvoidBreakInside { get; set; } = true; // paragraphs are atomic now; future: split w/ widows/orphans
+    public int WidowLines { get; set; } = 2;          // reserved for future line-splitting
+    public int OrphanLines { get; set; } = 2;
+
 }

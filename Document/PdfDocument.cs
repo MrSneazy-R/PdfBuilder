@@ -26,6 +26,9 @@ namespace PdfBuilder.Document
             Pages.Add(page);
             return page;
         }
+        public string? Title { get; set; } = null;
+        public HeaderFooterSpec HeaderFooter { get; set; } = new();
+        public MasterPageSpec Master { get; set; } = new();
     }
 
 }
