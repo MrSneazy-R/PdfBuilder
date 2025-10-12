@@ -1,6 +1,7 @@
 ﻿using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
+using TableModels = PdfBuilder.Elements.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,7 +12,12 @@ namespace PdfBuilder.Writer
     {
         public static PdfDocument Paginate(PdfDocument doc)
         {
-            var outDoc = new PdfDocument();
+            var outDoc = new PdfDocument
+            {
+                Title = doc.Title,
+                HeaderFooter = CloneHeaderFooter(doc.HeaderFooter),
+                Master = CloneMaster(doc.Master)
+            };
             foreach (var page in doc.Pages)
             {
                 var splitPages = PaginatePage(page);
@@ -387,9 +393,71 @@ namespace PdfBuilder.Writer
                 MarginTop = src.MarginTop,
                 MarginBottom = src.MarginBottom,
                 MarginLeft = src.MarginLeft,
-                MarginRight = src.MarginRight
+                MarginRight = src.MarginRight,
+                HeaderFooterOverride = CloneHeaderFooter(src.HeaderFooterOverride),
+                MasterOverride = CloneMaster(src.MasterOverride),
+                Columns = src.Columns == null ? null : new ColumnLayoutSpec
+                {
+                    Columns = src.Columns.Columns,
+                    Gutter = src.Columns.Gutter,
+                    Widths = src.Columns.Widths?.ToArray()
+                }
             };
             return p;
+        }
+
+        private static HeaderFooterSpec? CloneHeaderFooter(HeaderFooterSpec? source)
+        {
+            if (source == null) return null;
+            return new HeaderFooterSpec
+            {
+                HeaderTemplate = source.HeaderTemplate,
+                FooterTemplate = source.FooterTemplate,
+                HeaderHeight = source.HeaderHeight,
+                FooterHeight = source.FooterHeight,
+                FontFamily = source.FontFamily,
+                FontSize = source.FontSize,
+                Color = source.Color,
+                HeaderAlign = source.HeaderAlign,
+                FooterAlign = source.FooterAlign,
+                FirstPageDifferent = source.FirstPageDifferent,
+                FirstPageHeaderTemplate = source.FirstPageHeaderTemplate,
+                FirstPageFooterTemplate = source.FirstPageFooterTemplate,
+                HideOnLastPage = source.HideOnLastPage
+            };
+        }
+
+        private static MasterPageSpec? CloneMaster(MasterPageSpec? source)
+        {
+            if (source == null) return null;
+            return new MasterPageSpec
+            {
+                BackgroundColor = source.BackgroundColor,
+                BackgroundImage = source.BackgroundImage,
+                BackgroundImageMime = source.BackgroundImageMime,
+                BackgroundImageX = source.BackgroundImageX,
+                BackgroundImageY = source.BackgroundImageY,
+                BackgroundImageWidth = source.BackgroundImageWidth,
+                BackgroundImageHeight = source.BackgroundImageHeight,
+                Watermark = source.Watermark == null ? null : new WatermarkSpec
+                {
+                    Text = source.Watermark.Text,
+                    ImageData = source.Watermark.ImageData,
+                    ImageMime = source.Watermark.ImageMime,
+                    CenterOnPage = source.Watermark.CenterOnPage,
+                    FontFamily = source.Watermark.FontFamily,
+                    FontSize = source.Watermark.FontSize,
+                    Color = source.Watermark.Color,
+                    Opacity = source.Watermark.Opacity,
+                    RotationDegrees = source.Watermark.RotationDegrees,
+                    ImageWidth = source.Watermark.ImageWidth,
+                    ImageHeight = source.Watermark.ImageHeight,
+                    X = source.Watermark.X,
+                    Y = source.Watermark.Y,
+                    Layer = source.Watermark.Layer,
+                    ExtGStateResourceName = source.Watermark.ExtGStateResourceName
+                }
+            };
         }
 
         private static TableElement CloneTableForRows(TableElement src, float[] colWidths, int startRow, int count)
@@ -401,6 +469,18 @@ namespace PdfBuilder.Writer
                 DefaultFont = src.DefaultFont,
                 DefaultFontSize = src.DefaultFontSize,
                 CellPadding = src.CellPadding,
+                BorderCollapse = src.BorderCollapse,
+                BorderStyle = src.BorderStyle?.Clone(),
+                OuterBorder = src.OuterBorder?.Clone(),
+                InnerBorder = src.InnerBorder?.Clone(),
+                RowBanding = src.RowBanding?.Clone(),
+                ColumnBanding = src.ColumnBanding?.Clone(),
+                DefaultTextStyle = src.DefaultTextStyle?.Clone() ?? new TableModels.TextStyle(),
+                OuterCornerRadiusTopLeft = src.OuterCornerRadiusTopLeft,
+                OuterCornerRadiusTopRight = src.OuterCornerRadiusTopRight,
+                OuterCornerRadiusBottomRight = src.OuterCornerRadiusBottomRight,
+                OuterCornerRadiusBottomLeft = src.OuterCornerRadiusBottomLeft,
+                RowBandOffset = src.RowBandOffset + startRow,
 
                 BorderColor = src.BorderColor,
                 BorderWidth = src.BorderWidth,
@@ -471,6 +551,8 @@ namespace PdfBuilder.Writer
         private static TableCell DeepCloneCell(TableCell c) => new TableCell
         {
             Text = c.Text,
+            TextRuns = c.TextRuns.Select(run => run.Clone()).ToList(),
+            TextStyle = c.TextStyle?.Clone(),
 
             // Typography
             Font = c.Font,
@@ -494,10 +576,15 @@ namespace PdfBuilder.Writer
             // Background & corners
             BackgroundColor = c.BackgroundColor,
             CornerRadius = c.CornerRadius,
+            CornerRadiusTopLeft = c.CornerRadiusTopLeft,
+            CornerRadiusTopRight = c.CornerRadiusTopRight,
+            CornerRadiusBottomRight = c.CornerRadiusBottomRight,
+            CornerRadiusBottomLeft = c.CornerRadiusBottomLeft,
 
             // Base border (table defaults)
             BorderColor = c.BorderColor,
             BorderWidth = c.BorderWidth,
+            BorderStyle = c.BorderStyle?.Clone(),
             BorderTop = c.BorderTop,
             BorderRight = c.BorderRight,
             BorderBottom = c.BorderBottom,
@@ -512,6 +599,10 @@ namespace PdfBuilder.Writer
             BorderWidthRight = c.BorderWidthRight,
             BorderWidthBottom = c.BorderWidthBottom,
             BorderWidthLeft = c.BorderWidthLeft,
+            BorderStyleTop = c.BorderStyleTop?.Clone(),
+            BorderStyleRight = c.BorderStyleRight?.Clone(),
+            BorderStyleBottom = c.BorderStyleBottom?.Clone(),
+            BorderStyleLeft = c.BorderStyleLeft?.Clone(),
 
             // Padding
             Padding = c.Padding,

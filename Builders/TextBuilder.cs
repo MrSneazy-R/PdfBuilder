@@ -70,10 +70,9 @@ namespace PdfBuilder.Document
         public TextBuilder BaselineOffset(float value) { _text.BaselineOffset = value; return this; }
 
         // --- End chain and add to column ---
-        public ColumnBuilder Add()
+        public float Add()
         {
-            _col.AddText(_text);
-            return _col;
+            return _col.AddText(_text);
         }
     }
 }

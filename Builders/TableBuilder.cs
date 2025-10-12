@@ -30,10 +30,9 @@ namespace PdfBuilder.Document
         public TableElement Build() => _table;
 
         /// <summary>Finalize and add this table to the column (expects ColumnBuilder.AddTable).</summary>
-        public ColumnBuilder Add()
+        public float Add()
         {
-            _column.AddTable(_table);
-            return _column;
+            return _column.AddTable(_table);
         }
 
         // ------------------ Position / Size ------------------

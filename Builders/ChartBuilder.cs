@@ -643,10 +643,9 @@ namespace PdfBuilder.Document
         public ChartBuilder AddSeries(IChartSeries series) { if (series != null) _chart.Series.Add(series); return this; }
 
         // ========== Commit ==========
-        public ColumnBuilder Add()
+        public float Add()
         {
-            _col.AddChart(_chart);
-            return _col;
+            return _col.AddChart(_chart);
         }
     }
 }

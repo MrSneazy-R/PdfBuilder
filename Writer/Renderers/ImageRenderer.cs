@@ -14,14 +14,14 @@ namespace PdfBuilder.Writer
         /// <summary>
         /// Append drawing commands for a single ImageElement.
         /// imageObjId is the XObject object id (we reference it by name /Im{imageObjId}).
-        /// If opacity < 1, extGStateObjId should be the ExtGState object id (referenced as /GS{extGStateObjId}).
+        /// If opacity < 1, extGStateResourceName should be the ExtGState resource (e.g., /GS7).
         /// </summary>
         public static void Append(
      StringBuilder sb,
      ImageElement img,
      float pageHeight,
      int imageObjId,
-     int? extGStateObjId = null)
+     string? extGStateResourceName = null)
         {
             if (img == null) return;
 
@@ -79,10 +79,12 @@ namespace PdfBuilder.Writer
                 sb.Append("W n ");
             }
 
-            // Draw image with slight bleed under the clip
-            const float bleed = 0.5f;
-            if (img.Opacity < 0.999f && extGStateObjId.HasValue)
-                sb.Append($"/GS{extGStateObjId.Value} gs ");
+            // Draw image exactly within the clip (no bleed). A prior 0.5pt bleed
+            // could create edge halos with alpha PNGs due to resampling beyond
+            // image bounds in some PDF viewers.
+            const float bleed = 0f;
+            if (!string.IsNullOrEmpty(extGStateResourceName))
+                sb.Append($"{extGStateResourceName} gs ");
             sb.Append($"{N(w + 2 * bleed)} 0 0 {N(h + 2 * bleed)} {N(-bleed)} {N(-bleed)} cm ");
             sb.Append($"/Im{imageObjId} Do ");
             sb.Append("Q\n"); // <-- pop the clip + transform

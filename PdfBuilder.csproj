@@ -10,4 +10,10 @@
     <Folder Include="Charts\" />
   </ItemGroup>
 
+  <!-- Exclude test sources from the main library build -->
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <None Include="tests\**\*.cs" />
+  </ItemGroup>
+
 </Project>

@@ -40,7 +40,7 @@ namespace PdfBuilder.Models
         public string? ImageMime { get; set; }
 
         // Placement & style
-        public float X { get; set; } = 0;     // if 0 + Center = true, it’s auto-centered
+        public float X { get; set; } = 0;     // if 0 + Center = true, it's auto-centered
         public float Y { get; set; } = 0;
         public bool CenterOnPage { get; set; } = true;
 
@@ -56,6 +56,8 @@ namespace PdfBuilder.Models
         public float ImageHeight { get; set; } = 300f;
 
         public WatermarkLayer Layer { get; set; } = WatermarkLayer.BehindContent;
+
+        internal string? ExtGStateResourceName { get; set; }
     }
 
     public sealed class MasterPageSpec

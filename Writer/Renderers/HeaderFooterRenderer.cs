@@ -80,19 +80,34 @@ namespace PdfBuilder.Writer
             sb.Append($"{PdfText(text)} Tj ET\n");
         }
 
-        private static string PdfText(string s) =>
-            s.Any(ch => ch > 0x7F) ? Utf16Hex(s) : $"({Escape(s)})";
+        private static readonly Encoding WinAnsi = GetWinAnsi();
+        private static Encoding GetWinAnsi()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(1252, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+        }
+        private static string PdfText(string s)
+        {
+            var bytes = WinAnsi.GetBytes(s ?? string.Empty);
+            if (bytes.Length == 0) return "()";
+            // Use literal if strictly ASCII and no special chars that require escaping; otherwise hex
+            bool asciiSafe = true;
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                byte b = bytes[i];
+                if (b < 0x20 || b > 0x7E || b == (byte)'(' || b == (byte)')' || b == (byte)'\\') { asciiSafe = false; break; }
+            }
+            if (asciiSafe)
+            {
+                var literal = Encoding.ASCII.GetString(bytes);
+                return $"({Escape(literal)})";
+            }
+            var hex = new StringBuilder(bytes.Length * 2);
+            foreach (var b in bytes) hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
+            return $"<{hex}>";
+        }
 
         private static string Escape(string s) => s.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
-
-        private static string Utf16Hex(string s)
-        {
-            var raw = Encoding.BigEndianUnicode.GetBytes(s);
-            var withBom = new byte[raw.Length + 2];
-            withBom[0] = 0xFE; withBom[1] = 0xFF;
-            Buffer.BlockCopy(raw, 0, withBom, 2, raw.Length);
-            return $"<{BitConverter.ToString(withBom).Replace("-", "")}>";
-        }
 
         private static Color ParseColor(string? hex)
         {

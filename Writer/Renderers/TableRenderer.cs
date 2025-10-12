@@ -1,5 +1,6 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
 using PdfBuilder.Elements;
+using TableModels = PdfBuilder.Elements.Table;
 using PdfBuilder.Encoder;
 using System;
 using System.Collections.Generic;
@@ -14,15 +15,8 @@ namespace PdfBuilder.Writer
     {
         private static readonly IFormatProvider Inv = CultureInfo.InvariantCulture;
         private static string N(double v) => v.ToString("0.###", Inv);
-        private enum Axis { Horizontal, Vertical }
         static float ClampThin(float w) => Math.Max(0.25f, w);
         static float AlignHalf(float v) => (float)Math.Round(v * 2f) / 2f;
-
-        private static bool PreferSecondOnTie(Axis axis)
-        {
-            // CSS collapsed borders: bottom beats top, right beats left
-            return axis == Axis.Horizontal /*top vs bottom*/ || axis == Axis.Vertical /*left vs right*/;
-        }
 
         private sealed class Edge
         {
@@ -30,16 +24,63 @@ namespace PdfBuilder.Writer
             public float Width;
             public Color Color;
             public int OriginRank; // cell > row > table (lower is stronger)
-            public string Style;   // "solid","dashed", etc. (optional; treat as equal if not used)
+            public string Style;   // legacy style tag for tie-breaking
+            public TableModels.BorderStyle? BorderStyle;
+        }
+
+        private sealed class BorderDrawSpec
+        {
+            public Color Color;
+            public float Width;
+            public TableModels.BorderStyle? Style;
+        }
+
+        private sealed class ResolvedRun
+        {
+            public string Text = string.Empty;
+            public TableModels.TextStyle Style = new TableModels.TextStyle();
+            public string BaseFont = "Helvetica";
+            public Color Color = Color.Black;
+            public float FontSize;
+            public bool Underline;
+            public bool Strikethrough;
+            public Color? DecorationColor;
+            public float? DecorationThickness;
+            public TableModels.TextDecorationStyle DecorationStyle = TableModels.TextDecorationStyle.Solid;
+            public Color? Background;
+            public float HighlightPadding;
+            public bool Superscript;
+            public bool Subscript;
+            public float RotationOverride;
+            public List<string>? FallbackFonts;
+            public float Width;
+        }
+
+        private sealed class Fragment
+        {
+            public ResolvedRun Run = null!;
+            public string Text = string.Empty;
+            public float Width;
+            public bool IsWhitespace;
+            public bool IsLineBreak;
+        }
+
+        private sealed class LineLayout
+        {
+            public List<Fragment> Fragments { get; } = new();
+            public float Width;
+            public float MaxFontSize;
+            public float Height;
+            public float BaselineOffset;
         }
 
         // Compare a and b; return +1 if b wins, 0 if a wins, -1 if none (no competitor)
-        private static int CompareEdges(Edge a, Edge b, Axis axis)
+        private static int CompareEdges(Edge a, Edge b, bool preferSecondOnTie)
         {
             if (b == null || !b.Exists) return -1;
             if (!a.Exists) return +1;
 
-            // (1) style precedence (optional — if not tracking, skip)
+            // (1) style precedence (optional - if not tracking, skip)
             // same style => (2) thicker wins
             if (Math.Abs(a.Width - b.Width) > 1e-3f)
                 return b.Width > a.Width ? +1 : 0;
@@ -48,8 +89,8 @@ namespace PdfBuilder.Writer
             if (a.OriginRank != b.OriginRank)
                 return b.OriginRank < a.OriginRank ? +1 : 0;
 
-            // (4) final tie-break: prefer bottom over top; right over left
-            return PreferSecondOnTie(axis) ? +1 : 0;
+            // (4) final tie-break: optionally prefer the competitor when ties remain
+            return preferSecondOnTie ? +1 : 0;
         }
 
         public static void Append(StringBuilder sb, TableElement table, Dictionary<string, int> fontObjId)
@@ -61,8 +102,10 @@ namespace PdfBuilder.Writer
 
             sb.Append("q\n");           // isolate graphics state
             sb.Append("0 J 0 j\n");     // butt caps, miter joins
+            bool collapse = table.BorderCollapse == TableModels.BorderCollapseMode.Collapse
+                             || table.ResolveBorderConflicts;
 
-            // —— Geometry: columns ——
+            // -- Geometry: columns --
             int totalCols = table.Rows.Max(r => r.Cells.Sum(c => Math.Max(1, c.ColSpan)));
             float tableWidth = table.TableWidth ?? 500f;
 
@@ -83,10 +126,10 @@ namespace PdfBuilder.Writer
                 colWidths = AutoSizeColumnWidths(table, totalCols, tableWidth);
             }
 
-            // —— Heights (row/colspan-aware) ——
+            // -- Heights (row/colspan-aware) --
             var rowHeights = ComputeRowHeights(table, colWidths);
 
-            // —— Caption ——
+            // -- Caption --
             float y = table.Y;
             if (!string.IsNullOrWhiteSpace(table.CaptionText))
             {
@@ -112,29 +155,50 @@ namespace PdfBuilder.Writer
                 y -= lineH + 4; // spacing under caption
             }
 
-            // —— Outer frame (behind cells so cell borders stay visible) ——
-            if (table.DrawOuterFrame)
+            // -- Outer frame (behind cells so cell borders stay visible) --
+            if (table.DrawOuterFrame || table.OuterBorder != null)
             {
                 float frameW = colWidths.Sum();
                 float frameH = rowHeights.Sum();
-                StrokeRect(sb, table.X, y, frameW, frameH, table.OuterFrameColor, table.OuterFrameWidth);
+                float frameBottom = y - frameH;
+
+                var outerStyle = table.OuterBorder?.Clone();
+                Color outerColor = outerStyle?.Color ?? table.OuterFrameColor;
+                float outerWidth = outerStyle?.Width ?? table.OuterFrameWidth;
+
+                StrokeRoundedRect(
+                    sb,
+                    table.X,
+                    frameBottom,
+                    frameW,
+                    frameH,
+                    table.OuterCornerRadiusTopLeft,
+                    table.OuterCornerRadiusTopRight,
+                    table.OuterCornerRadiusBottomRight,
+                    table.OuterCornerRadiusBottomLeft,
+                    outerColor,
+                    outerWidth,
+                    outerStyle);
             }
 
-            // —— Alternating rows (OPT-IN) ——
+            // -- Alternating rows (OPT-IN) --
             bool zebraEnabled = table.AltRowBackground.HasValue && table.AltRowEvery > 0;
             int zebraEvery = zebraEnabled ? Math.Max(1, table.AltRowEvery) : int.MaxValue;
             int zebraStart = Math.Max(0, table.AltRowStartIndex);
             int bodyRowCounter = 0;
 
             var covered = new HashSet<(int row, int col)>();
+            var drawnHorizontalSeams = new HashSet<(int seamRow, int colIndex)>();
+            var drawnVerticalSeams = new HashSet<(int rowIndex, int seamCol)>();
             int rowIndex = 0;
 
-            // —— Rows ——
+            // -- Rows --
             while (rowIndex < table.Rows.Count)
             {
                 float rowHeight = rowHeights[rowIndex];
                 float x = table.X;
                 int colIndex = 0;
+                var rowBand = ResolveRowBand(table, table.RowBandOffset + rowIndex);
 
                 while (colIndex < totalCols && covered.Contains((rowIndex, colIndex)))
                 {
@@ -149,10 +213,6 @@ namespace PdfBuilder.Writer
                              && !row.IsHeader
                              && bodyRowCounter >= zebraStart
                              && (bodyRowCounter - zebraStart) % zebraEvery == 0;
-
-                Color? rowBg = row.BackgroundColor
-                               ?? (row.IsHeader ? table.HeaderBackground
-                                                : isAlt ? table.AltRowBackground : null);
 
                 // Cells
                 for (int i = 0; i < row.Cells.Count; i++)
@@ -176,18 +236,43 @@ namespace PdfBuilder.Writer
                         cellHeight += rowHeights[rowIndex + r];
 
                     // Effective style (column defaults -> cell overrides)
-                    var eff = BuildEffectiveCell(table, cell, colIndex);
+                    int logicalColIndex = colIndex;
+                    var columnBand = ResolveColumnBand(table, logicalColIndex);
+                    var eff = BuildEffectiveCell(table, row, cell, logicalColIndex, rowBand, columnBand);
 
                     // Background
-                    var bg = eff.BackgroundColor ?? rowBg;
-                    if (bg.HasValue)
-                        FillRect(sb, x, y - cellHeight, cellWidth, cellHeight, bg.Value);
+                    float cellBottom = y - cellHeight;
+                    var baseRowFill = row.BackgroundColor
+                                      ?? (row.IsHeader ? table.HeaderBackground
+                                                       : isAlt ? table.AltRowBackground : null);
+                    var rowBandFill = rowBand?.FillColor;
+                    var columnBandFill = columnBand?.FillColor;
+                    var cellFill = eff.BackgroundColor;
+
+                    if (baseRowFill.HasValue)
+                        FillRoundedRect(sb, x, cellBottom, cellWidth, cellHeight,
+                                        eff.CornerRadiusTopLeft, eff.CornerRadiusTopRight,
+                                        eff.CornerRadiusBottomRight, eff.CornerRadiusBottomLeft,
+                                        baseRowFill.Value);
+                    if (rowBandFill.HasValue)
+                        FillRoundedRect(sb, x, cellBottom, cellWidth, cellHeight,
+                                        eff.CornerRadiusTopLeft, eff.CornerRadiusTopRight,
+                                        eff.CornerRadiusBottomRight, eff.CornerRadiusBottomLeft,
+                                        rowBandFill.Value);
+                    if (columnBandFill.HasValue)
+                        FillRoundedRect(sb, x, cellBottom, cellWidth, cellHeight,
+                                        eff.CornerRadiusTopLeft, eff.CornerRadiusTopRight,
+                                        eff.CornerRadiusBottomRight, eff.CornerRadiusBottomLeft,
+                                        columnBandFill.Value);
+                    if (cellFill.HasValue)
+                        FillRoundedRect(sb, x, cellBottom, cellWidth, cellHeight,
+                                        eff.CornerRadiusTopLeft, eff.CornerRadiusTopRight,
+                                        eff.CornerRadiusBottomRight, eff.CornerRadiusBottomLeft,
+                                        cellFill.Value);
 
                     // ----- Border drawing -----
-                    if (table.ResolveBorderConflicts)
+                    if (collapse)
                     {
-                        int logicalColIndex = colIndex;
-
                         // TOP: per-slot winner (mixed neighbors handled)
                         float xSegTop = x;
                         for (int s = 0; s < colSpan; s++)
@@ -196,24 +281,28 @@ namespace PdfBuilder.Writer
 
                             BuildTopVsAboveBottom(
                                 table, rowIndex, logicalColIndex + s, covered,
-                                eff.BorderTop, eff.BorderColorTop, eff.BorderWidthTop,
+                                eff.BorderTop, eff.DrawTop,
                                 out var top, out var aboveBottom);
 
                             // Draw TOP only if it wins. If it loses, previous row already drew its BOTTOM.
-                            var topWins = CompareEdges(top, aboveBottom, Axis.Horizontal) <= 0 ? top : null;
+                            var topWins = CompareEdges(top, aboveBottom, preferSecondOnTie: true) <= 0 ? top : null;
                             if (topWins != null && topWins.Exists)
-                                StrokeLine(sb, xSegTop, y, xSegTop + segW, y, topWins.Color, topWins.Width);
+                            {
+                                var seamKey = (rowIndex, logicalColIndex + s);
+                                if (drawnHorizontalSeams.Add(seamKey))
+                                    StrokeLine(sb, xSegTop, y, xSegTop + segW, y, topWins.Color, topWins.Width, topWins.BorderStyle);
+                            }
 
                             xSegTop += segW;
                         }
 
                         // VERTICALS: draw each shared boundary once at x+cellWidth (RIGHT owns)
                         if (logicalColIndex == 0 && eff.BorderLeft)
-                            StrokeLine(sb, x, y, x, y - cellHeight, eff.BorderColorLeft, eff.BorderWidthLeft);
+                            StrokeLine(sb, x, y, x, y - cellHeight, eff.DrawLeft.Color, eff.DrawLeft.Width, eff.DrawLeft.Style);
 
                         BuildRightVsNeighborLeft(
                             table, row, logicalColIndex,
-                            eff.BorderRight, eff.BorderColorRight, eff.BorderWidthRight,
+                            eff.BorderRight, eff.DrawRight,
                             out var right, out var neighborLeft);
 
                         Edge vWinner;
@@ -223,11 +312,11 @@ namespace PdfBuilder.Writer
                         }
                         else
                         {
-                            int cmp = CompareEdges(neighborLeft, right, Axis.Vertical); // right wins ties
+                            int cmp = CompareEdges(neighborLeft, right, preferSecondOnTie: true); // right wins ties
                             vWinner = cmp > 0 ? right : neighborLeft;
                         }
                         if (vWinner.Exists)
-                            StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, vWinner.Color, vWinner.Width);
+                            StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, vWinner.Color, vWinner.Width, vWinner.BorderStyle);
 
                         // BOTTOM: per-slot winner and draw once here
                         float xSeg = x;
@@ -237,67 +326,55 @@ namespace PdfBuilder.Writer
 
                             BuildBottomVsBelowTop(
                                 table, rowIndex, logicalColIndex + s, rowSpan, covered,
-                                eff.BorderBottom, eff.BorderColorBottom, eff.BorderWidthBottom,
+                                eff.BorderBottom, eff.DrawBottom,
                                 out var bottom, out var belowTop);
 
-                            // Bottom vs below's Top; ties → Bottom
-                            int cmpH = CompareEdges(bottom, belowTop, Axis.Horizontal);
+                            // Bottom vs below's Top; ties favor this cell's bottom
+                            int cmpH = CompareEdges(bottom, belowTop, preferSecondOnTie: false);
                             if (cmpH <= 0 && bottom.Exists)
-                                StrokeLine(sb, xSeg, y - cellHeight, xSeg + segW, y - cellHeight, bottom.Color, bottom.Width);
+                                StrokeLine(sb, xSeg, y - cellHeight, xSeg + segW, y - cellHeight, bottom.Color, bottom.Width, bottom.BorderStyle);
 
                             xSeg += segW;
                         }
                     }
                     else
                     {
-                        // Non-conflict mode: draw what the cell asks for using effective per-side values,
-                        // BUT skip any explicit sides here — we'll overlay those right after this branch.
+                        // Non-conflict mode: draw what the cell asks for using effective per-side values.
                         bool topExp = IsExplicitSide(cell.BorderColorTop, cell.BorderWidthTop);
                         bool rightExp = IsExplicitSide(cell.BorderColorRight, cell.BorderWidthRight);
                         bool bottomExp = IsExplicitSide(cell.BorderColorBottom, cell.BorderWidthBottom);
                         bool leftExp = IsExplicitSide(cell.BorderColorLeft, cell.BorderWidthLeft);
 
                         if (cell.BorderTop && !topExp)
-                            StrokeLine(sb, x, y, x + cellWidth, y, eff.BorderColorTop, eff.BorderWidthTop);
+                            StrokeLine(sb, x, y, x + cellWidth, y, eff.DrawTop.Color, eff.DrawTop.Width, eff.DrawTop.Style);
                         if (cell.BorderRight && !rightExp)
-                            StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, eff.BorderColorRight, eff.BorderWidthRight);
+                            StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, eff.DrawRight.Color, eff.DrawRight.Width, eff.DrawRight.Style);
                         if (cell.BorderBottom && !bottomExp)
-                            StrokeLine(sb, x, y - cellHeight, x + cellWidth, y - cellHeight, eff.BorderColorBottom, eff.BorderWidthBottom);
+                            StrokeLine(sb, x, y - cellHeight, x + cellWidth, y - cellHeight, eff.DrawBottom.Color, eff.DrawBottom.Width, eff.DrawBottom.Style);
                         if (cell.BorderLeft && !leftExp)
-                            StrokeLine(sb, x, y, x, y - cellHeight, eff.BorderColorLeft, eff.BorderWidthLeft);
+                            StrokeLine(sb, x, y, x, y - cellHeight, eff.DrawLeft.Color, eff.DrawLeft.Width, eff.DrawLeft.Style);
+
+                        // Overlay explicit per-side overrides last so their colors and thickness win visually.
+                        if (cell.BorderTop && topExp)
+                            StrokeLine(sb, x, y, x + cellWidth, y, eff.DrawTop.Color, eff.DrawTop.Width, eff.DrawTop.Style);
+                        if (cell.BorderRight && rightExp)
+                            StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, eff.DrawRight.Color, eff.DrawRight.Width, eff.DrawRight.Style);
+                        if (cell.BorderBottom && bottomExp)
+                            StrokeLine(sb, x, y - cellHeight, x + cellWidth, y - cellHeight, eff.DrawBottom.Color, eff.DrawBottom.Width, eff.DrawBottom.Style);
+                        if (cell.BorderLeft && leftExp)
+                            StrokeLine(sb, x, y, x, y - cellHeight, eff.DrawLeft.Color, eff.DrawLeft.Width, eff.DrawLeft.Style);
                     }
 
-                    // ===== Overlay: draw *explicit* per-side overrides LAST so colors always show =====
-                    bool expTop = IsExplicitSide(cell.BorderColorTop, cell.BorderWidthTop);
-                    bool expRight = IsExplicitSide(cell.BorderColorRight, cell.BorderWidthRight);
-                    bool expBottom = IsExplicitSide(cell.BorderColorBottom, cell.BorderWidthBottom);
-                    bool expLeft = IsExplicitSide(cell.BorderColorLeft, cell.BorderWidthLeft);
-
-                    if (cell.BorderTop && expTop)
-                        StrokeLine(sb, x, y, x + cellWidth, y, eff.BorderColorTop, eff.BorderWidthTop);          // e.g. #22bb77 → 0.133 0.733 0.467 RG
-                    if (cell.BorderRight && expRight)
-                        StrokeLine(sb, x + cellWidth, y, x + cellWidth, y - cellHeight, eff.BorderColorRight, eff.BorderWidthRight); // e.g. #dd3333 → 0.867 0.2 0.2 RG
-                    if (cell.BorderBottom && expBottom)
-                        StrokeLine(sb, x, y - cellHeight, x + cellWidth, y - cellHeight, eff.BorderColorBottom, eff.BorderWidthBottom);
-                    if (cell.BorderLeft && expLeft)
-                        StrokeLine(sb, x, y, x, y - cellHeight, eff.BorderColorLeft, eff.BorderWidthLeft);
-
                     // ----- Text -----
-                    if (!string.IsNullOrEmpty(eff.Text))
+                    if (eff.Runs.Any(run => !string.IsNullOrEmpty(run.Text)))
                     {
                         var pad = GetPadding(eff, table.CellPadding);
-                        string baseFontName = MapFontVariant(eff.Font, eff.Bold, eff.Italic);
-                        int fontId = ResolveFontId(fontObjId, baseFontName);
-                        var rgbFill = ToRgbFill(eff.TextColor);
 
                         // Clip to cell rect
                         sb.Append("q ");
                         sb.Append($"{N(x)} {N(y - cellHeight)} {N(cellWidth)} {N(cellHeight)} re W n\n");
 
-                        RenderCellText(sb, table, eff, x, y, cellWidth, cellHeight, pad,
-                                       eff.Font, eff.FontSize, eff.LineHeight ?? PdfDefaults.LineHeightMultiplier,
-                                       eff.MaxLines, eff.WordBreak, eff.RotationDegrees,
-                                       eff.HorizontalAlign, eff.VerticalAlign, fontId, rgbFill);
+                        RenderCellText(sb, table, eff, x, y, cellWidth, cellHeight, pad, fontObjId);
 
                         sb.Append("Q\n");
                     }
@@ -345,10 +422,18 @@ namespace PdfBuilder.Writer
 
             public Color? BackgroundColor;
             public float CornerRadius = 0f;
+            public float CornerRadiusTopLeft;
+            public float CornerRadiusTopRight;
+            public float CornerRadiusBottomRight;
+            public float CornerRadiusBottomLeft;
+
+            public TableModels.TextStyle? ResolvedTextStyle;
+            public List<ResolvedRun> Runs = new();
 
             // cell-wide defaults (used as baseline for sides)
             public Color BorderColor = Color.Black;
             public float BorderWidth = PdfDefaults.DefaultBorderWidth;
+            public TableModels.BorderStyle? BorderStyle;
 
             // side enable flags (come from the cell)
             public bool BorderTop = true, BorderRight = true, BorderBottom = true, BorderLeft = true;
@@ -356,13 +441,21 @@ namespace PdfBuilder.Writer
             // per-side actual color/width used when drawing
             public Color BorderColorTop, BorderColorRight, BorderColorBottom, BorderColorLeft;
             public float BorderWidthTop, BorderWidthRight, BorderWidthBottom, BorderWidthLeft;
+            public TableModels.BorderStyle? BorderStyleTop, BorderStyleRight, BorderStyleBottom, BorderStyleLeft;
+            public BorderDrawSpec? DrawTop, DrawRight, DrawBottom, DrawLeft;
 
             // padding
             public float? Padding; public float? PaddingTop, PaddingRight, PaddingBottom, PaddingLeft;
         }
 
 
-        private static Effective BuildEffectiveCell(TableElement table, TableCell cell, int columnIndex)
+        private static Effective BuildEffectiveCell(
+            TableElement table,
+            TableRow row,
+            TableCell cell,
+            int columnIndex,
+            TableModels.BandFill? rowBand,
+            TableModels.BandFill? columnBand)
         {
             var e = new Effective
             {
@@ -387,11 +480,16 @@ namespace PdfBuilder.Writer
 
                 BackgroundColor = cell.BackgroundColor,
                 CornerRadius = cell.CornerRadius,
+                CornerRadiusTopLeft = cell.CornerRadiusTopLeft > 0 ? cell.CornerRadiusTopLeft : cell.CornerRadius,
+                CornerRadiusTopRight = cell.CornerRadiusTopRight > 0 ? cell.CornerRadiusTopRight : cell.CornerRadius,
+                CornerRadiusBottomRight = cell.CornerRadiusBottomRight > 0 ? cell.CornerRadiusBottomRight : cell.CornerRadius,
+                CornerRadiusBottomLeft = cell.CornerRadiusBottomLeft > 0 ? cell.CornerRadiusBottomLeft : cell.CornerRadius,
 
                 // baseline for borders comes from TABLE, not the cell's default black
                 BorderColor = table.BorderColor,
                 BorderWidth = cell.BorderWidth > 0 ? cell.BorderWidth
                             : table.BorderWidth > 0 ? table.BorderWidth : PdfDefaults.DefaultBorderWidth,
+                BorderStyle = cell.BorderStyle?.Clone(),
 
                 BorderTop = cell.BorderTop,
                 BorderRight = cell.BorderRight,
@@ -416,6 +514,10 @@ namespace PdfBuilder.Writer
             e.BorderWidthRight = NormWidth(cell.BorderWidthRight, baseBW);
             e.BorderWidthBottom = NormWidth(cell.BorderWidthBottom, baseBW);
             e.BorderWidthLeft = NormWidth(cell.BorderWidthLeft, baseBW);
+            e.BorderStyleTop = cell.BorderStyleTop?.Clone();
+            e.BorderStyleRight = cell.BorderStyleRight?.Clone();
+            e.BorderStyleBottom = cell.BorderStyleBottom?.Clone();
+            e.BorderStyleLeft = cell.BorderStyleLeft?.Clone();
 
             // ---- apply per-column defaults (only when the cell itself didn't set them) ----
             var col = table.ColumnStyles.FirstOrDefault(s => s.Index == columnIndex);
@@ -436,6 +538,46 @@ namespace PdfBuilder.Writer
                 if (col.VAlign.HasValue && cell.VerticalAlign == VerticalAlign.Top)
                     e.VerticalAlign = col.VAlign.Value;
             }
+
+            var resolvedStyle = ResolveCellTextStyle(table, row, cell, columnIndex);
+            e.ResolvedTextStyle = resolvedStyle;
+            if (!string.IsNullOrWhiteSpace(resolvedStyle.FontFamily))
+                e.Font = resolvedStyle.FontFamily;
+            if (resolvedStyle.FontSize > 0)
+                e.FontSize = resolvedStyle.FontSize;
+            e.TextColor = resolvedStyle.TextColor;
+            e.Bold = resolvedStyle.Bold;
+            e.Italic = resolvedStyle.Italic;
+            e.Underline = resolvedStyle.Underline;
+            e.Strikethrough = resolvedStyle.Strikethrough;
+            e.SmallCaps = resolvedStyle.SmallCaps;
+            if (resolvedStyle.LineHeight.HasValue)
+                e.LineHeight = resolvedStyle.LineHeight;
+            e.HorizontalAlign = resolvedStyle.HorizontalAlign;
+            e.VerticalAlign = resolvedStyle.VerticalAlign;
+            if (!e.BackgroundColor.HasValue && resolvedStyle.BackgroundColor.HasValue)
+                e.BackgroundColor = resolvedStyle.BackgroundColor;
+            e.Runs = ResolveRuns(cell, resolvedStyle);
+
+            var tableInner = table.InnerBorder;
+            var tableDefaultStyle = table.BorderStyle;
+            var rowBorderOverride = rowBand?.BorderOverride;
+            var columnBorderOverride = columnBand?.BorderOverride;
+
+            e.BorderStyleTop = PickBorderStyle(e.BorderStyleTop, e.BorderStyle, rowBorderOverride, tableInner, tableDefaultStyle);
+            e.BorderStyleBottom = PickBorderStyle(e.BorderStyleBottom, e.BorderStyle, rowBorderOverride, tableInner, tableDefaultStyle);
+            e.BorderStyleLeft = PickBorderStyle(e.BorderStyleLeft, e.BorderStyle, columnBorderOverride, tableInner, tableDefaultStyle);
+            e.BorderStyleRight = PickBorderStyle(e.BorderStyleRight, e.BorderStyle, columnBorderOverride, tableInner, tableDefaultStyle);
+
+            ApplyBorderStyle(e.BorderStyleTop, ref e.BorderColorTop, ref e.BorderWidthTop, cell.BorderColorTop, cell.BorderWidthTop);
+            ApplyBorderStyle(e.BorderStyleBottom, ref e.BorderColorBottom, ref e.BorderWidthBottom, cell.BorderColorBottom, cell.BorderWidthBottom);
+            ApplyBorderStyle(e.BorderStyleLeft, ref e.BorderColorLeft, ref e.BorderWidthLeft, cell.BorderColorLeft, cell.BorderWidthLeft);
+            ApplyBorderStyle(e.BorderStyleRight, ref e.BorderColorRight, ref e.BorderWidthRight, cell.BorderColorRight, cell.BorderWidthRight);
+
+            e.DrawTop = new BorderDrawSpec { Color = e.BorderColorTop, Width = e.BorderWidthTop, Style = e.BorderStyleTop };
+            e.DrawBottom = new BorderDrawSpec { Color = e.BorderColorBottom, Width = e.BorderWidthBottom, Style = e.BorderStyleBottom };
+            e.DrawLeft = new BorderDrawSpec { Color = e.BorderColorLeft, Width = e.BorderWidthLeft, Style = e.BorderStyleLeft };
+            e.DrawRight = new BorderDrawSpec { Color = e.BorderColorRight, Width = e.BorderWidthRight, Style = e.BorderStyleRight };
 
             return e;
         }
@@ -608,7 +750,7 @@ namespace PdfBuilder.Writer
         }
 
         // ---------- Text rendering with overflow, alignment, rotation ----------
-        private static void RenderCellText(
+        private static void RenderCellTextLegacy(
             StringBuilder sb, TableElement table, Effective cell,
             float x, float yTop, float cellWidth, float cellHeight,
             (float top, float right, float bottom, float left) pad,
@@ -624,14 +766,14 @@ namespace PdfBuilder.Writer
             bool rotated = Math.Abs(rotationDeg) > 0.01f;
 
             // Helper: distance (downwards) from TOP of the (possibly rotated) text block to the BASELINE
-            // For θ=0 this reduces to (lineH - ascent), which matches existing unrotated behavior.
+            // For ?=0 this reduces to (lineH - ascent), which matches existing unrotated behavior.
             static float BaselineOffsetFromTop(float textWidth, float lineH, float ascent, float angleDeg)
             {
                 if (Math.Abs(angleDeg) <= 0.01f) return lineH - ascent;
                 double r = Math.Abs(angleDeg) * Math.PI / 180.0;
                 double cos = Math.Cos(r);
                 double sin = Math.Sin(r);
-                double extraTop = angleDeg > 0 ? textWidth * sin : 0.0; // +θ lifts the right edge → more area above
+                double extraTop = angleDeg > 0 ? textWidth * sin : 0.0; // +? lifts the right edge ? more area above
                 return (float)((lineH - ascent) * cos + extraTop);
             }
 
@@ -685,7 +827,7 @@ namespace PdfBuilder.Writer
                     float width = PdfLayoutUtils.EstimateTextWidth(line, fontFamily, fontSize);
                     if (width > usableWidth && usableWidth > 0)
                     {
-                        const string ell = "…";
+                        const string ell = "-";
                         float ellW = PdfLayoutUtils.EstimateTextWidth(ell, fontFamily, fontSize);
                         if (ellW < usableWidth)
                         {
@@ -712,6 +854,515 @@ namespace PdfBuilder.Writer
                 float textX = GetHorizontalAlignedX(hAlign, x, cellWidth, line, fontFamily, fontSize, pad.left, pad.right);
 
                 DrawTextRun(sb, line, fontId, fontSize, rgbFill, textX, baselineY, rotationDeg);
+            }
+        }
+
+
+
+        private static TableModels.TextWrapMode MapWrap(CellOverflowPolicy policy)
+            => policy switch
+            {
+                CellOverflowPolicy.Ellipsis => TableModels.TextWrapMode.EllipsisWhenClipped,
+                CellOverflowPolicy.Clip => TableModels.TextWrapMode.NoWrap,
+                _ => TableModels.TextWrapMode.Wrap
+            };
+
+        private static List<Fragment> TokenizeRuns(List<ResolvedRun> runs)
+        {
+            var fragments = new List<Fragment>();
+            foreach (var run in runs)
+            {
+                string text = run.Text ?? string.Empty;
+                if (run.Style.SmallCaps)
+                    text = text.ToUpperInvariant();
+
+                text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+                int index = 0;
+                while (index < text.Length)
+                {
+                    char ch = text[index];
+                    if (ch == '\n')
+                    {
+                        fragments.Add(new Fragment
+                        {
+                            Run = run,
+                            Text = string.Empty,
+                            Width = 0f,
+                            IsWhitespace = false,
+                            IsLineBreak = true
+                        });
+                        index++;
+                        continue;
+                    }
+
+                    bool isWhitespace = char.IsWhiteSpace(ch);
+                    int start = index;
+                    while (index < text.Length && text[index] != '\n' && char.IsWhiteSpace(text[index]) == isWhitespace)
+                        index++;
+
+                    string slice = text.Substring(start, index - start);
+                    fragments.Add(new Fragment
+                    {
+                        Run = run,
+                        Text = slice,
+                        Width = MeasureFragmentWidth(run, slice),
+                        IsWhitespace = isWhitespace,
+                        IsLineBreak = false
+                    });
+                }
+            }
+
+            return fragments;
+        }
+
+        private static List<LineLayout> LayoutFragments(
+            List<Fragment> fragments,
+            Effective cell,
+            TableModels.TextWrapMode wrapMode,
+            int? maxLines,
+            float availableWidth,
+            float lineMult)
+        {
+            var lines = new List<LineLayout>();
+            if (fragments.Count == 0) return lines;
+
+            var queue = new Queue<Fragment>(fragments);
+            var currentLine = new LineLayout();
+            float currentWidth = 0f;
+
+            void FinalizeCurrentLine()
+            {
+                TrimTrailingWhitespace(currentLine);
+                if (currentLine.Fragments.Count == 0) return;
+                FinalizeLineMetrics(currentLine, lineMult, cell.FontSize);
+                lines.Add(currentLine);
+                currentLine = new LineLayout();
+                currentWidth = 0f;
+            }
+
+            while (queue.Count > 0)
+            {
+                if (maxLines.HasValue && lines.Count >= maxLines.Value)
+                    break;
+
+                var fragment = queue.Dequeue();
+
+                if (fragment.IsLineBreak)
+                {
+                    FinalizeCurrentLine();
+                    continue;
+                }
+
+                if (wrapMode == TableModels.TextWrapMode.NoWrap || wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
+                {
+                    if (fragment.IsWhitespace && currentLine.Fragments.Count == 0)
+                        continue;
+                    currentLine.Fragments.Add(fragment);
+                    currentWidth += fragment.Width;
+                    continue;
+                }
+
+                if (fragment.IsWhitespace)
+                {
+                    if (currentLine.Fragments.Count == 0)
+                        continue;
+                    currentLine.Fragments.Add(fragment);
+                    currentWidth += fragment.Width;
+                    continue;
+                }
+
+                float limit = Math.Max(0, availableWidth);
+                bool exceeds = limit > 0 && currentWidth + fragment.Width > limit + 0.1f;
+
+                if (exceeds && currentLine.Fragments.Count > 0)
+                {
+                    FinalizeCurrentLine();
+                    if (maxLines.HasValue && lines.Count >= maxLines.Value)
+                        break;
+                    exceeds = limit > 0 && fragment.Width > limit + 0.1f;
+                }
+
+                if (wrapMode == TableModels.TextWrapMode.Hyphenate &&
+                    exceeds &&
+                    limit > 0)
+                {
+                    var split = SplitFragmentForHyphenation(fragment, Math.Max(0, limit - currentWidth));
+                    if (split.First != null)
+                    {
+                        currentLine.Fragments.Add(split.First);
+                        currentWidth += split.First.Width;
+
+                        if (split.Hyphen != null)
+                        {
+                            currentLine.Fragments.Add(split.Hyphen);
+                            currentWidth += split.Hyphen.Width;
+                        }
+
+                        FinalizeCurrentLine();
+                        if (split.Remaining != null)
+                            queue = new Queue<Fragment>(new[] { split.Remaining }.Concat(queue));
+                        continue;
+                    }
+                }
+
+                currentLine.Fragments.Add(fragment);
+                currentWidth += fragment.Width;
+            }
+
+            if (currentLine.Fragments.Count > 0 &&
+                (!maxLines.HasValue || lines.Count < maxLines.Value))
+            {
+                FinalizeCurrentLine();
+            }
+
+            return lines;
+        }
+
+        private static void ApplyEllipsis(LineLayout line, float availableWidth, Effective cell)
+        {
+            TrimTrailingWhitespace(line);
+            if (line.Fragments.Count == 0) return;
+            if (availableWidth <= 0) return;
+            if (line.Width <= availableWidth) return;
+
+            const string ellipsis = "...";
+            var last = line.Fragments.Last();
+            float ellWidth = MeasureFragmentWidth(last.Run, ellipsis);
+            float allowed = Math.Max(0, availableWidth - ellWidth);
+
+            int idx = line.Fragments.Count - 1;
+            while (idx >= 0 && line.Fragments[idx].Text.Length == 0)
+                idx--;
+
+            if (idx < 0)
+            {
+                line.Fragments.Clear();
+                line.Fragments.Add(new Fragment
+                {
+                    Run = last.Run,
+                    Text = ellipsis,
+                    Width = ellWidth,
+                    IsWhitespace = false
+                });
+                FinalizeLineMetrics(line, cell.LineHeight ?? PdfDefaults.LineHeightMultiplier, cell.FontSize);
+                return;
+            }
+
+            var target = line.Fragments[idx];
+            string content = target.Text;
+
+            while (content.Length > 0 && MeasureFragmentWidth(target.Run, content) > allowed)
+                content = content[..^1];
+
+            target.Text = content;
+            target.Width = MeasureFragmentWidth(target.Run, content);
+
+            if (target.Text.Length == 0)
+                line.Fragments.RemoveAt(idx);
+
+            for (int removeIndex = line.Fragments.Count - 1; removeIndex > idx; removeIndex--)
+                line.Fragments.RemoveAt(removeIndex);
+
+            TrimTrailingWhitespace(line);
+
+            line.Fragments.Add(new Fragment
+            {
+                Run = target.Run,
+                Text = ellipsis,
+                Width = ellWidth,
+                IsWhitespace = false
+            });
+
+            FinalizeLineMetrics(line, cell.LineHeight ?? PdfDefaults.LineHeightMultiplier, cell.FontSize);
+        }
+
+        private static float ResolveLineStartX(HorizontalAlign align, float x, float cellWidth, float padLeft, float padRight, float lineWidth)
+        {
+            return align switch
+            {
+                HorizontalAlign.Center => x + Math.Max(padLeft, (cellWidth - lineWidth) / 2f),
+                HorizontalAlign.Right => x + Math.Max(padLeft, cellWidth - padRight - lineWidth),
+                _ => x + padLeft
+            };
+        }
+
+        private static void DrawTextDecorations(StringBuilder sb, ResolvedRun run, float fragmentWidth, float startX, float baselineY, float rotationDeg)
+        {
+            Color decoColor = run.DecorationColor ?? run.Color;
+            float size = EffectiveRunFontSize(run);
+            float thickness = Math.Max(0.25f, run.DecorationThickness ?? size * 0.07f);
+            var style = BuildDecorationBorderStyle(run.DecorationStyle, thickness, decoColor);
+
+            if (run.Underline)
+            {
+                float offset = baselineY - size * 0.15f;
+                DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
+            }
+
+            if (run.Strikethrough)
+            {
+                float offset = baselineY + size * 0.3f;
+                if (run.DecorationStyle == TableModels.TextDecorationStyle.Double)
+                {
+                    float delta = thickness * 2.0f;
+                    DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
+                    DrawDecorationStroke(sb, style, startX, offset + delta, startX + fragmentWidth, offset + delta, startX, baselineY, rotationDeg);
+                }
+                else
+                {
+                    DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
+                }
+            }
+        }
+
+        private static void DrawDecorationStroke(StringBuilder sb, TableModels.BorderStyle style, float x1, float y1, float x2, float y2, float pivotX, float pivotY, float rotationDeg)
+        {
+            if (Math.Abs(rotationDeg) > 0.01f)
+            {
+                var start = RotatePoint(x1, y1, pivotX, pivotY, rotationDeg);
+                var end = RotatePoint(x2, y2, pivotX, pivotY, rotationDeg);
+                StrokeLine(sb, start.x, start.y, end.x, end.y, style.Color, style.Width, style);
+            }
+            else
+            {
+                StrokeLine(sb, x1, y1, x2, y2, style.Color, style.Width, style);
+            }
+        }
+
+        private static (float x, float y) RotatePoint(float px, float py, float originX, float originY, float angleDeg)
+        {
+            double rad = angleDeg * Math.PI / 180.0;
+            double cos = Math.Cos(rad);
+            double sin = Math.Sin(rad);
+            double dx = px - originX;
+            double dy = py - originY;
+            double rx = originX + dx * cos - dy * sin;
+            double ry = originY + dx * sin + dy * cos;
+            return ((float)rx, (float)ry);
+        }
+
+        private static TableModels.BorderStyle BuildDecorationBorderStyle(TableModels.TextDecorationStyle decorationStyle, float thickness, Color color)
+        {
+            var border = new TableModels.BorderStyle
+            {
+                Color = color,
+                Width = thickness,
+                LineCap = TableModels.BorderLineCap.Butt,
+                LineJoin = TableModels.BorderLineJoin.Miter
+            };
+
+            switch (decorationStyle)
+            {
+                case TableModels.TextDecorationStyle.Dotted:
+                    border.DashPattern = new[] { thickness, thickness };
+                    border.LineCap = TableModels.BorderLineCap.Round;
+                    break;
+                case TableModels.TextDecorationStyle.Dashed:
+                    border.DashPattern = new[] { thickness * 2.5f, thickness * 1.2f };
+                    break;
+                case TableModels.TextDecorationStyle.Double:
+                    border.Width = thickness * 0.6f;
+                    break;
+                default:
+                    border.DashPattern = null;
+                    break;
+            }
+
+            return border;
+        }
+
+        private static (Fragment? First, Fragment? Hyphen, Fragment? Remaining) SplitFragmentForHyphenation(Fragment fragment, float availableWidth)
+        {
+            var run = fragment.Run;
+            string text = fragment.Text;
+            if (string.IsNullOrEmpty(text)) return (null, null, null);
+
+            float hyphenWidth = MeasureFragmentWidth(run, "-");
+            float remaining = availableWidth - hyphenWidth;
+            if (remaining <= 0) return (null, null, null);
+
+            int length = 0;
+            float width = 0f;
+            while (length < text.Length)
+            {
+                length++;
+                width = MeasureFragmentWidth(run, text[..length]);
+                if (width > remaining)
+                {
+                    length--;
+                    break;
+                }
+            }
+
+            if (length <= 0) return (null, null, null);
+
+            string head = text[..length];
+            string tail = text[length..];
+
+            var first = new Fragment
+            {
+                Run = run,
+                Text = head,
+                Width = MeasureFragmentWidth(run, head),
+                IsWhitespace = false
+            };
+
+            var hyphen = new Fragment
+            {
+                Run = run,
+                Text = "-",
+                Width = hyphenWidth,
+                IsWhitespace = false
+            };
+
+            Fragment? remainder = null;
+            if (tail.Length > 0)
+            {
+                remainder = new Fragment
+                {
+                    Run = run,
+                    Text = tail,
+                    Width = MeasureFragmentWidth(run, tail),
+                    IsWhitespace = false
+                };
+            }
+
+            return (first, hyphen, remainder);
+        }
+
+        private static void TrimTrailingWhitespace(LineLayout line)
+        {
+            int idx = line.Fragments.Count - 1;
+            while (idx >= 0)
+            {
+                var frag = line.Fragments[idx];
+                if (!frag.IsWhitespace || frag.Text.Any(ch => !char.IsWhiteSpace(ch)))
+                    break;
+                line.Fragments.RemoveAt(idx--);
+            }
+        }
+
+        private static void FinalizeLineMetrics(LineLayout line, float lineMult, float defaultFontSize)
+        {
+            line.Width = line.Fragments.Sum(f => f.Width);
+            float maxFont = line.Fragments.Count > 0
+                ? line.Fragments.Max(f => EffectiveRunFontSize(f.Run))
+                : (defaultFontSize > 0 ? defaultFontSize : 10f);
+            const float ASCENT_RATIO = 0.8f;
+            line.MaxFontSize = maxFont;
+            line.Height = Math.Max(maxFont, maxFont * lineMult);
+            line.BaselineOffset = line.Height - (maxFont * ASCENT_RATIO);
+        }
+
+        private static float MeasureFragmentWidth(ResolvedRun run, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0f;
+            string fontFamily = !string.IsNullOrWhiteSpace(run.Style.FontFamily)
+                ? run.Style.FontFamily!
+                : run.BaseFont?.Split('-')[0] ?? "Helvetica";
+            float size = EffectiveRunFontSize(run);
+            return PdfLayoutUtils.EstimateTextWidth(text, fontFamily, size);
+        }
+
+        private static float EffectiveRunFontSize(ResolvedRun run)
+        {
+            float size = run.FontSize > 0 ? run.FontSize : 10f;
+            if (run.Superscript || run.Subscript)
+                size *= 0.8f;
+            return size;
+        }
+
+        private static void RenderCellText(
+            StringBuilder sb,
+            TableElement table,
+            Effective cell,
+            float x,
+            float yTop,
+            float cellWidth,
+            float cellHeight,
+            (float top, float right, float bottom, float left) pad,
+            Dictionary<string, int> fontObjId)
+        {
+            if (cell.Runs.Count == 0) return;
+
+            float usableWidth = Math.Max(0, cellWidth - pad.left - pad.right);
+            var wrapMode = cell.ResolvedTextStyle?.Wrap ?? MapWrap(table.OverflowPolicy);
+            if (cell.WordBreak == CellWordBreak.BreakWord && wrapMode == TableModels.TextWrapMode.Wrap)
+                wrapMode = TableModels.TextWrapMode.Hyphenate;
+            float lineMult = cell.LineHeight
+                             ?? cell.ResolvedTextStyle?.LineHeight
+                             ?? PdfDefaults.LineHeightMultiplier;
+            int? maxLines = cell.MaxLines;
+            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
+                maxLines = 1;
+            else if (wrapMode == TableModels.TextWrapMode.NoWrap && !maxLines.HasValue)
+                maxLines = 1;
+
+            var fragments = TokenizeRuns(cell.Runs);
+            if (fragments.Count == 0) return;
+
+            var lines = LayoutFragments(fragments, cell, wrapMode, maxLines, usableWidth, lineMult);
+            if (lines.Count == 0) return;
+
+            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
+            {
+                ApplyEllipsis(lines[0], usableWidth, cell);
+                lines = new List<LineLayout> { lines[0] };
+            }
+
+            float blockHeight = lines.Sum(l => l.Height);
+            float blockTop = GetVerticalAlignedY(
+                cell.VerticalAlign,
+                yTop,
+                cellHeight,
+                blockHeight,
+                pad.top,
+                pad.bottom);
+
+            float currentTop = blockTop;
+            foreach (var line in lines)
+            {
+                float lineStartX = ResolveLineStartX(cell.HorizontalAlign, x, cellWidth, pad.left, pad.right, line.Width);
+                float cursorX = lineStartX;
+                float baselineY = currentTop - line.BaselineOffset;
+
+                foreach (var fragment in line.Fragments)
+                {
+                    if (fragment.Text.Length == 0)
+                    {
+                        cursorX += fragment.Width;
+                        continue;
+                    }
+
+                    var run = fragment.Run;
+                    float runFontSize = run.FontSize;
+                    float baselineAdjust = 0f;
+                    if (run.Superscript)
+                    {
+                        baselineAdjust = runFontSize * 0.35f;
+                        runFontSize *= 0.8f;
+                    }
+                    else if (run.Subscript)
+                    {
+                        baselineAdjust = -runFontSize * 0.20f;
+                        runFontSize *= 0.8f;
+                    }
+
+                    float tx = cursorX;
+                    float ty = baselineY + baselineAdjust;
+                    float rotation = run.RotationOverride != 0 ? run.RotationOverride : cell.RotationDegrees;
+                    int fontId = ResolveFontId(fontObjId, run.BaseFont);
+                    string? fill = ToRgbFill(run.Color);
+
+                    DrawTextRun(sb, fragment.Text, fontId, runFontSize, fill, tx, ty, rotation);
+
+                    if (run.Underline || run.Strikethrough)
+                        DrawTextDecorations(sb, run, fragment.Width, tx, ty, rotation);
+
+                    cursorX += fragment.Width;
+                }
+
+                currentTop -= line.Height;
             }
         }
 
@@ -756,9 +1407,9 @@ namespace PdfBuilder.Writer
             double s = Math.Sin(r);
             double c = Math.Cos(r);
 
-            // For small |angle| (< 90°), topmost point is:
-            //  - positive θ: top-right corner -> adds w*sin above the ascent*cos
-            //  - negative θ: top-left corner  -> no w*sin term
+            // For small |angle| (< 90-), topmost point is:
+            //  - positive ?: top-right corner -> adds w*sin above the ascent*cos
+            //  - negative ?: top-left corner  -> no w*sin term
             double extraTop = s > 0 ? lineWidth * s : 0.0;
 
             return (float)(ascent * c + extraTop);
@@ -770,31 +1421,98 @@ namespace PdfBuilder.Writer
             sb.Append($"{ToRgbFill(color)} {N(x)} {N(y)} {N(w)} {N(h)} re f\n");
         }
 
-        private static void FillRoundedRect(StringBuilder sb, float x, float y, float w, float h, float r, Color color)
+        private static void FillRoundedRect(StringBuilder sb, float x, float y, float w, float h,
+                                            float rTL, float rTR, float rBR, float rBL, Color color)
         {
-            r = Math.Max(0, Math.Min(r, Math.Min(w, h) / 2f));
-            if (r <= 0f) { FillRect(sb, x, y, w, h, color); return; }
+            NormalizeRadii(w, h, ref rTL, ref rTR, ref rBR, ref rBL);
+            if (rTL <= 0 && rTR <= 0 && rBR <= 0 && rBL <= 0)
+            {
+                FillRect(sb, x, y, w, h, color);
+                return;
+            }
 
-            float k = 0.552284749831f; // cubic bezier approximation of a quarter circle
-            float ox = r * k, oy = r * k;
+            sb.Append(ToRgbFill(color) + " ");
+            AppendRoundedRectPath(sb, x, y, w, h, rTL, rTR, rBR, rBL);
+            sb.Append("f\n");
+        }
+
+        private static void StrokeRoundedRect(StringBuilder sb, float x, float y, float w, float h,
+                                              float rTL, float rTR, float rBR, float rBL,
+                                              Color color, float width, TableModels.BorderStyle? style)
+        {
+            NormalizeRadii(w, h, ref rTL, ref rTR, ref rBR, ref rBL);
+            width = width <= 0f ? (PdfDefaults.DefaultBorderWidth > 0f ? PdfDefaults.DefaultBorderWidth : 0.5f) : width;
+            width = ClampThin(width);
+
+            if (style != null)
+            {
+                sb.Append("q ");
+                AppendStrokeStyle(sb, style);
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w ");
+                AppendRoundedRectPath(sb, x, y, w, h, rTL, rTR, rBR, rBL);
+                sb.Append("S Q\n");
+            }
+            else
+            {
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w ");
+                AppendRoundedRectPath(sb, x, y, w, h, rTL, rTR, rBR, rBL);
+                sb.Append("S\n");
+            }
+        }
+
+        private static void AppendRoundedRectPath(StringBuilder sb, float x, float y, float w, float h,
+                                                  float rTL, float rTR, float rBR, float rBL)
+        {
             float x0 = x, y0 = y;
             float x1 = x + w, y1 = y + h;
 
-            sb.Append(ToRgbFill(color) + " ");
-            sb.Append($"{N(x0 + r)} {N(y0)} m ");
-            sb.Append($"{N(x1 - r)} {N(y0)} l ");
-            sb.Append($"{N(x1 - r + ox)} {N(y0)} {N(x1)} {N(y0 + r - oy)} {N(x1)} {N(y0 + r)} c ");
-            sb.Append($"{N(x1)} {N(y1 - r)} l ");
-            sb.Append($"{N(x1)} {N(y1 - r + oy)} {N(x1 - r + ox)} {N(y1)} {N(x1 - r)} {N(y1)} c ");
-            sb.Append($"{N(x0 + r)} {N(y1)} l ");
-            sb.Append($"{N(x0 + r - ox)} {N(y1)} {N(x0)} {N(y1 - r + oy)} {N(x0)} {N(y1 - r)} c ");
-            sb.Append($"{N(x0)} {N(y0 + r)} l ");
-            sb.Append($"{N(x0)} {N(y0 + r - oy)} {N(x0 + r - ox)} {N(y0)} {N(x0 + r)} {N(y0)} c f\n");
+            const float K = 0.552284749831f; // cubic bezier constant for quarter circle
+            float oxTL = rTL * K, oyTL = rTL * K;
+            float oxTR = rTR * K, oyTR = rTR * K;
+            float oxBR = rBR * K, oyBR = rBR * K;
+            float oxBL = rBL * K, oyBL = rBL * K;
+
+            sb.Append($"{N(x0 + rBL)} {N(y0)} m ");
+            sb.Append($"{N(x1 - rBR)} {N(y0)} l ");
+            sb.Append($"{N(x1 - rBR + oxBR)} {N(y0)} {N(x1)} {N(y0 + rBR - oyBR)} {N(x1)} {N(y0 + rBR)} c ");
+            sb.Append($"{N(x1)} {N(y1 - rTR)} l ");
+            sb.Append($"{N(x1)} {N(y1 - rTR + oyTR)} {N(x1 - rTR + oxTR)} {N(y1)} {N(x1 - rTR)} {N(y1)} c ");
+            sb.Append($"{N(x0 + rTL)} {N(y1)} l ");
+            sb.Append($"{N(x0 + rTL - oxTL)} {N(y1)} {N(x0)} {N(y1 - rTL + oyTL)} {N(x0)} {N(y1 - rTL)} c ");
+            sb.Append($"{N(x0)} {N(y0 + rBL)} l ");
+            sb.Append($"{N(x0)} {N(y0 + rBL - oyBL)} {N(x0 + rBL - oxBL)} {N(y0)} {N(x0 + rBL)} {N(y0)} c ");
         }
 
-        private static void StrokeLine(StringBuilder sb, float x1, float y1, float x2, float y2, Color color, float width)
+        private static void NormalizeRadii(float w, float h,
+                                           ref float rTL, ref float rTR, ref float rBR, ref float rBL)
         {
-            width = width <= 0f ? PdfDefaults.DefaultBorderWidth > 0f ? PdfDefaults.DefaultBorderWidth : 0.5f : width;
+            rTL = Math.Max(0, Math.Min(rTL, Math.Min(w, h) / 2f));
+            rTR = Math.Max(0, Math.Min(rTR, Math.Min(w, h) / 2f));
+            rBR = Math.Max(0, Math.Min(rBR, Math.Min(w, h) / 2f));
+            rBL = Math.Max(0, Math.Min(rBL, Math.Min(w, h) / 2f));
+
+            float scale = 1f;
+            float sumTop = rTL + rTR;
+            if (sumTop > w && sumTop > 0) scale = Math.Min(scale, w / sumTop);
+            float sumBottom = rBL + rBR;
+            if (sumBottom > w && sumBottom > 0) scale = Math.Min(scale, w / sumBottom);
+            float sumLeft = rTL + rBL;
+            if (sumLeft > h && sumLeft > 0) scale = Math.Min(scale, h / sumLeft);
+            float sumRight = rTR + rBR;
+            if (sumRight > h && sumRight > 0) scale = Math.Min(scale, h / sumRight);
+
+            if (scale < 1f)
+            {
+                rTL *= scale;
+                rTR *= scale;
+                rBR *= scale;
+                rBL *= scale;
+            }
+        }
+
+        private static void StrokeLine(StringBuilder sb, float x1, float y1, float x2, float y2, Color color, float width, TableModels.BorderStyle? style)
+        {
+            width = width <= 0f ? (PdfDefaults.DefaultBorderWidth > 0f ? PdfDefaults.DefaultBorderWidth : 0.5f) : width;
             width = ClampThin(width);
 
             if (width <= 1f)
@@ -803,18 +1521,71 @@ namespace PdfBuilder.Writer
                 y1 = AlignHalf(y1); y2 = AlignHalf(y2);
             }
 
-            sb.Append($"{ToRgbStroke(color)} {N(width)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S\n");
+            if (style != null)
+            {
+                sb.Append("q ");
+                AppendStrokeStyle(sb, style);
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
+            }
+            else
+            {
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S\n");
+            }
         }
 
 
 
 
-        private static void StrokeRect(StringBuilder sb, float x, float topY, float w, float h, Color color, float width)
+        private static void StrokeRect(StringBuilder sb, float x, float topY, float w, float h, Color color, float width, TableModels.BorderStyle? style)
         {
             if (h <= 0) return;
             float bottomY = topY - h;
-            sb.Append($"{ToRgbStroke(color)} {N(width)} w ");
-            sb.Append($"{N(x)} {N(topY)} m {N(x + w)} {N(topY)} l {N(x + w)} {N(bottomY)} l {N(x)} {N(bottomY)} l h S\n");
+            width = width <= 0f ? (PdfDefaults.DefaultBorderWidth > 0f ? PdfDefaults.DefaultBorderWidth : 0.5f) : width;
+            width = ClampThin(width);
+
+            if (style != null)
+            {
+                sb.Append("q ");
+                AppendStrokeStyle(sb, style);
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w ");
+                sb.Append($"{N(x)} {N(topY)} m {N(x + w)} {N(topY)} l {N(x + w)} {N(bottomY)} l {N(x)} {N(bottomY)} l h S Q\n");
+            }
+            else
+            {
+                sb.Append($"{ToRgbStroke(color)} {N(width)} w ");
+                sb.Append($"{N(x)} {N(topY)} m {N(x + w)} {N(topY)} l {N(x + w)} {N(bottomY)} l {N(x)} {N(bottomY)} l h S\n");
+            }
+        }
+
+        private static void AppendStrokeStyle(StringBuilder sb, TableModels.BorderStyle style)
+        {
+            if (style.DashPattern != null && style.DashPattern.Count > 0)
+            {
+                var dash = string.Join(" ", style.DashPattern.Select(v => N(v)));
+                sb.Append($"[{dash}] {N(style.DashPhase)} d ");
+            }
+            else
+            {
+                sb.Append("[] 0 d ");
+            }
+
+            int lineCap = style.LineCap switch
+            {
+                TableModels.BorderLineCap.Round => 1,
+                TableModels.BorderLineCap.Square => 2,
+                _ => 0
+            };
+            int lineJoin = style.LineJoin switch
+            {
+                TableModels.BorderLineJoin.Round => 1,
+                TableModels.BorderLineJoin.Bevel => 2,
+                _ => 0
+            };
+
+            sb.Append($"{lineCap} J {lineJoin} j ");
+
+            if (style.MiterLimit.HasValue && style.MiterLimit.Value > 0)
+                sb.Append($"{N(style.MiterLimit.Value)} M ");
         }
 
         // ---------- Alignment helpers ----------
@@ -992,7 +1763,7 @@ namespace PdfBuilder.Writer
             float avail = Math.Max(1f, tableWidth - fixedSum);
 
             // Minimum and "desired" widths for auto columns
-            var minW = Enumerable.Repeat(40f, totalCols).ToArray();  // floor so borders/text don’t collapse
+            var minW = Enumerable.Repeat(40f, totalCols).ToArray();  // floor so borders/text don-t collapse
             var wantW = Enumerable.Repeat(40f, totalCols).ToArray();
 
             float padDefault = Math.Max(0f, table.CellPadding);
@@ -1014,13 +1785,13 @@ namespace PdfBuilder.Writer
                 float want;
                 if (numericish)
                 {
-                    // keep reasonable for 3–6 digits, parentheses/%, etc.
+                    // keep reasonable for 3-6 digits, parentheses/%, etc.
                     want = Math.Clamp(head, 40f, 90f);
                 }
                 else
                 {
                     // Encourage wrapping: base "want" on the longer of header or longest word,
-                    // but cap so one verbose cell (Description) doesn’t steal the table.
+                    // but cap so one verbose cell (Description) doesn-t steal the table.
                     string longestWord = LongestWord(c.Text);
                     float lw = PdfLayoutUtils.EstimateTextWidth(longestWord, font, size) + padL + padR;
                     float cap = tableWidth * 0.55f;
@@ -1152,10 +1923,17 @@ namespace PdfBuilder.Writer
 
         // Build an Edge for TOP of (row,col), and the competing BOTTOM of the row above
         private static void BuildTopVsAboveBottom(
-     TableElement table, int rowIndex, int colIndex, HashSet<(int row, int col)> covered,
-     bool cellTopOn, Color topColor, float topWidth,
-     out Edge top, out Edge aboveBottom)
+            TableElement table,
+            int rowIndex,
+            int colIndex,
+            HashSet<(int row, int col)> covered,
+            bool cellTopOn,
+            BorderDrawSpec topSpec,
+            out Edge top,
+            out Edge aboveBottom)
         {
+            float topWidth = topSpec?.Width ?? 0f;
+            Color topColor = topSpec?.Color ?? table.BorderColor;
             bool topExplicit = cellTopOn &&
                 (Math.Abs(topWidth - table.BorderWidth) > 1e-3f ||
                  topColor.ToArgb() != table.BorderColor.ToArgb());
@@ -1165,7 +1943,8 @@ namespace PdfBuilder.Writer
                 Exists = cellTopOn,
                 Width = topWidth,
                 Color = topColor,
-                OriginRank = topExplicit ? -2 : 0
+                OriginRank = topExplicit ? -2 : 0,
+                BorderStyle = topSpec?.Style
             };
 
             var currRow = table.Rows[rowIndex];
@@ -1175,6 +1954,7 @@ namespace PdfBuilder.Writer
                 if (currRow.ThickBorderWidth > top.Width) top.Width = currRow.ThickBorderWidth;
                 top.Color = currRow.ThickBorderColor ?? table.BorderColor;
                 top.OriginRank = Math.Min(top.OriginRank, 1);
+                top.BorderStyle ??= table.BorderStyle?.Clone();
             }
 
             aboveBottom = new Edge { Exists = false };
@@ -1189,7 +1969,8 @@ namespace PdfBuilder.Writer
                     Exists = true,
                     Width = aboveRow.ThickBorderWidth,
                     Color = aboveRow.ThickBorderColor ?? table.BorderColor,
-                    OriginRank = 1
+                    OriginRank = 1,
+                    BorderStyle = table.BorderStyle?.Clone()
                 };
             }
 
@@ -1201,12 +1982,17 @@ namespace PdfBuilder.Writer
                          table.BorderColor, table.BorderWidth,
                          out var col, out var w, out var isExp);
 
+                var style = aboveCell.BorderStyleBottom
+                            ?? aboveCell.BorderStyle
+                            ?? table.BorderStyle;
+
                 aboveBottom = new Edge
                 {
                     Exists = true,
                     Width = Math.Max(aboveBottom.Width, w),
                     Color = col,
-                    OriginRank = isExp ? -2 : aboveBottom.OriginRank
+                    OriginRank = isExp ? -2 : aboveBottom.OriginRank,
+                    BorderStyle = style?.Clone()
                 };
             }
         }
@@ -1220,9 +2006,11 @@ namespace PdfBuilder.Writer
         // BOTTOM (this cell) vs TOP (row below)
         private static void BuildBottomVsBelowTop(
             TableElement table, int rowIndex, int colIndex, int rowSpan, HashSet<(int row, int col)> covered,
-            bool cellBottomOn, Color bottomColor, float bottomWidth,
+            bool cellBottomOn, BorderDrawSpec bottomSpec,
             out Edge bottom, out Edge belowTop)
         {
+            float bottomWidth = bottomSpec?.Width ?? 0f;
+            Color bottomColor = bottomSpec?.Color ?? table.BorderColor;
             bool bottomExplicit = cellBottomOn &&
                 (Math.Abs(bottomWidth - table.BorderWidth) > 1e-3f ||
                  bottomColor.ToArgb() != table.BorderColor.ToArgb());
@@ -1232,7 +2020,8 @@ namespace PdfBuilder.Writer
                 Exists = cellBottomOn,
                 Width = bottomWidth,
                 Color = bottomColor,
-                OriginRank = bottomExplicit ? -2 : 0
+                OriginRank = bottomExplicit ? -2 : 0,
+                BorderStyle = bottomSpec?.Style
             };
 
             var currRow = table.Rows[rowIndex];
@@ -1242,6 +2031,7 @@ namespace PdfBuilder.Writer
                 if (currRow.ThickBorderWidth > bottom.Width) bottom.Width = currRow.ThickBorderWidth;
                 bottom.Color = currRow.ThickBorderColor ?? table.BorderColor;
                 bottom.OriginRank = Math.Min(bottom.OriginRank, 1);
+                bottom.BorderStyle ??= table.BorderStyle?.Clone();
             }
 
             belowTop = new Edge { Exists = false };
@@ -1258,7 +2048,8 @@ namespace PdfBuilder.Writer
                     Exists = true,
                     Width = belowRow.ThickBorderWidth,
                     Color = belowRow.ThickBorderColor ?? table.BorderColor,
-                    OriginRank = 1
+                    OriginRank = 1,
+                    BorderStyle = table.BorderStyle?.Clone()
                 };
             }
 
@@ -1270,12 +2061,17 @@ namespace PdfBuilder.Writer
                          table.BorderColor, table.BorderWidth,
                          out var col, out var w, out var isExp);
 
+                var style = belowCell.BorderStyleTop
+                            ?? belowCell.BorderStyle
+                            ?? table.BorderStyle;
+
                 belowTop = new Edge
                 {
                     Exists = true,
                     Width = Math.Max(belowTop.Width, w),
                     Color = col,
-                    OriginRank = isExp ? -2 : belowTop.OriginRank
+                    OriginRank = isExp ? -2 : belowTop.OriginRank,
+                    BorderStyle = style?.Clone()
                 };
             }
         }
@@ -1283,10 +2079,16 @@ namespace PdfBuilder.Writer
 
 
         private static void BuildRightVsNeighborLeft(
-     TableElement table, TableRow row, int colIndex,
-     bool cellRightOn, Color rightColor, float rightWidth,
-     out Edge right, out Edge neighborLeft)
+            TableElement table,
+            TableRow row,
+            int colIndex,
+            bool cellRightOn,
+            BorderDrawSpec rightSpec,
+            out Edge right,
+            out Edge neighborLeft)
         {
+            float rightWidth = rightSpec?.Width ?? 0f;
+            Color rightColor = rightSpec?.Color ?? table.BorderColor;
             bool rightExplicit = cellRightOn &&
                 (Math.Abs(rightWidth - table.BorderWidth) > 1e-3f ||
                  rightColor.ToArgb() != table.BorderColor.ToArgb());
@@ -1296,7 +2098,8 @@ namespace PdfBuilder.Writer
                 Exists = cellRightOn,
                 Width = rightWidth,
                 Color = rightColor,
-                OriginRank = rightExplicit ? -2 : 0
+                OriginRank = rightExplicit ? -2 : 0,
+                BorderStyle = rightSpec?.Style
             };
 
             neighborLeft = new Edge { Exists = false };
@@ -1317,12 +2120,17 @@ namespace PdfBuilder.Writer
                                  table.BorderColor, table.BorderWidth,
                                  out var col, out var w, out var isExp);
 
+                        var style = nCell.BorderStyleLeft
+                                    ?? nCell.BorderStyle
+                                    ?? table.BorderStyle;
+
                         neighborLeft = new Edge
                         {
                             Exists = true,
                             Width = w,
                             Color = col,
-                            OriginRank = isExp ? -2 : 0
+                            OriginRank = isExp ? -2 : 0,
+                            BorderStyle = style?.Clone()
                         };
                     }
                     break;
@@ -1340,10 +2148,19 @@ namespace PdfBuilder.Writer
         // Used when the shared vertical seam is "owned" by the RIGHT cell (this one) drawing its LEFT.
         private static void BuildLeftVsLeftNeighborRight(
             TableRow row, int colIndex,
-            bool cellLeftOn, Color leftColor, float leftWidth,
+            bool cellLeftOn, BorderDrawSpec leftSpec,
             out Edge left, out Edge neighborRight)
         {
-            left = new Edge { Exists = cellLeftOn, Width = leftWidth, Color = leftColor, OriginRank = 0 };
+            float leftWidth = leftSpec?.Width ?? 0f;
+            Color leftColor = leftSpec?.Color ?? Color.Black;
+            left = new Edge
+            {
+                Exists = cellLeftOn,
+                Width = leftWidth,
+                Color = leftColor,
+                OriginRank = 0,
+                BorderStyle = leftSpec?.Style
+            };
             neighborRight = new Edge { Exists = false };
 
             int cursor = 0, neighborIdx = -1;
@@ -1368,7 +2185,15 @@ namespace PdfBuilder.Writer
                 {
                     float w = nc.BorderWidthRight ?? nc.BorderWidth;
                     var c2 = nc.BorderColorRight ?? nc.BorderColor;
-                    neighborRight = new Edge { Exists = true, Width = w, Color = c2, OriginRank = 0 };
+                    var style = nc.BorderStyleRight ?? nc.BorderStyle;
+                    neighborRight = new Edge
+                    {
+                        Exists = true,
+                        Width = w,
+                        Color = c2,
+                        OriginRank = 0,
+                        BorderStyle = style?.Clone()
+                    };
                 }
             }
         }
@@ -1407,17 +2232,217 @@ namespace PdfBuilder.Writer
             }
             return sb.ToString();
         }
+        private static TableModels.TextStyle ResolveCellTextStyle(
+            TableElement table,
+            TableRow row,
+            TableCell cell,
+            int columnIndex)
+        {
+            var style = table.DefaultTextStyle?.Clone() ?? new TableModels.TextStyle();
+            if (string.IsNullOrWhiteSpace(style.FontFamily))
+                style.FontFamily = table.DefaultFont;
+            if (style.FontSize <= 0)
+                style.FontSize = table.DefaultFontSize;
+
+            var columnStyle = table.ColumnStyles.FirstOrDefault(s => s.Index == columnIndex);
+            if (columnStyle != null)
+            {
+                if (!string.IsNullOrWhiteSpace(columnStyle.Font))
+                    style.FontFamily = columnStyle.Font;
+                if (columnStyle.FontSize.HasValue && columnStyle.FontSize.Value > 0)
+                    style.FontSize = columnStyle.FontSize.Value;
+                if (columnStyle.TextColor.HasValue)
+                    style.TextColor = columnStyle.TextColor.Value;
+                if (columnStyle.Background.HasValue && !style.BackgroundColor.HasValue)
+                    style.BackgroundColor = columnStyle.Background.Value;
+                if (columnStyle.HAlign.HasValue)
+                    style.HorizontalAlign = columnStyle.HAlign.Value;
+                if (columnStyle.VAlign.HasValue)
+                    style.VerticalAlign = columnStyle.VAlign.Value;
+            }
+
+            ApplyCellLegacyFormatting(table, style, cell);
+
+            if (cell.TextStyle != null)
+                MergeTextStyles(style, cell.TextStyle);
+
+            return style;
+        }
+
+        private static void ApplyCellLegacyFormatting(
+            TableElement table,
+            TableModels.TextStyle target,
+            TableCell cell)
+        {
+            if (!string.IsNullOrWhiteSpace(cell.Font))
+                target.FontFamily = cell.Font;
+            if (cell.FontSize > 0)
+                target.FontSize = cell.FontSize;
+            target.TextColor = cell.TextColor;
+            if (cell.BackgroundColor.HasValue)
+                target.BackgroundColor = cell.BackgroundColor;
+
+            target.Bold = cell.Bold;
+            target.Italic = cell.Italic;
+            target.Underline = cell.Underline;
+            target.Strikethrough = cell.Strikethrough;
+            target.SmallCaps = cell.SmallCaps;
+            if (cell.LineHeight.HasValue)
+                target.LineHeight = cell.LineHeight;
+            target.HorizontalAlign = cell.HorizontalAlign;
+            target.VerticalAlign = cell.VerticalAlign;
+            target.RotationDegrees = cell.RotationDegrees;
+
+            target.Wrap = table.OverflowPolicy switch
+            {
+                CellOverflowPolicy.Wrap => TableModels.TextWrapMode.Wrap,
+                CellOverflowPolicy.Ellipsis => TableModels.TextWrapMode.EllipsisWhenClipped,
+                _ => TableModels.TextWrapMode.NoWrap
+            };
+        }
+
+        private static void MergeTextStyles(TableModels.TextStyle target, TableModels.TextStyle source)
+        {
+            if (!string.IsNullOrWhiteSpace(source.FontFamily))
+                target.FontFamily = source.FontFamily;
+            if (source.FontSize > 0)
+                target.FontSize = source.FontSize;
+            target.Bold = source.Bold;
+            target.Italic = source.Italic;
+            target.SmallCaps = source.SmallCaps;
+            target.Underline = source.Underline;
+            target.Strikethrough = source.Strikethrough;
+            target.TextColor = source.TextColor;
+            if (source.BackgroundColor.HasValue)
+                target.BackgroundColor = source.BackgroundColor;
+            if (source.HighlightPadding.HasValue)
+                target.HighlightPadding = source.HighlightPadding;
+            if (source.LineHeight.HasValue)
+                target.LineHeight = source.LineHeight;
+            if (source.LetterSpacing.HasValue)
+                target.LetterSpacing = source.LetterSpacing;
+            if (source.WordSpacing.HasValue)
+                target.WordSpacing = source.WordSpacing;
+            if (source.ParagraphSpacingBefore.HasValue)
+                target.ParagraphSpacingBefore = source.ParagraphSpacingBefore;
+            if (source.ParagraphSpacingAfter.HasValue)
+                target.ParagraphSpacingAfter = source.ParagraphSpacingAfter;
+            if (source.DecorationColor.HasValue)
+                target.DecorationColor = source.DecorationColor;
+            if (source.DecorationThickness.HasValue)
+                target.DecorationThickness = source.DecorationThickness;
+            target.DecorationStyle = source.DecorationStyle;
+            target.Superscript = source.Superscript;
+            target.Subscript = source.Subscript;
+            target.RotationDegrees = source.RotationDegrees;
+            target.Wrap = source.Wrap;
+            if (!string.IsNullOrEmpty(source.Hyperlink))
+                target.Hyperlink = source.Hyperlink;
+            if (!string.IsNullOrEmpty(source.ToolTip))
+                target.ToolTip = source.ToolTip;
+            target.HorizontalAlign = source.HorizontalAlign;
+            target.VerticalAlign = source.VerticalAlign;
+        }
+
+        private static List<ResolvedRun> ResolveRuns(TableCell cell, TableModels.TextStyle baseStyle)
+        {
+            var runs = new List<ResolvedRun>();
+            if (cell.TextRuns.Count == 0)
+            {
+                runs.Add(CreateResolvedRun(cell.Text ?? string.Empty, baseStyle, null));
+                return runs;
+            }
+
+            foreach (var inline in cell.TextRuns)
+            {
+                if (inline == null) continue;
+                var style = baseStyle.Clone();
+                if (inline.Style != null)
+                    MergeTextStyles(style, inline.Style);
+                runs.Add(CreateResolvedRun(inline.Text ?? string.Empty, style, inline.FallbackFonts));
+            }
+
+            return runs;
+        }
+
+        private static ResolvedRun CreateResolvedRun(string text, TableModels.TextStyle style, List<string>? fallbackFonts)
+        {
+            var combinedFallback = fallbackFonts ?? style.FallbackFonts;
+            var resolved = new ResolvedRun
+            {
+                Text = text,
+                Style = style.Clone(),
+                Color = style.TextColor,
+                FontSize = style.FontSize > 0 ? style.FontSize : 10f,
+                Underline = style.Underline,
+                Strikethrough = style.Strikethrough,
+                DecorationColor = style.DecorationColor,
+                DecorationThickness = style.DecorationThickness,
+                DecorationStyle = style.DecorationStyle,
+                Background = style.BackgroundColor,
+                HighlightPadding = style.HighlightPadding ?? 0f,
+                Superscript = style.Superscript,
+                Subscript = style.Subscript,
+                RotationOverride = style.RotationDegrees,
+                FallbackFonts = combinedFallback != null ? new List<string>(combinedFallback) : null
+            };
+
+            string fontFamily = string.IsNullOrWhiteSpace(style.FontFamily) ? "Helvetica" : style.FontFamily;
+            resolved.BaseFont = MapFontVariant(fontFamily, style.Bold, style.Italic);
+            resolved.Width = PdfLayoutUtils.EstimateTextWidth(text ?? string.Empty, fontFamily, resolved.FontSize);
+            return resolved;
+        }
+
         private static float RotatedBBoxHeight(float textWidth, float unrotatedHeight, float angleDeg)
         {
             double r = Math.Abs(angleDeg) * Math.PI / 180.0;
             return (float)(Math.Abs(textWidth * Math.Sin(r)) + Math.Abs(unrotatedHeight * Math.Cos(r)));
         }
 
+        private static TableModels.BandFill? ResolveRowBand(TableElement table, int absoluteRowIndex)
+            => ResolveBandFill(table.RowBanding?.Fills, table.RowBanding?.Step ?? 0, absoluteRowIndex);
+
+        private static TableModels.BandFill? ResolveColumnBand(TableElement table, int columnIndex)
+            => ResolveBandFill(table.ColumnBanding?.Fills, table.ColumnBanding?.Step ?? 0, columnIndex);
+
+        private static TableModels.BandFill? ResolveBandFill(
+            IReadOnlyList<TableModels.BandFill>? fills,
+            int step,
+            int index)
+        {
+            if (fills == null || fills.Count == 0 || step <= 0 || index < 0) return null;
+            int band = index / step;
+            return fills[band % fills.Count];
+        }
+
+        private static TableModels.BorderStyle? PickBorderStyle(params TableModels.BorderStyle?[] styles)
+        {
+            foreach (var style in styles)
+            {
+                if (style == null) continue;
+                return style.Clone();
+            }
+            return null;
+        }
+
+        private static void ApplyBorderStyle(
+            TableModels.BorderStyle? style,
+            ref Color color,
+            ref float width,
+            Color? explicitColor,
+            float? explicitWidth)
+        {
+            if (style == null) return;
+            if (!explicitColor.HasValue)
+                color = style.Color;
+            if (!explicitWidth.HasValue && style.Width > 0)
+                width = style.Width;
+        }
+
 
         private static bool IsExplicitSide(Color? c, float? w)
-    => c.HasValue || w.HasValue && w.Value > 0f;
-
-
-
+            => c.HasValue || (w.HasValue && w.Value > 0f);
     }
 }
+
+

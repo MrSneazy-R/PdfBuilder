@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Models;
+using PdfBuilder.Models;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,9 +18,9 @@ namespace PdfBuilder.Writer
         {
             string baseFont = "Helvetica";
             if (!fontObjId.ContainsKey(baseFont)) baseFont = fontObjId.Keys.First();
+            int markerFontId = fontObjId[baseFont];
 
             float fs = list.FontSize;
-            float lineH = fs * list.LineHeight;
             float y = list.Y;
             float xStart = list.X;
             float maxW = list.MaxWidth ?? 1_000_000f;
@@ -39,7 +39,7 @@ namespace PdfBuilder.Writer
 
                     // Draw marker
                     sb2.Append("BT ");
-                    sb2.Append($"/F{fontObjId[baseFont]} {N(fs)} Tf {col} {N(xLeft)} {N(y)} Td ({Escape(marker)}) Tj ET\n");
+                    sb2.Append($"/F{markerFontId} {N(fs)} Tf {col} rg {N(xLeft)} {N(y)} Td {PdfText(marker)} Tj ET\n");
 
                     // Rich content to the right with hanging indent
                     float textX = xLeft + EstimateText(marker, fs) + list.BulletGap;
@@ -52,9 +52,9 @@ namespace PdfBuilder.Writer
                         MaxWidth = maxW - (textX - xStart)
                     };
                     rt.Runs.AddRange(it.Content);
-                    RichTextRenderer.Append(sb2, rt, pageHeight, fontObjId, outLinks);
+                    float consumed = RichTextRenderer.Append(sb2, rt, pageHeight, fontObjId, outLinks);
 
-                    y -= lineH + list.ItemSpacing;
+                    y -= consumed + list.ItemSpacing;
 
                     if (it.Children.Count > 0)
                         RenderItems(sb2, it.Children, level + 1);
@@ -66,13 +66,13 @@ namespace PdfBuilder.Writer
         {
             return m switch
             {
-                ListMarker.Bullet => "•",
+                ListMarker.Bullet => "\u2022",
                 ListMarker.Decimal => (index + 1).ToString() + ".",
                 ListMarker.LowerAlpha => $"{(char)('a' + (index % 26))}.",
                 ListMarker.UpperAlpha => $"{(char)('A' + (index % 26))}.",
                 ListMarker.LowerRoman => ToRoman(index + 1).ToLowerInvariant() + ".",
                 ListMarker.UpperRoman => ToRoman(index + 1).ToUpperInvariant() + ".",
-                _ => "•"
+                _ => "\u2022"
             };
         }
 
@@ -91,7 +91,36 @@ namespace PdfBuilder.Writer
         private static float EstimateText(string s, float fs) =>
             PdfBuilder.Document.PdfLayoutUtils.EstimateTextWidth(s, "Helvetica", fs);
 
-        private static string Escape(string s) => s.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+        private static readonly Encoding WinAnsi = GetWinAnsi();
+        private static Encoding GetWinAnsi()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(1252, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+        }
+
+        private static string PdfText(string s)
+        {
+            var bytes = WinAnsi.GetBytes(s ?? string.Empty);
+            if (bytes.Length == 0) return "()";
+            bool asciiSafe = true;
+            foreach (var b in bytes)
+            {
+                if (b < 0x20 || b > 0x7E || b == (byte)'(' || b == (byte)')' || b == (byte)'\\')
+                {
+                    asciiSafe = false;
+                    break;
+                }
+            }
+            if (asciiSafe)
+            {
+                var literal = Encoding.ASCII.GetString(bytes);
+                literal = literal.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+                return $"({literal})";
+            }
+            var hex = new StringBuilder(bytes.Length * 2);
+            foreach (var b in bytes) hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
+            return $"<{hex}>";
+        }
 
         private static string? TryRgb(string hex)
         {

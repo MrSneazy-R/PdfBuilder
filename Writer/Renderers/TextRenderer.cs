@@ -18,7 +18,17 @@ namespace PdfBuilder.Writer
     public static class TextRenderer
     {
         private static readonly IFormatProvider Inv = CultureInfo.InvariantCulture;
+        private static readonly Encoding WinAnsiEncoding;
         private static string N(double v) => v.ToString("0.###", Inv);
+
+        static TextRenderer()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            WinAnsiEncoding = Encoding.GetEncoding(
+                1252,
+                EncoderFallback.ReplacementFallback,
+                DecoderFallback.ReplacementFallback);
+        }
 
         /// <param name="pageHeight">Unused (we’re already in PDF coords), kept for symmetry.</param>
         public static void Append(
@@ -38,11 +48,9 @@ namespace PdfBuilder.Writer
             float maxWidth = t.MaxWidth ?? 10000f;
             float leading = fs * (t.LineHeight > 0 ? t.LineHeight : 1.2f);
 
-            // Wrap and optionally small-caps (simple uppercase transform)
-            var rawLines = PdfLayoutUtils.WrapText(t.Text ?? "", measureFamily, fs, maxWidth);
-            var lines = t.SmallCaps
-                ? rawLines.Select(s => s?.ToUpperInvariant() ?? "").ToList()
-                : rawLines;
+            // Wrap, strip control markers, and optionally apply simple small-caps (uppercase transform)
+            var rawLines = PdfLayoutUtils.WrapText(t.Text ?? string.Empty, measureFamily, fs, maxWidth);
+            var lines = rawLines.Select(line => PrepareLine(line, t.SmallCaps)).ToList();
 
             // Pre-measure for background box, underline, etc.
             float ascent = fs * 0.8f;
@@ -152,8 +160,8 @@ namespace PdfBuilder.Writer
                 sb.Append("BT ");
                 sb.Append($"/F{fontId} {N(fs)} Tf ");
 
-                var rgb = TryRgb(t.Color);
-                if (rgb != null) sb.Append($"{rgb} rg ");
+                var rgb = TryRgb(t.Color) ?? "0 0 0";
+                sb.Append($"{rgb} rg ");
 
                 if (Math.Abs(t.Rotation) < 0.0001)
                     sb.Append($"{N(lineX)} {N(baselineY)} Td ");
@@ -165,7 +173,7 @@ namespace PdfBuilder.Writer
                     sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} {N(lineX)} {N(baselineY)} Tm ");
                 }
 
-                sb.Append($"({Escape(line)}) Tj ET\n");
+                sb.Append($"{FormatText(line)} Tj ET\n");
 
                 // Decorations
                 float textWidth = PdfLayoutUtils.EstimateTextWidth(line, measureFamily, fs);
@@ -225,7 +233,7 @@ namespace PdfBuilder.Writer
         private static string? TryRgb(string color)
         {
             if (string.IsNullOrWhiteSpace(color)) return null;
-            if (color.Equals("black", StringComparison.OrdinalIgnoreCase)) return null;
+            if (color.Equals("black", StringComparison.OrdinalIgnoreCase)) return "0 0 0";
             if (color.StartsWith("#") && color.Length == 7 &&
                 int.TryParse(color.Substring(1, 2), NumberStyles.HexNumber, null, out var r) &&
                 int.TryParse(color.Substring(3, 2), NumberStyles.HexNumber, null, out var g) &&
@@ -262,7 +270,83 @@ namespace PdfBuilder.Writer
             sb.Append("h ");
         }
 
+        private static string PrepareLine(string? line, bool smallCaps)
+        {
+            var cleaned = StripPdfInvisibles(line);
+            return smallCaps ? cleaned.ToUpperInvariant() : cleaned;
+        }
+
+        private static string StripPdfInvisibles(string? s)
+        {
+            if (string.IsNullOrEmpty(s)) return string.Empty;
+
+            ReadOnlySpan<char> banned = stackalloc char[]
+            {
+                '\uFEFF', // BOM / zero-width no-break space
+                '\u200B', // zero-width space
+                '\u200C', // zero-width non-joiner
+                '\u200D', // zero-width joiner
+                '\u2060'  // word joiner
+            };
+
+            var sb = new StringBuilder(s.Length);
+            foreach (var ch in s)
+            {
+                if (ch < 0x20 && ch != '\t' && ch != '\n' && ch != '\r')
+                    continue;
+
+                bool skip = false;
+                for (int i = 0; i < banned.Length; i++)
+                {
+                    if (ch == banned[i])
+                    {
+                        skip = true;
+                        break;
+                    }
+                }
+                if (!skip) sb.Append(ch);
+            }
+            return sb.ToString();
+        }
+
+        private static string FormatText(string line)
+        {
+            var bytes = ToWinAnsiBytes(line);
+            if (bytes.Length == 0)
+                return "()";
+
+            if (CanUseLiteral(bytes))
+            {
+                var literal = WinAnsiEncoding.GetString(bytes);
+                return $"({Escape(literal)})";
+            }
+
+            var hex = new StringBuilder(bytes.Length * 2);
+            foreach (var b in bytes)
+                hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
+
+            return $"<{hex}>";
+        }
+
+        private static bool CanUseLiteral(byte[] bytes)
+        {
+            foreach (var b in bytes)
+            {
+                if (b < 0x20 || b > 0x7E) return false;
+                if (b == (byte)'(' || b == (byte)')' || b == (byte)'\\') return false;
+            }
+            return true;
+        }
+
         private static string Escape(string s) =>
-            (s ?? string.Empty).Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+            s.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
+
+        private static byte[] ToWinAnsiBytes(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+                return Array.Empty<byte>();
+
+            return WinAnsiEncoding.GetBytes(line);
+        }
     }
 }

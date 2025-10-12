@@ -1,4 +1,5 @@
 ﻿using PdfBuilder.Document;
+using TableModels = PdfBuilder.Elements.Table;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
 using System;
@@ -43,9 +44,21 @@ namespace PdfBuilder.Elements
         public int AltRowStartIndex { get; set; } = 0;
         public Color BorderColor { get; set; } = Color.Black;
         public float BorderWidth { get; set; } = PdfDefaults.DefaultBorderWidth;
+        public TableModels.BorderStyle? BorderStyle { get; set; }
         public float CellPadding { get; set; } = 4f;                // fallback when cell/column padding not set
         public string DefaultFont { get; set; } = "Helvetica";
         public float DefaultFontSize { get; set; } = 10f;
+        public TableModels.BorderCollapseMode BorderCollapse { get; set; } = TableModels.BorderCollapseMode.Separate;
+        public TableModels.BorderStyle? OuterBorder { get; set; }
+        public TableModels.BorderStyle? InnerBorder { get; set; }
+        public TableModels.RowBandingSpec? RowBanding { get; set; }
+        public TableModels.ColumnBandingSpec? ColumnBanding { get; set; }
+        public TableModels.TextStyle DefaultTextStyle { get; set; } = new TableModels.TextStyle();
+        public float OuterCornerRadiusTopLeft { get; set; }
+        public float OuterCornerRadiusTopRight { get; set; }
+        public float OuterCornerRadiusBottomRight { get; set; }
+        public float OuterCornerRadiusBottomLeft { get; set; }
+        internal int RowBandOffset { get; set; } = 0;
 
         // Per-column style defaults (optional, cell overrides win)
         public List<TableColumnStyle> ColumnStyles { get; set; } = new();
@@ -140,6 +153,8 @@ namespace PdfBuilder.Elements
     {
         // ---- Content ----
         public string Text { get; set; } = string.Empty;
+        public List<TableModels.InlineRun> TextRuns { get; set; } = new();
+        public TableModels.TextStyle? TextStyle { get; set; } = null;
 
         // Typography
         public string Font { get; set; } = "Helvetica";
@@ -164,9 +179,14 @@ namespace PdfBuilder.Elements
         // ---- Background & Borders ----
         public Color? BackgroundColor { get; set; } = null;
         public float CornerRadius { get; set; } = 0f;      // rounded background/border for the cell
+        public float CornerRadiusTopLeft { get; set; }
+        public float CornerRadiusTopRight { get; set; }
+        public float CornerRadiusBottomRight { get; set; }
+        public float CornerRadiusBottomLeft { get; set; }
 
         public Color BorderColor { get; set; } = Color.Black;
         public float BorderWidth { get; set; } = PdfDefaults.DefaultBorderWidth;
+        public TableModels.BorderStyle? BorderStyle { get; set; }
 
         public bool BorderTop { get; set; } = true;
         public bool BorderBottom { get; set; } = true;
@@ -183,9 +203,13 @@ namespace PdfBuilder.Elements
         public float? BorderWidthRight { get; set; }
         public float? BorderWidthBottom { get; set; }
         public float? BorderWidthLeft { get; set; }
+        public TableModels.BorderStyle? BorderStyleTop { get; set; }
+        public TableModels.BorderStyle? BorderStyleRight { get; set; }
+        public TableModels.BorderStyle? BorderStyleBottom { get; set; }
+        public TableModels.BorderStyle? BorderStyleLeft { get; set; }
 
         // ---- Padding ----
-        // If null → renderer should fall back to TableElement.CellPadding
+        // If null the renderer should fall back to TableElement.CellPadding
         public float? Padding { get; set; } = null;        // legacy/all-sides convenience
         public float? PaddingTop { get; set; } = null;
         public float? PaddingRight { get; set; } = null;

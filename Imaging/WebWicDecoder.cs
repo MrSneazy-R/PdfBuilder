@@ -7,12 +7,12 @@ using System.Runtime.InteropServices.ComTypes;
 namespace PdfBuilder.Writer.Imaging
 {
     /// <summary>
-    /// Windows-only WebP decode via WIC (no third-party libs).
+    /// WebP decode via Windows WIC (no third-party libs). On non-Windows platforms,
+    /// this API throws PlatformNotSupportedException. We detect OS at runtime.
     /// Converts to BGRA32 via IWICFormatConverter, then splits into RGB + A.
     /// </summary>
     public static class WebpWicDecoder
     {
-#if WINDOWS
         // CLSID_WICImagingFactory (v1 and v2). We'll try v2 then fallback to v1.  :contentReference[oaicite:4]{index=4}
         private static readonly Guid CLSID_WICImagingFactory2 = new("317d06e8-5f24-433d-bdf7-79ce68d8abc2");
         private static readonly Guid CLSID_WICImagingFactory  = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
@@ -33,6 +33,9 @@ namespace PdfBuilder.Writer.Imaging
 
         public static Result Decode(byte[] webpBytes)
         {
+            if (!OperatingSystem.IsWindows())
+                throw new PlatformNotSupportedException("WebP decode needs WIC (Windows-only).");
+
             if (webpBytes == null || webpBytes.Length < 12) throw new InvalidDataException("Empty WebP");
 
             // create COM stream
@@ -57,7 +60,8 @@ namespace PdfBuilder.Writer.Imaging
 
                 // Convert to 32bpp BGRA
                 factory.CreateFormatConverter(out conv);
-                conv.Initialize((IWICBitmapSource)frame, ref GUID_WICPixelFormat32bppBGRA,
+                var fmt = GUID_WICPixelFormat32bppBGRA;
+                conv.Initialize((IWICBitmapSource)frame, ref fmt,
                                 WICBitmapDitherType.WICBitmapDitherTypeNone,
                                 IntPtr.Zero, 0.0,
                                 WICBitmapPaletteType.WICBitmapPaletteTypeCustom);
@@ -182,10 +186,5 @@ namespace PdfBuilder.Writer.Imaging
 
         #endregion
 
-#else
-        public sealed class Result { public int Width, Height; public byte[] Rgb; public byte[]? Alpha; }
-        public static Result Decode(byte[] _) =>
-            throw new PlatformNotSupportedException("WebP decode needs WIC (Windows-only) in this build.");
-#endif
     }
 }

@@ -23,9 +23,9 @@ namespace PdfBuilder.Writer
         /// <summary>
         /// Renders rich paragraph and collects clickable rectangles for link spans.
         /// </summary>
-        public static void Append(StringBuilder sb, RichTextElement rt, float pageHeight,
-                                  Dictionary<string, int> fontObjId,
-                                  List<LinkRect> outLinks)
+        public static float Append(StringBuilder sb, RichTextElement rt, float pageHeight,
+                                   Dictionary<string, int> fontObjId,
+                                   List<LinkRect> outLinks)
         {
             // Layout setup
             float fsPara = rt.FontSize > 0 ? rt.FontSize : 12f;
@@ -42,6 +42,7 @@ namespace PdfBuilder.Writer
             var tokens = Tokenize(rt.Runs);
             var line = new List<TokenBox>();
             float lineWidth = 0f;
+            int lineCount = 0;
 
             foreach (var tok in tokens)
             {
@@ -50,6 +51,7 @@ namespace PdfBuilder.Writer
                 {
                     // flush line
                     DrawLine(sb, line, rt.Alignment, maxW, cursorX, baselineY, fontObjId, outLinks);
+                    lineCount++;
                     baselineY -= lineH;
                     line.Clear();
                     lineWidth = 0f;
@@ -57,7 +59,14 @@ namespace PdfBuilder.Writer
                 line.Add(tok);
                 lineWidth += wTok;
             }
-            if (line.Count > 0) DrawLine(sb, line, rt.Alignment, maxW, cursorX, baselineY, fontObjId, outLinks);
+            if (line.Count > 0)
+            {
+                DrawLine(sb, line, rt.Alignment, maxW, cursorX, baselineY, fontObjId, outLinks);
+                lineCount++;
+            }
+
+            if (lineCount == 0) lineCount = 1;
+            return lineCount * lineH;
         }
 
         // ----- internal layout helpers -----
@@ -163,7 +172,7 @@ namespace PdfBuilder.Writer
                 var col = TryRgb(t.Color) ?? "0 0 0";
 
                 sb.Append("BT ");
-                sb.Append($"/F{fontId} {N(t.Size)} Tf {col} {N(cursorX)} {N(baselineY)} Td ");
+                sb.Append($"/F{fontId} {N(t.Size)} Tf {col} rg {N(cursorX)} {N(baselineY)} Td ");
                 sb.Append($"{PdfText(t.Text)} Tj ET\n");
 
                 // Decorations
@@ -199,16 +208,32 @@ namespace PdfBuilder.Writer
             sb.Append($"q {rgb} RG {N(w)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
         }
 
-        private static string PdfText(string s) =>
-            s.Any(ch => ch > 0x7F) ? Utf16Hex(s) : $"({Escape(s)})";
-        private static string Escape(string s) => (s ?? "").Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
-        private static string Utf16Hex(string s)
+        private static readonly Encoding WinAnsi = GetWinAnsi();
+        private static Encoding GetWinAnsi()
         {
-            var raw = Encoding.BigEndianUnicode.GetBytes(s);
-            var withBom = new byte[raw.Length + 2]; withBom[0] = 0xFE; withBom[1] = 0xFF;
-            Buffer.BlockCopy(raw, 0, withBom, 2, raw.Length);
-            return $"<{BitConverter.ToString(withBom).Replace("-", "")}>";
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            return Encoding.GetEncoding(1252, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
         }
+        private static string PdfText(string s)
+        {
+            var bytes = WinAnsi.GetBytes(s ?? string.Empty);
+            if (bytes.Length == 0) return "()";
+            bool asciiSafe = true;
+            foreach (var b in bytes)
+            {
+                if (b < 0x20 || b > 0x7E || b == (byte)'(' || b == (byte)')' || b == (byte)'\\')
+                { asciiSafe = false; break; }
+            }
+            if (asciiSafe)
+            {
+                var literal = Encoding.ASCII.GetString(bytes);
+                return $"({Escape(literal)})";
+            }
+            var hex = new StringBuilder(bytes.Length * 2);
+            foreach (var b in bytes) hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
+            return $"<{hex}>";
+        }
+        private static string Escape(string s) => (s ?? "").Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
         private static string? TryRgb(string hex)
         {
             if (string.IsNullOrWhiteSpace(hex)) return null;

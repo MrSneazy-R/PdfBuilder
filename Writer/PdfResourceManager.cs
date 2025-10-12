@@ -1,10 +1,12 @@
 ﻿// --- PdfResourceManager.cs ---
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Linq;
 using PdfBuilder.Elements;
 using PdfBuilder.Writer.Imaging;
 
@@ -23,11 +25,23 @@ namespace PdfBuilder.Writer
         private readonly Dictionary<string, int> _imagesLegacy = new();
         private readonly Dictionary<float, int> _opacityStatesLegacy = new();
 
-        // New image map: key → (main image object, optional SMask object)
+        // New image map: main image object + optional SMask object
         private readonly Dictionary<string, (int imObj, int? smaskObj)> _imageMap = new();
 
-        // Opacity (ExtGState): opacity → object id
-        private readonly Dictionary<float, int> _extGStates = new();
+        private readonly struct ExtGStateHandle
+        {
+            public ExtGStateHandle(string resourceName, int objectId)
+            {
+                ResourceName = resourceName;
+                ObjectId = objectId;
+            }
+
+            public string ResourceName { get; }
+            public int ObjectId { get; }
+        }
+
+        // ExtGState registry
+        private readonly Dictionary<string, ExtGStateHandle> _extGStates = new(StringComparer.Ordinal);
 
         // ---------- LEGACY HELPERS ----------
         public int RegisterFont(string fontName, Func<int> addObject)
@@ -57,9 +71,9 @@ namespace PdfBuilder.Writer
         // ---------- NEW IMAGE API ----------
         /// <summary>
         /// Ensure an image XObject exists for the given element and return:
-        /// (image obj id, optional SMask obj id, optional ExtGState obj id, pdf resource name)
+        /// (image obj id, optional SMask obj id, optional ExtGState resource name, pdf resource name)
         /// </summary>
-        public (int imageObjId, int? smaskObjId, int? extGStateObjId, string pdfName)
+        public (int imageObjId, int? smaskObjId, string? extGStateResourceName, string pdfName)
             EnsureImageXObject(PdfStreamWriter w, ImageElement img)
         {
             if (img == null) throw new ArgumentNullException(nameof(img));
@@ -78,24 +92,17 @@ namespace PdfBuilder.Writer
             }
 
             // Optional overall opacity (separate from per-pixel alpha)
-            int? gsObj = null;
+            string? gsName = null;
             float op = Clamp01(img.Opacity);
             if (op < 0.999f)
             {
-                if (!_extGStates.TryGetValue(op, out var eid))
-                {
-                    eid = w.BeginObject();
-                    w.WriteLine("<< /Type /ExtGState");
-                    w.WriteLine($"   /CA {op:0.###} /ca {op:0.###} >>");
-                    w.EndObject();
-                    _extGStates[op] = eid;
-                }
-                gsObj = _extGStates[op];
+                var handle = EnsureImageOpacityExtGState(op, w);
+                gsName = handle.ResourceName;
             }
 
             string name = $"/Im{ids.imObj}";
             img.PdfResourceName = name; // optional debug
-            return (ids.imObj, ids.smaskObj, gsObj, name);
+            return (ids.imObj, ids.smaskObj, gsName, name);
         }
 
         /// <summary>Build /XObject entries, e.g. "/Im5 5 0 R /Im9 9 0 R"</summary>
@@ -116,12 +123,57 @@ namespace PdfBuilder.Writer
         {
             if (_extGStates.Count == 0) return string.Empty;
             var sb = new StringBuilder();
-            foreach (var kv in _extGStates)
-            {
-                int id = kv.Value;
-                sb.Append($"/GS{id} {id} 0 R ");
-            }
+            foreach (var entry in _extGStates.Values)
+                sb.Append($"{entry.ResourceName} {entry.ObjectId} 0 R ");
             return sb.ToString();
+        }
+
+        private ExtGStateHandle EnsureImageOpacityExtGState(float opacity, PdfStreamWriter w)
+        {
+            string opToken = opacity.ToString("0.###", CultureInfo.InvariantCulture);
+            string key = $"img:{opToken}";
+            if (_extGStates.TryGetValue(key, out var handle))
+                return handle;
+
+            int objId = w.BeginObject();
+            w.WriteLine("<< /Type /ExtGState");
+            w.WriteLine($"   /CA {opToken} /ca {opToken} >>");
+            w.EndObject();
+
+            handle = new ExtGStateHandle($"/GS{objId}", objId);
+            _extGStates[key] = handle;
+            return handle;
+        }
+
+        public string EnsureWatermarkExtGState(float opacity, PdfStreamWriter w)
+        {
+            float op = Clamp01(opacity);
+            string opToken = op.ToString("0.###", CultureInfo.InvariantCulture);
+            string key = $"wm:{opToken}";
+            if (_extGStates.TryGetValue(key, out var existing))
+                return existing.ResourceName;
+
+            int objId = w.BeginObject();
+            w.WriteLine("<< /Type /ExtGState");
+            w.WriteLine($"   /CA {opToken}");
+            w.WriteLine($"   /ca {opToken}");
+            w.WriteLine("   /BM /Normal >>");
+            w.EndObject();
+
+            string resourceName = "/GSwm";
+            if (_extGStates.Values.Any(h => string.Equals(h.ResourceName, resourceName, StringComparison.Ordinal)))
+            {
+                int suffix = 2;
+                do
+                {
+                    resourceName = $"/GSwm{suffix}";
+                    suffix++;
+                } while (_extGStates.Values.Any(h => string.Equals(h.ResourceName, resourceName, StringComparison.Ordinal)));
+            }
+
+            var handle = new ExtGStateHandle(resourceName, objId);
+            _extGStates[key] = handle;
+            return handle.ResourceName;
         }
 
         // ---------- IMAGE WRITERS ----------
@@ -140,7 +192,7 @@ namespace PdfBuilder.Writer
                 byte[] iccCompressed;
                 using (var ms = new MemoryStream())
                 {
-                    using (var z = new DeflateStream(ms, CompressionMode.Compress, leaveOpen: true))
+                    using (var z = new ZLibStream(ms, CompressionLevel.Optimal, leaveOpen: true))
                         z.Write(info.IccProfile, 0, info.IccProfile.Length);
                     iccCompressed = ms.ToArray();
                 }
@@ -218,21 +270,58 @@ namespace PdfBuilder.Writer
             int? smask = null;
             if (dec.Alpha != null)
             {
-                byte[] alphaFlated = Flate(dec.Alpha);
-                smask = w.BeginObject();
-                w.WriteLine("<< /Type /XObject /Subtype /Image");
-                w.WriteLine($"   /Width {dec.Width} /Height {dec.Height}");
-                w.WriteLine("   /ColorSpace /DeviceGray /BitsPerComponent 8");
-                w.WriteLine("   /Filter /FlateDecode");
-                w.WriteLine($"   /Length {alphaFlated.Length} >>");
-                w.WriteLine("stream");
-                w.WriteBytes(alphaFlated);
-                w.WriteLine("\nendstream");
-                w.EndObject();
+                // Safety: only write SMask when alpha buffer matches dimensions and is not uniform 0 or 255
+                bool validSize = dec.Alpha.Length == dec.Width * dec.Height;
+                if (validSize)
+                {
+                    bool allZero = true, allFull = true;
+                    for (int i = 0; i < dec.Alpha.Length; i++)
+                    {
+                        byte a = dec.Alpha[i];
+                        if (a != 0) allZero = false;
+                        if (a != 255) allFull = false;
+                        if (!allZero && !allFull) break;
+                    }
+
+                    if (!allZero && !allFull)
+                    {
+                        bool alphaHasPredictor = dec.AlphaContainsFilterBytes;
+                        byte[] alphaPayload = dec.Alpha;
+                        if (!alphaHasPredictor)
+                        {
+                            alphaPayload = AddPngPredictorRows(dec.Alpha, dec.Width, 1, dec.Height);
+                            alphaHasPredictor = true;
+                        }
+                        byte[] alphaFlated = Flate(alphaPayload);
+                        smask = w.BeginObject();
+                        w.WriteLine("<< /Type /XObject /Subtype /Image");
+                        w.WriteLine($"   /Width {dec.Width} /Height {dec.Height}");
+                        w.WriteLine("   /ColorSpace /DeviceGray /BitsPerComponent 8");
+                        w.WriteLine("   /Filter /FlateDecode");
+                        w.WriteLine("   /Interpolate false");
+                        if (alphaHasPredictor)
+                            w.WriteLine($"   /DecodeParms <</Predictor 15 /Colors 1 /BitsPerComponent 8 /Columns {dec.Width}>>");
+                        // SMask alpha: 0 = fully transparent, 1 = fully opaque
+                        w.WriteLine("   /Decode [0 1]");
+                        w.WriteLine($"   /Length {alphaFlated.Length} >>");
+                        w.WriteLine("stream");
+                        w.WriteBytes(alphaFlated);
+                        w.WriteLine("\nendstream");
+                        w.EndObject();
+                    }
+                }
             }
 
             // Main pixel data
-            byte[] mainFlated = Flate(dec.Pixels);
+            int colorsForPredictor = (dec.IsIndexed ? 1 : (dec.Components == 1 ? 1 : 3));
+            bool pixelsHavePredictor = dec.PixelsContainFilterBytes;
+            byte[] pixelPayload = dec.Pixels;
+            if (!pixelsHavePredictor)
+            {
+                pixelPayload = AddPngPredictorRows(dec.Pixels, dec.Width, colorsForPredictor, dec.Height);
+                pixelsHavePredictor = true;
+            }
+            byte[] mainFlated = Flate(pixelPayload);
 
             string colorSpace;
             if (dec.IsIndexed && paletteObj.HasValue)
@@ -250,6 +339,9 @@ namespace PdfBuilder.Writer
             w.WriteLine($"   /Width {dec.Width} /Height {dec.Height}");
             w.WriteLine($"   /ColorSpace {colorSpace} /BitsPerComponent {dec.BitsPerComponent}");
             w.WriteLine("   /Filter /FlateDecode");
+            w.WriteLine("   /Interpolate false");
+            if (pixelsHavePredictor)
+                w.WriteLine($"   /DecodeParms <</Predictor 15 /Colors {colorsForPredictor} /BitsPerComponent {dec.BitsPerComponent} /Columns {dec.Width}>>");
             if (smask.HasValue) w.WriteLine($"   /SMask {smask.Value} 0 R");
             w.WriteLine($"   /Length {mainFlated.Length} >>");
             w.WriteLine("stream");
@@ -289,13 +381,14 @@ namespace PdfBuilder.Writer
         private (int imObj, int? smaskObj) WriteRawRgbWithOptionalAlpha(
             PdfStreamWriter w, int width, int height, byte[] rgb, byte[]? alpha)
         {
-            // Main image (DeviceRGB, 8bpc)
+            // Main image (DeviceRGB, 8bpc) without PNG predictor framing (already raw pixels)
             int im = w.BeginObject();
             var deflated = Deflate(rgb);
             w.WriteLine("<< /Type /XObject /Subtype /Image");
             w.WriteLine($"   /Width {width} /Height {height}");
             w.WriteLine("   /ColorSpace /DeviceRGB /BitsPerComponent 8");
             w.WriteLine("   /Filter /FlateDecode");
+            w.WriteLine("   /Interpolate false");
             w.WriteLine($"   /Length {deflated.Length} >>");
             w.WriteLine("stream");
             w.WriteBytes(deflated);
@@ -303,20 +396,32 @@ namespace PdfBuilder.Writer
             w.EndObject();
 
             int? smask = null;
-            if (alpha != null)
+            if (alpha != null && alpha.Length == width * height)
             {
-                smask = w.BeginObject();
-                var aDef = Deflate(alpha);
-                w.WriteLine("<< /Type /XObject /Subtype /Image");
-                w.WriteLine($"   /Width {width} /Height {height}");
-                w.WriteLine("   /ColorSpace /DeviceGray /BitsPerComponent 8");
-                w.WriteLine("   /Filter /FlateDecode");
-                w.WriteLine("   /Decode [0 1]");
-                w.WriteLine($"   /Length {aDef.Length} >>");
-                w.WriteLine("stream");
-                w.WriteBytes(aDef);
-                w.WriteRaw("\nendstream\n");
-                w.EndObject();
+                bool allZero = true, allFull = true;
+                for (int i = 0; i < alpha.Length; i++)
+                {
+                    byte a = alpha[i];
+                    if (a != 0) allZero = false;
+                    if (a != 255) allFull = false;
+                    if (!allZero && !allFull) break;
+                }
+                if (!allZero && !allFull)
+                {
+                    smask = w.BeginObject();
+                    var aDef = Deflate(alpha);
+                    w.WriteLine("<< /Type /XObject /Subtype /Image");
+                    w.WriteLine($"   /Width {width} /Height {height}");
+                    w.WriteLine("   /ColorSpace /DeviceGray /BitsPerComponent 8");
+                    w.WriteLine("   /Filter /FlateDecode");
+                    w.WriteLine("   /Interpolate false");
+                    w.WriteLine("   /Decode [0 1]");
+                    w.WriteLine($"   /Length {aDef.Length} >>");
+                    w.WriteLine("stream");
+                    w.WriteBytes(aDef);
+                    w.WriteRaw("\nendstream\n");
+                    w.EndObject();
+                }
             }
 
             return (im, smask);
@@ -336,7 +441,7 @@ namespace PdfBuilder.Writer
         private static byte[] Flate(byte[] raw)
         {
             using var ms = new MemoryStream();
-            using (var z = new DeflateStream(ms, CompressionMode.Compress, leaveOpen: true))
+            using (var z = new ZLibStream(ms, CompressionLevel.Optimal, leaveOpen: true))
                 z.Write(raw, 0, raw.Length);
             return ms.ToArray();
         }
@@ -345,18 +450,33 @@ namespace PdfBuilder.Writer
         private static byte[] Deflate(byte[] raw)
         {
             using var ms = new MemoryStream();
-#if NET6_0_OR_GREATER || NETSTANDARD2_0 || NET5_0_OR_GREATER || NETCOREAPP3_1
-            using (var ds = new DeflateStream(ms, CompressionLevel.Optimal, leaveOpen: true))
-#else
-    // If your target framework doesn't have CompressionLevel overloads,
-    // fall back to standard "Compress" mode (still fine).
-    using (var ds = new DeflateStream(ms, CompressionMode.Compress, leaveOpen: true))
-#endif
+            using (var ds = new ZLibStream(ms, CompressionLevel.Optimal, leaveOpen: true))
             {
                 ds.Write(raw, 0, raw.Length);
             }
             return ms.ToArray();
         }
 
+        // Adds a one-byte PNG predictor flag (0=None) at start of each row
+        private static byte[] AddPngPredictorRows(byte[] pixels, int width, int colors, int height)
+        {
+            int rowBytes = width * colors;
+            if (pixels.Length != rowBytes * height)
+                throw new InvalidDataException("Predictor framing mismatch: buffer size != width*colors*height");
+
+            var dst = new byte[height * (rowBytes + 1)];
+            int src = 0, d = 0;
+            for (int y = 0; y < height; y++)
+            {
+                dst[d++] = 0; // filter type 0 (None)
+                Buffer.BlockCopy(pixels, src, dst, d, rowBytes);
+                src += rowBytes;
+                d += rowBytes;
+            }
+            return dst;
+        }
+
     }
 }
+
+

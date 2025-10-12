@@ -94,8 +94,11 @@ namespace PdfBuilder.Writer
                 _stream.Write(bytes, 0, bytes.Length);
         }
 
-        /// <summary>Write the xref table and trailer. Pass the root /Catalog object id.</summary>
-        public void WriteXRefAndTrailer(int rootObjectId)
+        /// <summary>
+        /// Write the xref table and trailer. Pass the root /Catalog object id.
+        /// Optionally include an /Info dictionary object id.
+        /// </summary>
+        public void WriteXRefAndTrailer(int rootObjectId, int? infoObjectId = null)
         {
             EnsureNotDisposed();
             if (_inObject) throw new InvalidOperationException("Cannot write xref while inside an object.");
@@ -122,6 +125,8 @@ namespace PdfBuilder.Writer
             WriteLine("<<");
             WriteLine($"/Size {_objectCount + 1}");
             WriteLine($"/Root {rootObjectId} 0 R");
+            if (infoObjectId.HasValue)
+                WriteLine($"/Info {infoObjectId.Value} 0 R");
             WriteLine(">>");
             WriteLine("startxref");
             WriteLine(xrefPos.ToString());

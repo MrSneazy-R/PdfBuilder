@@ -110,10 +110,9 @@ namespace PdfBuilder.Document
         public ImageBuilder ClipEllipse(EllipseOrientation orientation, float squash = 1f)
         { _img.ClipShape = ImageClipShape.Ellipse; _img.EllipseOrientation = orientation; _img.EllipseSquash = Math.Max(0.01f, squash); return this; }
         // Add to the column and finish
-        public ColumnBuilder Add()
+        public float Add()
         {
-            _column.AddImage(_img);
-            return _column;
+            return _column.AddImage(_img);
         }
     }
 }

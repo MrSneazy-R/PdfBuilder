@@ -49,6 +49,34 @@ namespace PdfBuilder.Writer.Imaging
                 {
                     // Lossy VP8 bitstream: dimensions are stored inside the VP8 frame header (keyframe).
                     info.PrimaryChunk = "VP8 ";
+                    var span = data.AsSpan(chunkStart, Math.Min(size, data.Length - chunkStart));
+                    if (span.Length >= 10)
+                    {
+                        // Keyframe starts with frame tag (3 bytes), followed by 0x9D 0x01 0x2A sync code and then width/height (little-endian, 14-bit each).
+                        byte frameType = (byte)(span[0] & 0x01);
+                        if (frameType == 0 && span[3] == 0x9D && span[4] == 0x01 && span[5] == 0x2A)
+                        {
+                            int w = span[6] | (span[7] << 8);
+                            int h = span[8] | (span[9] << 8);
+                            info.Width = w & 0x3FFF;
+                            info.Height = h & 0x3FFF;
+                        }
+                        else
+                        {
+                            // Fallback: search for sync code within the chunk (some encoders pad leading bytes).
+                            for (int j = 0; j <= span.Length - 7; j++)
+                            {
+                                if (span[j] == 0x9D && span[j + 1] == 0x01 && span[j + 2] == 0x2A)
+                                {
+                                    int w = span[j + 3] | (span[j + 4] << 8);
+                                    int h = span[j + 5] | (span[j + 6] << 8);
+                                    info.Width = Math.Max(info.Width, w & 0x3FFF);
+                                    info.Height = Math.Max(info.Height, h & 0x3FFF);
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
                 else if (fourcc == ToFCC("VP8L") && size >= 5)
                 {

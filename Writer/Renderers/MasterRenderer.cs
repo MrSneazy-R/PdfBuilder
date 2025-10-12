@@ -56,6 +56,8 @@ namespace PdfBuilder.Writer
                 double a = Math.Cos(rad), b = Math.Sin(rad), c = -b, d = a;
 
                 sb.Append("q ");
+                if (!string.IsNullOrEmpty(wm.ExtGStateResourceName))
+                    sb.Append($"{wm.ExtGStateResourceName} gs ");
                 sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(x)} {N(y)} cm ");   // translate
                 sb.Append($"{N(a)} {N(b)} {N(c)} {N(d)} 0 0 cm ");              // rotate
                 sb.Append("BT ");

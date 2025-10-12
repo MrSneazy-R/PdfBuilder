@@ -34,6 +34,15 @@ namespace PdfBuilder.Writer.Imaging
 
             // True if color type = 3 (palette).
             public bool IsIndexed;
+
+            // True when Pixels still contain the per-row PNG filter byte (and thus require Predictor 15).
+            public bool PixelsContainFilterBytes;
+
+            // True when Alpha still contains per-row PNG filter bytes.
+            public bool AlphaContainsFilterBytes;
+
+            // Convenience alias for the number of interleaved color components in Pixels.
+            public int ColorComponents => Components;
         }
 
         public static bool LooksLikePng(ReadOnlySpan<byte> data)
@@ -108,10 +117,10 @@ namespace PdfBuilder.Writer.Imaging
                 if (type == "IEND") break;
             }
 
-            // Inflate combined IDAT. PNG uses zlib wrapper; DeflateStream accepts it.
+            // Inflate combined IDAT. PNG uses a zlib wrapper, so use ZLibStream here.
             idat.Position = 0;
             byte[] decompressed;
-            using (var z = new DeflateStream(idat, CompressionMode.Decompress, leaveOpen: true))
+            using (var z = new ZLibStream(idat, CompressionMode.Decompress, leaveOpen: true))
             using (var outMs = new MemoryStream())
             {
                 z.CopyTo(outMs);
@@ -284,7 +293,8 @@ namespace PdfBuilder.Writer.Imaging
                     res.PaletteRGB = plte;
                     res.Pixels = new byte[width * height]; // indices expanded to 8-bit
                     UnpackIndexed(rowsPacked, res.Pixels, width, height, bitDepth);
-                    res.Alpha = BuildAlphaFromTRNS_Indexed(trns, res.Pixels);
+                    // Build tRNS-derived alpha: needs (indices, trns) order
+                    res.Alpha = BuildAlphaFromTRNS_Indexed(res.Pixels, trns);
                     break;
 
                 case 4: // Gray + Alpha

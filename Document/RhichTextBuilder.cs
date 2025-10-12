@@ -28,7 +28,7 @@ namespace PdfBuilder.Document
             return new SpanBuilder(this, run);
         }
 
-        public ColumnBuilder Add() { _col.AddRichText(_rt); return _col; }
+        public float Add() { return _col.AddRichText(_rt); }
 
         public sealed class SpanBuilder
         {
