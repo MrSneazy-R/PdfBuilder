@@ -32,6 +32,16 @@ namespace PdfBuilder.Document
         public ListBuilder BeginNest() { _stack.Push(_list.Items.Count > 0 ? _list.Items[^1] : new ListItem()); return this; }
         public ListBuilder EndNest() { if (_stack.Count > 0) _stack.Pop(); return this; }
 
-        public float Add() { return _col.AddList(_list); }
+        public float Add()
+        {
+            float height = _col.AddList(_list);
+            var flow = _col.GetFlow();
+            if (!flow.CanFit(height))
+                flow.Advance(height);
+            else
+                flow.Reserve(height);
+
+            return height;
+        }
     }
 }

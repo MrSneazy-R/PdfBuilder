@@ -16,6 +16,9 @@ namespace PdfBuilder.Document
     /// Manages a single flow column cursor. Coordinates are expressed in PDF space
     /// (origin at the bottom-left). <see cref="Y"/> reflects the next available
     /// baseline from the top of the column moving downwards.
+    /// Cursor manager for a flow column. Coordinates follow PDF space (origin
+    /// at bottom-left). <see cref="Y"/> exposes the next available baseline
+    /// moving downward from the column's top.
     /// </summary>
     public sealed class FlowColumn
     {
@@ -39,37 +42,38 @@ namespace PdfBuilder.Document
         public float Y => _cursorY;
         public float BottomY => _bottomY;
         public float TopY => _topY;
-        public float Available => _cursorY - _bottomY;
-        public float Capacity => _topY - _bottomY;
+        public float Available => Math.Max(0f, _cursorY - _bottomY);
+        public float Capacity => Math.Max(0f, _topY - _bottomY);
 
         public bool CanFit(float height, float epsilon = 0.1f)
         {
             if (height <= 0f) return true;
             return (_cursorY - height) >= (_bottomY - epsilon);
         }
-
+        /// <summary>
+        /// Reserves vertical space inside the column and advances the cursor.
+        /// Throws <see cref="FlowOverflowException"/> if the requested height
+        /// would pass <see cref="BottomY"/>.
+        /// </summary>
         public FlowRect Reserve(float height)
         {
             float clamped = Math.Max(0f, height);
             if (!CanFit(clamped))
                 throw new FlowOverflowException(this, clamped);
 
-            float top = _cursorY;
-            _cursorY -= clamped;
-            return new FlowRect(X, top, Width, clamped);
-        }
-
-        public FlowRect ForceReserve(float height)
-        {
-            float clamped = Math.Max(0f, height);
+           
             float top = _cursorY;
             _cursorY = Math.Max(_bottomY, _cursorY - clamped);
             return new FlowRect(X, top, Width, clamped);
         }
-
+        /// <summary>
+        /// Advances the cursor without performing any capacity checks.
+        /// Negative values move the cursor upwards.
+        /// </summary>
         public void Advance(float pixels)
         {
-            _cursorY -= pixels;
+            if (pixels == 0f) return;
+            _cursorY = Math.Clamp(_cursorY - pixels, _bottomY, _topY);
         }
 
         public FlowColumn SwitchTo(FlowColumn nextColumn)
@@ -97,32 +101,48 @@ namespace PdfBuilder.Document
 
     public static class FlowGrid
     {
-        public static FlowColumn[] Create(PdfPage page, float margin, float headerHeight, float footerHeight)
+        public static FlowColumn[] Create(
+            PdfPage page,
+            float margin,
+            int columns,
+            float gutter,
+            float headerHeight = 0f,
+            float footerHeight = 0f,
+            float[]? explicitWidths = null)
         {
             if (page == null) throw new ArgumentNullException(nameof(page));
-            float top = page.Height - margin - headerHeight;
-            float bottom = margin + footerHeight;
+            int columnCount = Math.Max(1, columns);
+            gutter = columnCount == 1 ? 0f : Math.Max(0f, gutter);
+
+            float horizontalMargin = margin > 0f ? margin : page.MarginLeft;
+            float rightMargin = margin > 0f ? margin : page.MarginRight;
+            float topMargin = margin > 0f ? margin : page.MarginTop;
+            float bottomMargin = margin > 0f ? margin : page.MarginBottom;
+
+            float top = page.Height - topMargin - headerHeight;
+            float bottom = bottomMargin + footerHeight;
             if (bottom >= top)
-                bottom = Math.Max(0, top - 20f); // ensure a minimal region to avoid negative height
+            {
+                float mid = (page.Height - headerHeight - footerHeight) * 0.5f;
+                bottom = Math.Max(0f, Math.Min(mid, top - 20f));
+            }
 
-            var layout = page.Columns ?? new ColumnLayoutSpec { Columns = 1, Gutter = 14f };
-            int columnCount = Math.Max(1, layout.Widths?.Length ?? layout.Columns);
-            var columns = new FlowColumn[columnCount];
+            float contentLeft = horizontalMargin;
+            float contentRight = page.Width - rightMargin;
+            float contentWidth = Math.Max(0f, contentRight - contentLeft);
 
-            float contentLeft = margin;
-            float contentRight = page.Width - margin;
-            float contentWidth = Math.Max(0, contentRight - contentLeft);
+            var columnsArr = new FlowColumn[columnCount];
+            float x = contentLeft;
 
-            float gutter = layout.Gutter;
-            if (columnCount == 1) gutter = 0f;
-
-            if (layout.Widths != null && layout.Widths.Length == columnCount)
+            if (explicitWidths != null && explicitWidths.Length == columnCount)
             {
                 float x = contentLeft;
                 for (int i = 0; i < columnCount; i++)
                 {
                     float width = layout.Widths[i];
                     columns[i] = new FlowColumn(i, x, width, top, bottom);
+                    float width = Math.Max(0f, explicitWidths[i]);
+                    columnsArr[i] = new FlowColumn(i, x, width, top, bottom);
                     x += width + gutter;
                 }
             }
@@ -130,15 +150,16 @@ namespace PdfBuilder.Document
             {
                 float totalGutter = (columnCount - 1) * gutter;
                 float width = columnCount > 0 ? (contentWidth - totalGutter) / columnCount : contentWidth;
-                float x = contentLeft;
+                width = Math.Max(0f, width);
+
                 for (int i = 0; i < columnCount; i++)
                 {
-                    columns[i] = new FlowColumn(i, x, width, top, bottom);
+                    columnsArr[i] = new FlowColumn(i, x, width, top, bottom);
                     x += width + gutter;
                 }
             }
 
-            return columns;
+            return columnsArr;
         }
     }
 }

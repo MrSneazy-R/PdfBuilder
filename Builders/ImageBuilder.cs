@@ -112,7 +112,14 @@ namespace PdfBuilder.Document
         // Add to the column and finish
         public float Add()
         {
-            return _column.AddImage(_img);
+            float height = _column.AddImage(_img);
+            var flow = _column.GetFlow();
+            if (!flow.CanFit(height))
+                flow.Advance(height);
+            else
+                flow.Reserve(height);
+
+            return height;
         }
     }
 }

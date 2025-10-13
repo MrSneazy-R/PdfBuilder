@@ -60,13 +60,20 @@ namespace PdfBuilder.Document
 
         private void InitColumns(PdfPage page)
         {
-            _columns = FlowGrid.Create(page, _margin, _headerH, _footerH);
+            var layout = page.Columns ?? new ColumnLayoutSpec { Columns = 1, Gutter = 14f };
+            int columnCount = Math.Max(1, layout.Widths?.Length ?? layout.Columns);
+            float gutter = layout.Gutter;
+            float[]? widths = null;
+            if (layout.Widths != null && layout.Widths.Length == columnCount)
+                widths = (float[])layout.Widths.Clone();
+
+            _columns = FlowGrid.Create(page, _margin, columnCount, gutter, _headerH, _footerH, widths);
             if (_columns.Length == 0)
             {
-                _columns = new[]
-                {
-                    new FlowColumn(0, _margin, Math.Max(0, page.Width - _margin * 2), page.Height - _margin - _headerH, _margin + _footerH)
-                };
+                float width = Math.Max(0, page.Width - (_margin > 0 ? _margin * 2 : page.MarginLeft + page.MarginRight));
+                float top = page.Height - (_margin > 0 ? _margin : page.MarginTop) - _headerH;
+                float bottom = (_margin > 0 ? _margin : page.MarginBottom) + _footerH;
+                _columns = new[] { new FlowColumn(0, _margin > 0 ? _margin : page.MarginLeft, width, top, bottom) };
             }
             _colIndex = Math.Min(Math.Max(0, _colIndex), _columns.Length - 1);
             _columns[_colIndex].Reset();
@@ -137,73 +144,42 @@ namespace PdfBuilder.Document
             }
         }
 
-        private void EnsureSpace(float contentHeight, float marginTop, float marginBottom)
+        private void EnsureSpace(float contentHeight, float marginTop, float marginBottom, bool avoidBreakInside = false)
         {
-            float need = marginTop + contentHeight + marginBottom;
-            var current = CurrentColumn;
-            float topLimit = current.TopY;
-            float bottomLimit = current.BottomY;
-            float maxInColumn = current.Capacity;
+            float need = marginTop + Math.Max(0f, contentHeight) + marginBottom;
+            int guard = 0;
 
-            // If it can never fit into a fresh column, bail early:
-            if (need > maxInColumn + 0.1f)
-            {
-                // Try moving to a fresh column/page once if we aren't already at the top.
-                if (_newPage != null && Math.Abs(current.Y - topLimit) > 0.5f)
-                    NextColumnOrPage();
-
-                // Place anyway (renderer may overflow/clip; or caller may split)
-                return;
-            }
-
-            // Standard case: keep advancing until it fits.
-            while (_newPage != null)
-            {
-                current = CurrentColumn;
-                if ((current.Y - need) >= bottomLimit)
-                    break;
-                NextColumnOrPage();
-            }
-        }
-
-        private FlowRect ReserveBlock(float contentHeight, float marginTop, float marginBottom, bool avoidBreakInside)
-        {
-            float total = marginTop + Math.Max(0f, contentHeight) + marginBottom;
+       
             while (true)
             {
-                var column = CurrentColumn;
-                float topLimit = column.TopY;
-                float maxInColumn = column.Capacity;
+                var current = CurrentColumn;
+                float topLimit = current.TopY;
+                float bottomLimit = current.BottomY;
+                float maxInColumn = current.Capacity;
 
-                if (total > maxInColumn + 0.1f)
+                if (need > maxInColumn + 0.1f)
                 {
-                    if (_newPage != null && Math.Abs(column.Y - topLimit) > 0.5f)
+                    if (_newPage != null && Math.Abs(current.Y - topLimit) > 0.5f)
                     {
                         NextColumnOrPage();
+                        if (++guard > 16) break;
                         continue;
                     }
-                    return column.ForceReserve(total);
+                    return;
                 }
 
-                if (column.CanFit(total))
-                {
-                    try
-                    {
-                        return column.Reserve(total);
-                    }
-                    catch (FlowOverflowException)
-                    {
-                        // fall through to pagination attempt
-                    }
-                }
+                if ((current.Y - need) >= bottomLimit)
+                    return;
 
-                if (_newPage != null && avoidBreakInside)
-                {
-                    NextColumnOrPage();
-                    continue;
-                }
+                if (_newPage == null)
+                    return;
 
-                return column.ForceReserve(total);
+                if (!avoidBreakInside && Math.Abs(current.Y - topLimit) <= 0.5f)
+                    return;
+
+                NextColumnOrPage();
+                if (++guard > 16)
+                    break;
             }
         }
 
@@ -255,76 +231,87 @@ namespace PdfBuilder.Document
             float paddingLeft = text.PaddingLeft ?? 0f;
             float paddingRight = text.PaddingRight ?? 0f;
 
-            float measureWidth = Math.Max(0f, CurrentColumn.Width - marginLeft - marginRight);
-            float textMaxWidth = (text.MaxWidth ?? measureWidth) - paddingLeft - paddingRight;
-            if (textMaxWidth < 0) textMaxWidth = 0;
-
-            var lines = PdfLayoutUtils.WrapText(text.Text ?? string.Empty, text.FontFamily, text.FontSize, textMaxWidth);
-            int lineCount = Math.Max(1, lines.Count);
+            var textContent = text.Text ?? string.Empty;
 
             float lineHeight = text.FontSize * text.LineHeight;
-            float innerHeight = lineCount * lineHeight;
-            float fullHeight = innerHeight + paddingTop + paddingBottom;
 
-            float fullWidth = (lines.Any()
-                ? lines.Max(line => PdfLayoutUtils.EstimateTextWidth(line, text.FontFamily, text.FontSize, text.Monospace, text.Bold))
-                : 0f) + paddingLeft + paddingRight;
-
-            float verticalSpan = text.Rotation != 0f
-                ? (float)(Math.Abs(fullHeight * Math.Cos(text.Rotation * Math.PI / 180.0)) + Math.Abs(fullWidth * Math.Sin(text.Rotation * Math.PI / 180.0)))
-                : fullHeight;
-
-            var slot = ReserveBlock(verticalSpan, marginTop, marginBottom, text.AvoidBreakInside);
-
-            float finalWidth = Math.Max(0f, slot.Width - marginLeft - marginRight);
-            float finalMaxWidth = (text.MaxWidth ?? finalWidth) - paddingLeft - paddingRight;
-            if (finalMaxWidth < 0) finalMaxWidth = 0;
-
-            if (Math.Abs(finalMaxWidth - textMaxWidth) > 0.01f)
+            while (true)
             {
-                lines = PdfLayoutUtils.WrapText(text.Text ?? string.Empty, text.FontFamily, text.FontSize, finalMaxWidth);
-                lineCount = Math.Max(1, lines.Count);
-                innerHeight = lineCount * lineHeight;
-                fullHeight = innerHeight + paddingTop + paddingBottom;
+                var column = CurrentColumn;
+                int columnIndex = column.Index;
 
-                float recomputeWidth = (lines.Any()
+                float measureWidth = Math.Max(0f, column.Width - marginLeft - marginRight);
+                float textMaxWidth = (text.MaxWidth ?? measureWidth) - paddingLeft - paddingRight;
+                if (textMaxWidth < 0f) textMaxWidth = 0f;
+
+                var lines = PdfLayoutUtils.WrapText(textContent, text.FontFamily, text.FontSize, textMaxWidth);
+                int lineCount = Math.Max(1, lines.Count);
+
+                float innerHeight = lineCount * lineHeight;
+                float fullHeight = innerHeight + paddingTop + paddingBottom;
+
+                float fullWidth = (lines.Any()
                     ? lines.Max(line => PdfLayoutUtils.EstimateTextWidth(line, text.FontFamily, text.FontSize, text.Monospace, text.Bold))
                     : 0f) + paddingLeft + paddingRight;
 
-                float recomputeSpan = text.Rotation != 0f
-                    ? (float)(Math.Abs(fullHeight * Math.Cos(text.Rotation * Math.PI / 180.0)) + Math.Abs(recomputeWidth * Math.Sin(text.Rotation * Math.PI / 180.0)))
+                float verticalSpan = text.Rotation != 0f
+                    ? (float)(Math.Abs(fullHeight * Math.Cos(text.Rotation * Math.PI / 180.0)) + Math.Abs(fullWidth * Math.Sin(text.Rotation * Math.PI / 180.0)))
                     : fullHeight;
 
-                if (recomputeSpan > verticalSpan + 0.1f)
+                float totalHeight = marginTop + verticalSpan + marginBottom;
+
+                EnsureSpace(verticalSpan, marginTop, marginBottom, text.AvoidBreakInside);
+
+                if (CurrentColumn.Index != columnIndex)
+                    continue;
+
+                column = CurrentColumn;
+                float finalWidth = Math.Max(0f, column.Width - marginLeft - marginRight);
+                float finalMaxWidth = (text.MaxWidth ?? finalWidth) - paddingLeft - paddingRight;
+                if (finalMaxWidth < 0f) finalMaxWidth = 0f;
+
+                if (Math.Abs(finalMaxWidth - textMaxWidth) > 0.01f)
                 {
-                    float extra = recomputeSpan - verticalSpan;
-                    CurrentColumn.ForceReserve(extra);
-                    verticalSpan = recomputeSpan;
-                }
-                else
-                {
-                    verticalSpan = recomputeSpan;
+                    textMaxWidth = finalMaxWidth;
+                    lines = PdfLayoutUtils.WrapText(textContent, text.FontFamily, text.FontSize, textMaxWidth);
+                    lineCount = Math.Max(1, lines.Count);
+                    innerHeight = lineCount * lineHeight;
+                    fullHeight = innerHeight + paddingTop + paddingBottom;
+
+                    fullWidth = (lines.Any()
+                        ? lines.Max(line => PdfLayoutUtils.EstimateTextWidth(line, text.FontFamily, text.FontSize, text.Monospace, text.Bold))
+                        : 0f) + paddingLeft + paddingRight;
+
+                    verticalSpan = text.Rotation != 0f
+                        ? (float)(Math.Abs(fullHeight * Math.Cos(text.Rotation * Math.PI / 180.0)) + Math.Abs(fullWidth * Math.Sin(text.Rotation * Math.PI / 180.0)))
+                        : fullHeight;
+
+                    totalHeight = marginTop + verticalSpan + marginBottom;
+
+                    EnsureSpace(verticalSpan, marginTop, marginBottom, text.AvoidBreakInside);
+                    if (CurrentColumn.Index != columnIndex)
+                        continue;
+
+                    column = CurrentColumn;
                 }
 
-                textMaxWidth = finalMaxWidth;
+                float contentTop = column.Y - marginTop;
+
+                text.X = column.X + marginLeft + paddingLeft;
+                text.Y = contentTop;
+                text.MaxWidth = textMaxWidth;
+                text.PaddingTop = paddingTop;
+                text.PaddingBottom = paddingBottom;
+                text.PaddingLeft = paddingLeft;
+                text.PaddingRight = paddingRight;
+
+                _page.AddElement(text);
+
+                if (text.KeepWithNext)
+                    EnsureSpace(lineHeight, 0, 0);
+
+                return totalHeight;
             }
-
-            float contentTop = slot.Top - marginTop;
-
-            text.X = slot.X + marginLeft + paddingLeft;
-            text.Y = contentTop;
-            text.MaxWidth = textMaxWidth;
-            text.PaddingTop = paddingTop;
-            text.PaddingBottom = paddingBottom;
-            text.PaddingLeft = paddingLeft;
-            text.PaddingRight = paddingRight;
-
-            _page.AddElement(text);
-
-            if (text.KeepWithNext)
-                EnsureSpace(lineHeight, 0, 0);
-
-            return verticalSpan;
         }
 
         internal float AddImage(ImageElement image)
@@ -386,10 +373,14 @@ namespace PdfBuilder.Document
             float verticalSpan = rotatedHeight + extraShadowY;
 
             float contentHeight = overhangTop + shadowUp + verticalSpan;
-            var slot = ReserveBlock(contentHeight, marginTop, marginBottom, image.AvoidBreakInside);
-            float contentTop = slot.Top - marginTop;
+            float totalHeight = marginTop + contentHeight + marginBottom;
 
-            image.X = slot.X + marginLeft + paddingLeft;
+            EnsureSpace(contentHeight, marginTop, marginBottom, image.AvoidBreakInside);
+
+            var column = CurrentColumn;
+            float contentTop = column.Y - marginTop;
+
+            image.X = column.X + marginLeft + paddingLeft;
             image.Y = contentTop - overhangTop - shadowUp;
 
             image.Width = imageWidth;
@@ -407,7 +398,7 @@ namespace PdfBuilder.Document
                 EnsureSpace(reserve, 0, 0);
             }
 
-            return contentHeight;
+            return totalHeight;
         }
 
         internal float AddTable(TableElement table)
@@ -415,30 +406,48 @@ namespace PdfBuilder.Document
             const float marginTop = 8f;
             const float marginBottom = 0f;
 
-            float estimatedHeight = EstimateTableHeight(table);
+            float originalX = table.X;
+            float originalY = table.Y;
+            float? originalWidth = table.TableWidth;
+            bool widthProvided = originalWidth.HasValue && originalWidth.Value > 0f;
 
             // If avoid-break-inside, treat table atomically; otherwise let TablePaginator split it later
-            var slot = ReserveBlock(estimatedHeight, marginTop, marginBottom, table.AvoidBreakInside);
-            float contentTop = slot.Top - marginTop;
-
-            if (table.X == 0f) table.X = slot.X;
-            if (table.Y == 0f) table.Y = contentTop;
-            if (!table.TableWidth.HasValue || table.TableWidth.Value <= 0f)
-                table.TableWidth = slot.Width;
-
-            float actualHeight = EstimateTableHeight(table);
-            if (actualHeight > estimatedHeight + 0.1f)
+            while (true)
             {
-                CurrentColumn.ForceReserve(actualHeight - estimatedHeight);
-                estimatedHeight = actualHeight;
+                var column = CurrentColumn;
+                int columnIndex = column.Index;
+
+                if (!widthProvided)
+                    table.TableWidth = column.Width;
+
+                float blockHeight = EstimateTableHeight(table);
+                float totalHeight = marginTop + blockHeight + marginBottom;
+
+                EnsureSpace(blockHeight, marginTop, marginBottom, table.AvoidBreakInside);
+
+                if (CurrentColumn.Index != columnIndex)
+                {
+                    table.X = originalX;
+                    table.Y = originalY;
+                    if (!widthProvided)
+                        table.TableWidth = originalWidth;
+                    continue;
+                }
+
+                column = CurrentColumn;
+                if (!widthProvided)
+                    table.TableWidth = column.Width;
+
+                if (table.X == 0f) table.X = column.X;
+                if (table.Y == 0f) table.Y = column.Y - marginTop;
+
+                _page.AddElement(table);
+
+                if (table.KeepWithNext)
+                    EnsureSpace(12f, 0, 0);
+
+                return totalHeight;
             }
-
-            _page.AddElement(table);
-
-            if (table.KeepWithNext)
-                EnsureSpace(12f, 0, 0);
-
-            return estimatedHeight;
         }
 
         internal float AddChart(ChartElement chart)
@@ -453,19 +462,22 @@ namespace PdfBuilder.Document
                 : 0f;
 
             float blockHeight = titleSpace + bodyHeight + legendSpace;
+            float totalHeight = marginTop + blockHeight + marginBottom;
 
-            var slot = ReserveBlock(blockHeight, marginTop, marginBottom, avoidBreakInside: true);
-            float contentTop = slot.Top - marginTop;
+            EnsureSpace(blockHeight, marginTop, marginBottom, avoidBreakInside: true);
 
-            if (chart.X == 0f) chart.X = slot.X;
+            var column = CurrentColumn;
+            float contentTop = column.Y - marginTop;
+
+            if (chart.X == 0f) chart.X = column.X;
             if (chart.Y == 0f) chart.Y = contentTop;
 
-            if (chart.Width <= 0f) chart.Width = slot.Width;
+            if (chart.Width <= 0f) chart.Width = column.Width;
             if (chart.Height <= 0f) chart.Height = 220f;
 
             _page.AddElement(chart);
 
-            return blockHeight;
+            return totalHeight;
         }
 
         // ===== Row/Grid (NEW, simple row with %/fr/px cols and gap) =====
@@ -616,17 +628,20 @@ namespace PdfBuilder.Document
             const float marginBottom = 0f;
             const float conservativeRow = 20f; // small preflight to reduce overlaps
 
-            var slot = ReserveBlock(conservativeRow, marginTop, marginBottom, avoidBreakInside: true);
-            float contentTop = slot.Top - marginTop;
+            float totalHeight = marginTop + conservativeRow + marginBottom;
+            EnsureSpace(conservativeRow, marginTop, marginBottom, avoidBreakInside: true);
 
-            if (list.X == 0f) list.X = slot.X;
+            var column = CurrentColumn;
+            float contentTop = column.Y - marginTop;
+
+            if (list.X == 0f) list.X = column.X;
             if (list.Y == 0f) list.Y = contentTop;
-            if (list.MaxWidth <= 0f) list.MaxWidth = slot.Width;   // if your ListElement supports Width
+            if (list.MaxWidth <= 0f) list.MaxWidth = column.Width;   // if your ListElement supports Width
 
             _page.AddElement(list);
 
             // Advance a small amount; exact stacking is refined by renderer/paginator
-            return conservativeRow;
+            return totalHeight;
         }
 
         // Called by RichTextBuilder.Add()
@@ -636,16 +651,19 @@ namespace PdfBuilder.Document
             const float marginBottom = 0f;
             const float conservativeBlock = 22f;
 
-            var slot = ReserveBlock(conservativeBlock, marginTop, marginBottom, avoidBreakInside: true);
-            float contentTop = slot.Top - marginTop;
+            float totalHeight = marginTop + conservativeBlock + marginBottom;
+            EnsureSpace(conservativeBlock, marginTop, marginBottom, avoidBreakInside: true);
 
-            if (rt.X == 0f) rt.X = slot.X;
+            var column = CurrentColumn;
+            float contentTop = column.Y - marginTop;
+
+            if (rt.X == 0f) rt.X = column.X;
             if (rt.Y == 0f) rt.Y = contentTop;
-            if (rt.MaxWidth <= 0f) rt.MaxWidth = slot.Width; // if your type exposes MaxWidth
+            if (rt.MaxWidth <= 0f) rt.MaxWidth = column.Width; // if your type exposes MaxWidth
 
             _page.AddElement(rt);
 
-            return conservativeBlock;
+            return totalHeight;
         }
 
         private float MeasureCellContentHeight(TableElement table, TableCell cell, float cellWidth)

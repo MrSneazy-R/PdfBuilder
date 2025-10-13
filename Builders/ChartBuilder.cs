@@ -645,7 +645,14 @@ namespace PdfBuilder.Document
         // ========== Commit ==========
         public float Add()
         {
-            return _col.AddChart(_chart);
+            float height = _col.AddChart(_chart);
+            var flow = _col.GetFlow();
+            if (!flow.CanFit(height))
+                flow.Advance(height);
+            else
+                flow.Reserve(height);
+
+            return height;
         }
     }
 }

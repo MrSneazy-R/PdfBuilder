@@ -72,7 +72,14 @@ namespace PdfBuilder.Document
         // --- End chain and add to column ---
         public float Add()
         {
-            return _col.AddText(_text);
+            float height = _col.AddText(_text);
+            var flow = _col.GetFlow();
+            if (!flow.CanFit(height))
+                flow.Advance(height);
+            else
+                flow.Reserve(height);
+
+            return height;
         }
     }
 }
