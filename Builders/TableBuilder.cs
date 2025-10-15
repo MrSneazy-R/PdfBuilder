@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Elements;
+using PdfBuilder.Elements;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -32,14 +32,7 @@ namespace PdfBuilder.Document
         /// <summary>Finalize and add this table to the column (expects ColumnBuilder.AddTable).</summary>
         public float Add()
         {
-            float height = _column.AddTable(_table);
-            var flow = _column.GetFlow();
-            if (!flow.CanFit(height))
-                flow.Advance(height);
-            else
-                flow.Reserve(height);
-
-            return height;
+            return _column.AddTable(_table);
         }
 
         // ------------------ Position / Size ------------------
@@ -434,3 +427,5 @@ namespace PdfBuilder.Document
         }
     }
 }
+
+

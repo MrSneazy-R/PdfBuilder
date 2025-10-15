@@ -1,29 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PdfBuilder.TextShaping;
 
 namespace PdfBuilder.Document
 {
     public static class PdfLayoutUtils
     {
-        // Helvetica ASCII width table (1/1000 em). Fallback for non-ASCII ~500.
-        private static readonly int[] HelveticaWidths = new int[128]
-        {
-            // 0-31
-            0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-            // 32-47:  space !"#$%&'()*+,-./
-            278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
-            // 48-63:  0-9:;<=>?
-            556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,
-            // 64-95:  @A-Z[\]^_
-            1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,
-            667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,
-            // 96-127: `a-z{|}~ DEL
-            278,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,
-            611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,0
-        };
-
         // ---------- Encoding helpers ----------
         public static string EncodeText(string text)
         {
@@ -46,7 +30,7 @@ namespace PdfBuilder.Document
                     case ')': sb.Append(@"\)"); break;
 
                     // ASCII-only output: emit a few common non-ASCII via octal so you don't need CP1252
-                    case '°': sb.Append(@"\260"); break; // 176 dec = 260 oct
+                    case '�': sb.Append(@"\260"); break; // 176 dec = 260 oct
 
                     default:
                         // keep ASCII; replace other non-ASCII with '?'
@@ -94,22 +78,20 @@ namespace PdfBuilder.Document
         {
             if (string.IsNullOrEmpty(text)) return 0f;
 
-            // Simple monospace shortcut
-            if (monospace) return text.Length * fontSize * 0.6f;
+            var request = new TextShapingRequest(
+                text ?? string.Empty,
+                string.IsNullOrWhiteSpace(fontFamily) ? "Helvetica" : fontFamily,
+                fontSize > 0 ? fontSize : 12f,
+                lineHeight: 1f,
+                maxWidth: float.PositiveInfinity,
+                bold: bold,
+                italic: false,
+                smallCaps: false,
+                monospace: monospace,
+                fallbackFonts: null);
 
-            // Approx helvetica metrics for ASCII; non-ASCII ~500
-            float units = 0f;
-            for (int i = 0; i < text.Length; i++)
-            {
-                char c = text[i];
-                int w = (c < 128) ? HelveticaWidths[c] : 500;
-                units += w;
-            }
-
-            // Make bold a tad wider
-            if (bold) units *= 1.05f;
-
-            return (units * fontSize) / 1000f;
+            var shaped = TextShaper.Shared.ShapeParagraph(request);
+            return shaped.MaxLineWidth;
         }
 
         public static float MeasureText(string text, string fontFamily, float fontSize) =>
@@ -183,3 +165,15 @@ namespace PdfBuilder.Document
     public enum VerticalAlign { Top, Middle, Bottom }
     public enum HorizontalAlign { Left, Center, Right }
 }
+
+
+
+
+
+
+
+
+
+
+
+

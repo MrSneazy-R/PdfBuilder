@@ -1,10 +1,9 @@
 ﻿using PdfBuilder.Models;
 using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
-using System.Linq;
 using System.Text;
+using PdfBuilder.TextShaping;
 
 namespace PdfBuilder.Writer
 {
@@ -32,7 +31,7 @@ namespace PdfBuilder.Writer
             StringBuilder sb,
             PdfPage page,
             WatermarkSpec wm,
-            Dictionary<string, int> fontObjId,
+            PdfRenderContext context,
             bool aboveContent)
         {
             if (wm == null) return;
@@ -40,49 +39,62 @@ namespace PdfBuilder.Writer
             // TEXT watermark (image path can be added similarly)
             if (!string.IsNullOrEmpty(wm.Text))
             {
-                var col = ParseColor(wm.Color);
-                string rgb = string.Format(CultureInfo.InvariantCulture, "{0} {1} {2} rg",
-                    col.R / 255.0, col.G / 255.0, col.B / 255.0);
+                var request = new TextShapingRequest(
+                    wm.Text!,
+                    wm.FontFamily,
+                    wm.FontSize > 0 ? wm.FontSize : 80f,
+                    1.0f,
+                    float.PositiveInfinity,
+                    bold: false,
+                    italic: false,
+                    smallCaps: false,
+                    monospace: false,
+                    fallbackFonts: null);
 
-                string fontKey = FontManager.NormalizeFontKey(wm.FontFamily);
-                int fontId = fontObjId.TryGetValue(fontKey, out var id)
-                    ? id
-                    : (fontObjId.ContainsKey("Helvetica") ? fontObjId["Helvetica"] : fontObjId.Values.First());
+                var paragraph = TextShaper.Shared.ShapeParagraph(request);
+                if (paragraph.Lines.Count > 0)
+                {
+                    string rgb = ColorRgb(wm.Color);
+                    float x = wm.CenterOnPage ? (page.Width / 2f) : wm.X;
+                    float y = wm.CenterOnPage ? (page.Height / 2f) : wm.Y;
 
-                float x = wm.CenterOnPage ? (page.Width / 2f) : wm.X;
-                float y = wm.CenterOnPage ? (page.Height / 2f) : wm.Y;
+                    double rad = wm.RotationDegrees * Math.PI / 180.0;
+                    double a = Math.Cos(rad), b = Math.Sin(rad), c = -b, d = a;
 
-                double rad = wm.RotationDegrees * Math.PI / 180.0;
-                double a = Math.Cos(rad), b = Math.Sin(rad), c = -b, d = a;
+                    sb.Append("q ");
+                    if (!string.IsNullOrEmpty(wm.ExtGStateResourceName))
+                        sb.Append($"{wm.ExtGStateResourceName} gs ");
+                    sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(x)} {N(y)} cm ");
+                    sb.Append($"{N(a)} {N(b)} {N(c)} {N(d)} 0 0 cm ");
 
-                sb.Append("q ");
-                if (!string.IsNullOrEmpty(wm.ExtGStateResourceName))
-                    sb.Append($"{wm.ExtGStateResourceName} gs ");
-                sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(x)} {N(y)} cm ");   // translate
-                sb.Append($"{N(a)} {N(b)} {N(c)} {N(d)} 0 0 cm ");              // rotate
-                sb.Append("BT ");
-                sb.Append($"/F{fontId} {N(wm.FontSize)} Tf {rgb} ");
+                    float blockHeight = paragraph.TotalHeight;
+                    float top = blockHeight / 2f;
+                    float baseline = top - paragraph.Lines[0].Ascent;
 
-                var textW = PdfBuilder.Document.PdfLayoutUtils.EstimateTextWidth(wm.Text, wm.FontFamily, wm.FontSize);
-                sb.Append($"{N(-textW / 2f)} {N(-wm.FontSize / 3f)} Td ");
-                sb.Append($"{PdfText(wm.Text)} Tj ET\n");
-                sb.Append("Q\n");
+                    foreach (var line in paragraph.Lines)
+                    {
+                        float lineWidth = line.Width;
+                        float cursorX = -lineWidth / 2f;
+
+                        foreach (var run in line.Runs)
+                        {
+                            if (run.Glyphs.Count == 0)
+                                continue;
+
+                            var encoded = GlyphRunEncoder.Encode(run, context);
+                            sb.Append("BT ");
+                            sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {rgb} rg ");
+                            sb.Append($"{N(cursorX)} {N(baseline)} Td ");
+                            sb.Append($"{encoded.TjCommand} ET\n");
+                            cursorX += run.Width;
+                        }
+
+                        baseline -= line.LineHeight;
+                    }
+
+                    sb.Append("Q\n");
+                }
             }
-        }
-
-        private static string PdfText(string s) =>
-            s.Any(ch => ch > 0x7F) ? Utf16Hex(s) : $"({Escape(s)})";
-
-        private static string Escape(string s) =>
-            s.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
-
-        private static string Utf16Hex(string s)
-        {
-            var raw = Encoding.BigEndianUnicode.GetBytes(s);
-            var withBom = new byte[raw.Length + 2];
-            withBom[0] = 0xFE; withBom[1] = 0xFF;
-            Buffer.BlockCopy(raw, 0, withBom, 2, raw.Length);
-            return $"<{BitConverter.ToString(withBom).Replace("-", "")}>";
         }
 
         private static Color ParseColor(string? hex)
@@ -97,6 +109,13 @@ namespace PdfBuilder.Writer
                 int.TryParse(hex.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var b))
                 return Color.FromArgb(r, g, b);
             return Color.Black;
+        }
+
+        private static string ColorRgb(string? hex)
+        {
+            var col = ParseColor(hex);
+            return string.Format(CultureInfo.InvariantCulture, "{0} {1} {2}",
+                col.R / 255.0, col.G / 255.0, col.B / 255.0);
         }
     }
 }

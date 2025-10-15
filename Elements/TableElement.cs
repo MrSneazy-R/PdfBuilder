@@ -1,4 +1,5 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
+using PdfBuilder.Document.TextShaping;
 using TableModels = PdfBuilder.Elements.Table;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
@@ -15,7 +16,7 @@ namespace PdfBuilder.Elements
     {
         Wrap,       // multi-line wrapping within cell bounds
         Clip,       // single line, clipped at cell bounds
-        Ellipsis    // single line, truncates tail with "…"
+        Ellipsis    // single line, truncates tail with "�"
     }
 
     public enum CellWordBreak
@@ -222,5 +223,10 @@ namespace PdfBuilder.Elements
 
         public TableCell() { }
         public TableCell(string text) { Text = text; }
+
+        internal RichTextLayoutResult? CachedLayout { get; set; }
+        internal float CachedLayoutWidth { get; set; } = -1f;
+        internal float CachedContentHeight { get; set; }
     }
 }
+

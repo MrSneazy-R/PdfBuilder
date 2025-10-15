@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Models;
+using PdfBuilder.Models;
 
 namespace PdfBuilder.Document
 {
@@ -30,14 +30,7 @@ namespace PdfBuilder.Document
 
         public float Add()
         {
-            float height = _col.AddRichText(_rt);
-            var flow = _col.GetFlow();
-            if (!flow.CanFit(height))
-                flow.Advance(height);
-            else
-                flow.Reserve(height);
-
-            return height;
+            return _col.AddRichText(_rt);
         }
 
         public sealed class SpanBuilder
@@ -57,3 +50,5 @@ namespace PdfBuilder.Document
         }
     }
 }
+
+

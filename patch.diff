@@ -1,0 +1,10 @@
+*** Begin Patch
+*** Update File: Writer/Renderers/TableRenderer.cs
+@@
+-        public static void Append(StringBuilder sb, TableElement table, Dictionary<string, int> fontObjId)
++        public static void Append(StringBuilder sb, TableElement table, PdfRenderContext context)
+         {
+-            if (table == null || table.Rows == null || table.Rows.Count == 0) return;
++            var fontObjId = context.LegacyFontMap;
++            if (table == null || table.Rows == null || table.Rows.Count == 0) return;
+*** End Patch

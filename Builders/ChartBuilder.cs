@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Elements;
+using PdfBuilder.Elements;
 using System;
 using System.Drawing;
 using static PdfBuilder.Elements.ChartElement;
@@ -42,7 +42,7 @@ namespace PdfBuilder.Document
             if (labels != null) _chart.XAxis.Categories.AddRange(labels);
             return this;
         }
-        public ChartBuilder NumericX(float? min = null, float? max = null, int ticks = 5, Func<float, string> formatter = null)
+        public ChartBuilder NumericX(float? min = null, float? max = null, int ticks = 5, Func<float, string>? formatter = null)
         {
             _chart.XAxis = PdfBuilder.Elements.Axis.Numeric();
             _chart.XAxis.Min = min; _chart.XAxis.Max = max;
@@ -53,7 +53,7 @@ namespace PdfBuilder.Document
         public ChartBuilder XLabelRotation(float deg)
         { _chart.XAxis.LabelRotationDeg = deg; return this; }
 
-        public ChartBuilder NumericY(float? min = null, float? max = null, int ticks = 5, Func<float, string> formatter = null)
+        public ChartBuilder NumericY(float? min = null, float? max = null, int ticks = 5, Func<float, string>? formatter = null)
         {
             _chart.YAxis = PdfBuilder.Elements.Axis.Numeric();
             _chart.YAxis.Min = min; _chart.YAxis.Max = max;
@@ -61,7 +61,7 @@ namespace PdfBuilder.Document
             if (formatter != null) _chart.YAxis.Format = formatter;
             return this;
         }
-        public ChartBuilder SecondaryNumericY(float? min = null, float? max = null, int ticks = 5, Func<float, string> formatter = null)
+        public ChartBuilder SecondaryNumericY(float? min = null, float? max = null, int ticks = 5, Func<float, string>? formatter = null)
         {
             _chart.YAxis2 = PdfBuilder.Elements.Axis.Numeric();
             _chart.YAxis2.Min = min; _chart.YAxis2.Max = max;
@@ -130,10 +130,10 @@ namespace PdfBuilder.Document
         public ChartBuilder BarValueLabels(
         bool show = true,
         BarValueLabelPos pos = BarValueLabelPos.OutsideEnd,
-        string font = null,
+        string? font = null,
         float size = 8f,
         Color? color = null,
-        Func<float, string> formatter = null,
+        Func<float, string>? formatter = null,
         float padding = 2f)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is BarSeries b)
@@ -180,10 +180,10 @@ namespace PdfBuilder.Document
         public ChartBuilder LineValueLabels(
         bool show = true,
         LineValueLabelPos pos = LineValueLabelPos.Above,
-        string font = null,
+        string? font = null,
         float size = 8f,
         Color? color = null,
-        Func<System.Drawing.PointF, string> formatter = null,
+        Func<System.Drawing.PointF, string>? formatter = null,
         float offset = 3f,
         bool onlyLast = false)
         {
@@ -201,7 +201,7 @@ namespace PdfBuilder.Document
             return this;
         }
 
-        // ========== Series helpers (Bars & Lines – existing) ==========
+        // ========== Series helpers (Bars & Lines � existing) ==========
         public ChartBuilder AddBars(string name, Color fill, Color stroke, float strokeW, params float[] values)
         {
             var s = new BarSeries { Name = name, Fill = fill, Stroke = stroke, StrokeWidth = strokeW };
@@ -233,7 +233,7 @@ namespace PdfBuilder.Document
             _chart.Series.Add(s);
             return this;
         }
-        public ChartBuilder PieSlice(string label, float value, Color? fill = null, float explodeRatio = 0f, string customLabel = null)
+        public ChartBuilder PieSlice(string label, float value, Color? fill = null, float explodeRatio = 0f, string? customLabel = null)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is PieSeries p)
                 p.Slices.Add(new PieSlice { Label = label ?? "", Value = value, Fill = fill, ExplodeRatio = Math.Max(0, explodeRatio), CustomLabel = customLabel });
@@ -258,7 +258,7 @@ namespace PdfBuilder.Document
         { if (_chart.Series.Count > 0 && _chart.Series[^1] is PieSeries p) p.AppendPercentages = on; return this; }
 
         public ChartBuilder PieLabelStyle(
-            string font = null, float? size = null, Color? color = null,
+            string? font = null, float? size = null, Color? color = null,
             float? offset = null, float? padding = null,
             Color? leaderColor = null, float? leaderWidth = null)
         {
@@ -275,7 +275,7 @@ namespace PdfBuilder.Document
             return this;
         }
         public ChartBuilder PieSliceStyle(
-        string font = null, float? size = null, Color? color = null,
+        string? font = null, float? size = null, Color? color = null,
         float? offset = null, float? padding = null, bool? leaders = null)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is PieSeries p && p.Slices.Count > 0)
@@ -338,7 +338,7 @@ namespace PdfBuilder.Document
         }
 
         // Add a single bubble to the last BubbleSeries (with optional color + legend label)
-        public ChartBuilder BubblePoint(float x, float y, float size, Color? fill = null, string category = null)
+        public ChartBuilder BubblePoint(float x, float y, float size, Color? fill = null, string? category = null)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is BubbleSeries b)
                 b.Points.Add(new BubblePoint { X = x, Y = y, Size = size, Fill = fill, Category = category });
@@ -347,7 +347,7 @@ namespace PdfBuilder.Document
 
         public ChartBuilder BubbleLabels(bool show = true, string font = "Helvetica", float size = 9f,
                                          Color? color = null, float offset = 6f,
-                                         Func<BubblePoint, string> formatter = null)
+                                         Func<BubblePoint, string>? formatter = null)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is BubbleSeries b)
             {
@@ -472,10 +472,10 @@ namespace PdfBuilder.Document
 
         public ChartBuilder HistogramValueLabels(
             bool show = true,
-            string font = null,
+            string? font = null,
             float size = 8f,
             Color? color = null,
-            Func<int, string> formatter = null,
+            Func<int, string>? formatter = null,
             float offset = 3f)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is HistogramSeries h)
@@ -611,7 +611,7 @@ namespace PdfBuilder.Document
         }
         public ChartBuilder ParetoItem(int categoryIndex, float value)
         { if (_chart.Series.Count > 0 && _chart.Series[^1] is ParetoSeries p) p.Items.Add((categoryIndex, value)); return this; }
-        public ChartBuilder ParetoUseRightAxis(bool on = true, Func<float, string> percentFormatter = null)
+        public ChartBuilder ParetoUseRightAxis(bool on = true, Func<float, string>? percentFormatter = null)
         {
             // Ensure a secondary axis 0..100 with percent labels
             if (on)
@@ -632,7 +632,7 @@ namespace PdfBuilder.Document
             var s = new GanttSeries { Name = name, Stroke = stroke, StrokeWidth = strokeW, RowGap = rowGap, BarHeightRatio = barHeightRatio };
             _chart.Series.Add(s); return this;
         }
-        public ChartBuilder GanttTask(int categoryIndex, float startX, float endX, string label = null, Color? fill = null, Color? stroke = null)
+        public ChartBuilder GanttTask(int categoryIndex, float startX, float endX, string? label = null, Color? fill = null, Color? stroke = null)
         {
             if (_chart.Series.Count > 0 && _chart.Series[^1] is GanttSeries g)
                 g.Tasks.Add(new GanttTask { CategoryIndex = categoryIndex, StartX = startX, EndX = endX, Label = label ?? "", Fill = fill, Stroke = stroke });
@@ -645,14 +645,10 @@ namespace PdfBuilder.Document
         // ========== Commit ==========
         public float Add()
         {
-            float height = _col.AddChart(_chart);
-            var flow = _col.GetFlow();
-            if (!flow.CanFit(height))
-                flow.Advance(height);
-            else
-                flow.Reserve(height);
-
-            return height;
+            return _col.AddChart(_chart);
         }
     }
 }
+
+
+

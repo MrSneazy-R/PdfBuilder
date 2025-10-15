@@ -1,6 +1,7 @@
 ﻿// PdfBuilder/Writer/ChartRenderer.cs
 using PdfBuilder.Elements;
 using PdfBuilder.Encoder;
+using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -17,7 +18,7 @@ namespace PdfBuilder.Writer
         private static string N(double v) => v.ToString("0.###", Inv);
         private static float AlignHalf(float v) => (float)Math.Round(v * 2f) / 2f;
 
-        public static void Append(StringBuilder sb, ChartElement c, Dictionary<string, int> fontObjId)
+        public static void Append(StringBuilder sb, ChartElement c, PdfRenderContext context)
         {
             if (c == null) return;
             var pieLeaderLines = new List<(Color c, float w, float x0, float y0, float x1, float y1, float x2, float y2)>();
@@ -61,10 +62,8 @@ namespace PdfBuilder.Writer
             float yTop = c.Y;
             if (!string.IsNullOrWhiteSpace(c.Title))
             {
-                int fId = ResolveFontId(fontObjId, c.TitleFont);
-                sb.Append("BT ");
-                sb.Append($"/F{fId} {N(c.TitleSize)} Tf 0 0 0 rg ");
-                sb.Append($"{N(c.X)} {N(yTop)} Td {PdfEnc.WinAnsiHex(AnsiSafe(c.Title))} Tj ET\n");
+                string titleFont = string.IsNullOrWhiteSpace(c.TitleFont) ? c.Font : c.TitleFont;
+                DrawText(sb, context, titleFont, c.TitleSize, Color.Black, c.X, yTop, c.Title);
                 yTop -= c.TitleSize * 1.2f;
             }
 
@@ -74,6 +73,7 @@ namespace PdfBuilder.Writer
             float plotW = Math.Max(1, c.Width - (c.PaddingLeft + c.PaddingRight));
             float plotH = Math.Max(1, c.Height - (c.PaddingTop + c.PaddingBottom));
             float plotBottom = plotYTop - plotH;
+            string axisFont = string.IsNullOrWhiteSpace(c.Font) ? "Helvetica" : c.Font;
 
             // Category handling (default: categories on X)
             bool categoriesOnY =
@@ -261,7 +261,6 @@ namespace PdfBuilder.Writer
 
 
             // ===== Axes & grid (cartesian only) =====
-            int labF = ResolveFontId(fontObjId, c.Font);
             if (anyCartesian)
             {
                 // Grid lines
@@ -306,7 +305,7 @@ namespace PdfBuilder.Writer
                 {
                     string s = c.YAxis.Format(t);
                     float ty = YtoPx(t, 0);
-                    DrawText(sb, labF, c.FontSize, c.AxisColor, c.X + 2, ty - c.FontSize * 0.35f, s);
+                    DrawText(sb, context, axisFont, c.FontSize, c.AxisColor, c.X + 2, ty - c.FontSize * 0.35f, s);
                 }
 
                 // Y2 tick labels (right)
@@ -317,7 +316,7 @@ namespace PdfBuilder.Writer
                         string s = c.YAxis2.Format(t);
                         float ty = YtoPx(t, 1);
                         float tx = plotX + plotW + 2;
-                        DrawText(sb, labF, c.FontSize, c.AxisColor, tx, ty - c.FontSize * 0.35f, s);
+                        DrawText(sb, context, axisFont, c.FontSize, c.AxisColor, tx, ty - c.FontSize * 0.35f, s);
                     }
                 }
 
@@ -331,7 +330,7 @@ namespace PdfBuilder.Writer
                         {
                             string lab = i < c.XAxis.Categories.Count ? c.XAxis.Categories[i] : (i + 1).ToString();
                             float cx = XBandLeft(i, catCount) + band / 2f;
-                            DrawTextRot(sb, labF, c.FontSize, c.AxisColor, cx, plotBottom - 12, lab, c.XAxis.LabelRotationDeg, hCenter: true);
+                            DrawTextRot(sb, context, axisFont, c.FontSize, c.AxisColor, cx, plotBottom - 12, lab, c.XAxis.LabelRotationDeg, hCenter: true);
                             if (c.ShowGridX)
                             {
                                 float gx = AlignHalf(XBandLeft(i, catCount));
@@ -347,7 +346,7 @@ namespace PdfBuilder.Writer
                         {
                             string lab = i < c.XAxis.Categories.Count ? c.XAxis.Categories[i] : (i + 1).ToString();
                             float cy = plotYTop - (i + 0.5f) * bandH;
-                            DrawText(sb, labF, c.FontSize, c.AxisColor, c.X + 2, cy - c.FontSize * 0.35f, lab);
+                            DrawText(sb, context, axisFont, c.FontSize, c.AxisColor, c.X + 2, cy - c.FontSize * 0.35f, lab);
                         }
                     }
                 }
@@ -449,9 +448,11 @@ namespace PdfBuilder.Writer
                             txt = string.IsNullOrWhiteSpace(txt) ? $"{pct:0.#}%" : $"{txt} ({pct:0.#}%)";
                         }
 
-                        float tw = EstimateTextWidth(txt, fontSize);
+                        float effectiveFontSize = fontSize > 0 ? fontSize : ps.LabelFontSize;
+                        string resolvedFont = string.IsNullOrWhiteSpace(fontName) ? axisFont : fontName;
+                        float tw = MeasureTextWidth(txt, resolvedFont, effectiveFontSize);
                         float tx = right ? ax + labPad : ax - tw - labPad;
-                        float ty = ay - fontSize * 0.35f;
+                        float ty = ay - effectiveFontSize * 0.35f;
 
                         // optional leader line to the text edge
                         if (ps.LabelOutside && leaders)
@@ -467,7 +468,7 @@ namespace PdfBuilder.Writer
                         }
 
                         // cache draw
-                        pieTexts.Add((fontName, fontSize, fontColor, tx, ty, txt));
+                        pieTexts.Add((resolvedFont, effectiveFontSize, fontColor, tx, ty, txt));
                     }
 
 
@@ -558,11 +559,11 @@ namespace PdfBuilder.Writer
                     sb.Append($"{N(x1)} {N(y1)} m {N(x2)} {N(y1)} l {N(x3)} {N(y0)} l {N(x4)} {N(y0)} l h S\n");
 
                     // label (center)
-                    int fId = ResolveFontId(fontObjId, fs.LabelFont);
                     string lbl = $"{st.Stage}  {st.Value:0.##}";
                     float cx = plotX + plotW / 2f;
                     float cy = (y1 + y0) / 2f - fs.LabelFontSize * 0.35f;
-                    DrawTextCentered(sb, fId, fs.LabelFontSize, fs.LabelColor, cx, cy, lbl);
+                    string funnelFont = string.IsNullOrWhiteSpace(fs.LabelFont) ? axisFont : fs.LabelFont;
+                    DrawTextCentered(sb, context, funnelFont, fs.LabelFontSize, fs.LabelColor, cx, cy, lbl);
                 }
             }
 
@@ -687,7 +688,7 @@ namespace PdfBuilder.Writer
                 if (bins.Count == 0) continue;
 
                 int yIdx = hs.YAxisIndex;
-                int fIdLbl = ResolveFontId(fontObjId, hs.LabelFont); // for value labels
+                string histLabelFont = string.IsNullOrWhiteSpace(hs.LabelFont) ? axisFont : hs.LabelFont; // for value labels
 
                 foreach (var (start, end, count) in bins)
                 {
@@ -714,10 +715,10 @@ namespace PdfBuilder.Writer
                     if (hs.ShowLabels && count > 0)
                     {
                         string txt = hs.LabelFormatter != null ? hs.LabelFormatter(count) : count.ToString();
-                        float tw = EstimateTextWidth(txt, hs.LabelSize);
+                        float tw = MeasureTextWidth(txt, histLabelFont, hs.LabelSize);
                         float tx = bx + bw / 2f - tw / 2f;
                         float ty = Math.Max(Y0, Y1) + hs.LabelOffset;
-                        DrawText(sb, fIdLbl, hs.LabelSize, hs.LabelColor, tx, ty, txt);
+                        DrawText(sb, context, histLabelFont, hs.LabelSize, hs.LabelColor, tx, ty, txt);
                     }
                 }
 
@@ -915,8 +916,8 @@ namespace PdfBuilder.Writer
                                 if (bs.ShowValueLabels)
                                 {
                                     string txt = bs.ValueFormatter(v);
-                                    int fIdLbl = ResolveFontId(fontObjId, bs.ValueLabelFont);
-                                    float tw = EstimateTextWidth(txt, bs.ValueLabelSize);
+                                    string barLabelFont = string.IsNullOrWhiteSpace(bs.ValueLabelFont) ? axisFont : bs.ValueLabelFont;
+                                    float tw = MeasureTextWidth(txt, barLabelFont, bs.ValueLabelSize);
                                     float cx = (x0 + x1) * 0.5f;
                                     float top = Math.Max(y0, y1), bot = Math.Min(y0, y1);
                                     float ly;
@@ -925,31 +926,31 @@ namespace PdfBuilder.Writer
                                     {
                                         case BarValueLabelPos.Center:
                                             ly = (top + bot) * 0.5f - bs.ValueLabelSize * 0.5f;
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.InsideEnd:
                                             ly = top - bs.LabelPadding - bs.ValueLabelSize;
                                             if (y1 < y0) ly = bot + bs.LabelPadding; // negative bar
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.OutsideEnd:
                                             ly = top + bs.LabelPadding;
                                             if (y1 < y0) ly = bot - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.InsideBase:
                                             ly = bot + bs.LabelPadding;
                                             if (y1 < y0) ly = top - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.OutsideBase:
                                             ly = bot - bs.LabelPadding - bs.ValueLabelSize;
                                             if (y1 < y0) ly = top + bs.LabelPadding; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
                                     }
                                 }
@@ -985,8 +986,8 @@ namespace PdfBuilder.Writer
                                     if (bs.ShowValueLabels)
                                     {
                                         string txt = bs.ValueFormatter(v);
-                                        int fIdLbl = ResolveFontId(fontObjId, bs.ValueLabelFont);
-                                        float tw = EstimateTextWidth(txt, bs.ValueLabelSize);
+                                        string barLabelFont = string.IsNullOrWhiteSpace(bs.ValueLabelFont) ? axisFont : bs.ValueLabelFont;
+                                        float tw = MeasureTextWidth(txt, barLabelFont, bs.ValueLabelSize);
                                         float cx = (x0 + x1) * 0.5f;
                                         float top = Math.Max(y0, y1), bot = Math.Min(y0, y1);
                                         float ly;
@@ -995,31 +996,31 @@ namespace PdfBuilder.Writer
                                         {
                                             case BarValueLabelPos.Center:
                                                 ly = (top + bot) * 0.5f - bs.ValueLabelSize * 0.5f;
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.InsideEnd:
                                                 ly = top - bs.LabelPadding - bs.ValueLabelSize;
                                                 if (y1 < y0) ly = bot + bs.LabelPadding; // negative bar
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.OutsideEnd:
                                                 ly = top + bs.LabelPadding;
                                                 if (y1 < y0) ly = bot - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.InsideBase:
                                                 ly = bot + bs.LabelPadding;
                                                 if (y1 < y0) ly = top - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.OutsideBase:
                                                 ly = bot - bs.LabelPadding - bs.ValueLabelSize;
                                                 if (y1 < y0) ly = top + bs.LabelPadding; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
                                         }
                                     }
@@ -1062,8 +1063,8 @@ namespace PdfBuilder.Writer
                                 if (bs.ShowValueLabels)
                                 {
                                     string txt = bs.ValueFormatter(v);
-                                    int fIdLbl = ResolveFontId(fontObjId, bs.ValueLabelFont);
-                                    float tw = EstimateTextWidth(txt, bs.ValueLabelSize);
+                                    string barLabelFont = string.IsNullOrWhiteSpace(bs.ValueLabelFont) ? axisFont : bs.ValueLabelFont;
+                                    float tw = MeasureTextWidth(txt, barLabelFont, bs.ValueLabelSize);
                                     float cx = (x0 + x1) * 0.5f;
                                     float top = Math.Max(y0, y1), bot = Math.Min(y0, y1);
                                     float ly;
@@ -1072,31 +1073,31 @@ namespace PdfBuilder.Writer
                                     {
                                         case BarValueLabelPos.Center:
                                             ly = (top + bot) * 0.5f - bs.ValueLabelSize * 0.5f;
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.InsideEnd:
                                             ly = top - bs.LabelPadding - bs.ValueLabelSize;
                                             if (y1 < y0) ly = bot + bs.LabelPadding; // negative bar
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.OutsideEnd:
                                             ly = top + bs.LabelPadding;
                                             if (y1 < y0) ly = bot - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.InsideBase:
                                             ly = bot + bs.LabelPadding;
                                             if (y1 < y0) ly = top - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
 
                                         case BarValueLabelPos.OutsideBase:
                                             ly = bot - bs.LabelPadding - bs.ValueLabelSize;
                                             if (y1 < y0) ly = top + bs.LabelPadding; // negative
-                                            DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                            DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                             break;
                                     }
                                 }
@@ -1131,8 +1132,8 @@ namespace PdfBuilder.Writer
                                     if (bs.ShowValueLabels)
                                     {
                                         string txt = bs.ValueFormatter(v);
-                                        int fIdLbl = ResolveFontId(fontObjId, bs.ValueLabelFont);
-                                        float tw = EstimateTextWidth(txt, bs.ValueLabelSize);
+                                        string barLabelFont = string.IsNullOrWhiteSpace(bs.ValueLabelFont) ? axisFont : bs.ValueLabelFont;
+                                        float tw = MeasureTextWidth(txt, barLabelFont, bs.ValueLabelSize);
                                         float cx = (x0 + x1) * 0.5f;
                                         float top = Math.Max(y0, y1), bot = Math.Min(y0, y1);
                                         float ly;
@@ -1141,31 +1142,31 @@ namespace PdfBuilder.Writer
                                         {
                                             case BarValueLabelPos.Center:
                                                 ly = (top + bot) * 0.5f - bs.ValueLabelSize * 0.5f;
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.InsideEnd:
                                                 ly = top - bs.LabelPadding - bs.ValueLabelSize;
                                                 if (y1 < y0) ly = bot + bs.LabelPadding; // negative bar
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.OutsideEnd:
                                                 ly = top + bs.LabelPadding;
                                                 if (y1 < y0) ly = bot - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.InsideBase:
                                                 ly = bot + bs.LabelPadding;
                                                 if (y1 < y0) ly = top - bs.LabelPadding - bs.ValueLabelSize; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
 
                                             case BarValueLabelPos.OutsideBase:
                                                 ly = bot - bs.LabelPadding - bs.ValueLabelSize;
                                                 if (y1 < y0) ly = top + bs.LabelPadding; // negative
-                                                DrawText(sb, fIdLbl, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
+                                                DrawText(sb, context, barLabelFont, bs.ValueLabelSize, bs.ValueLabelColor, cx - tw * 0.5f, ly, txt);
                                                 break;
                                         }
                                     }
@@ -1222,7 +1223,7 @@ namespace PdfBuilder.Writer
                 if (ls.ShowValueLabels)
                 {
                     var mapped = MapLinePoints(pts, ls.UsesCategoryX, catCount, plotW, XBandLeft, XBandWidth, XtoPxNumeric, v => YtoPx(v, ls.YAxisIndex));
-                    int fIdLbl = ResolveFontId(fontObjId, ls.ValueLabelFont);
+                    string lineLabelFont = string.IsNullOrWhiteSpace(ls.ValueLabelFont) ? axisFont : ls.ValueLabelFont;
 
                     IEnumerable<(System.Drawing.PointF p, float x, float y)> toLabel =
                         ls.LabelOnlyLast ? new[] { (pts[^1], mapped[^1].x, mapped[^1].y) }
@@ -1231,15 +1232,15 @@ namespace PdfBuilder.Writer
                     foreach (var (p, x, y) in toLabel)
                     {
                         string txt = ls.PointLabelFormatter(p);
-                        float tw = EstimateTextWidth(txt, ls.ValueLabelSize);
+                        float tw = MeasureTextWidth(txt, lineLabelFont, ls.ValueLabelSize);
                         float ox = 0, oy = 0;
                         switch (ls.ValueLabelPosition)
                         {
-                            case LineValueLabelPos.Above: oy = ls.ValueLabelOffset; DrawText(sb, fIdLbl, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y + oy, txt); break;
-                            case LineValueLabelPos.Below: oy = ls.ValueLabelOffset; DrawText(sb, fIdLbl, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y - oy - ls.ValueLabelSize, txt); break;
-                            case LineValueLabelPos.Right: ox = ls.ValueLabelOffset; DrawText(sb, fIdLbl, ls.ValueLabelSize, ls.ValueLabelColor, x + ox, y - ls.ValueLabelSize * 0.5f, txt); break;
-                            case LineValueLabelPos.Left: ox = ls.ValueLabelOffset; DrawText(sb, fIdLbl, ls.ValueLabelSize, ls.ValueLabelColor, x - tw - ox, y - ls.ValueLabelSize * 0.5f, txt); break;
-                            case LineValueLabelPos.Center: DrawText(sb, fIdLbl, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y - ls.ValueLabelSize * 0.5f, txt); break;
+                            case LineValueLabelPos.Above: oy = ls.ValueLabelOffset; DrawText(sb, context, lineLabelFont, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y + oy, txt); break;
+                            case LineValueLabelPos.Below: oy = ls.ValueLabelOffset; DrawText(sb, context, lineLabelFont, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y - oy - ls.ValueLabelSize, txt); break;
+                            case LineValueLabelPos.Right: ox = ls.ValueLabelOffset; DrawText(sb, context, lineLabelFont, ls.ValueLabelSize, ls.ValueLabelColor, x + ox, y - ls.ValueLabelSize * 0.5f, txt); break;
+                            case LineValueLabelPos.Left: ox = ls.ValueLabelOffset; DrawText(sb, context, lineLabelFont, ls.ValueLabelSize, ls.ValueLabelColor, x - tw - ox, y - ls.ValueLabelSize * 0.5f, txt); break;
+                            case LineValueLabelPos.Center: DrawText(sb, context, lineLabelFont, ls.ValueLabelSize, ls.ValueLabelColor, x - tw * 0.5f, y - ls.ValueLabelSize * 0.5f, txt); break;
                         }
                     }
                 }
@@ -1294,12 +1295,12 @@ namespace PdfBuilder.Writer
                     // label
                     if (bs.ShowLabels)
                     {
-                        int fId = ResolveFontId(fontObjId, bs.LabelFont);
                         string txt = bs.LabelFormatter != null
                             ? bs.LabelFormatter(p)
                             : (string.IsNullOrWhiteSpace(p.Category) ? $"{p.Y:0}, {p.X:0}" : $"{p.Category}  ${p.Y:0}, {p.X:0}");
 
-                        float tw = EstimateTextWidth(txt, bs.LabelSize);
+                        string bubbleLabelFont = string.IsNullOrWhiteSpace(bs.LabelFont) ? axisFont : bs.LabelFont;
+                        float tw = MeasureTextWidth(txt, bubbleLabelFont, bs.LabelSize);
 
                         // try ABOVE first
                         float tx = px - tw * 0.5f;
@@ -1316,7 +1317,7 @@ namespace PdfBuilder.Writer
                         float pad = 2f;
                         FillRect(sb, tx - pad, ty - pad, tw + 2 * pad, bs.LabelSize + 2 * pad, Color.White);
 
-                        DrawText(sb, fId, bs.LabelSize, bs.LabelColor, tx, ty, txt);
+                        DrawText(sb, context, bubbleLabelFont, bs.LabelSize, bs.LabelColor, tx, ty, txt);
                     }
 
                 }
@@ -1409,8 +1410,7 @@ namespace PdfBuilder.Writer
                     // label mid
                     if (!string.IsNullOrWhiteSpace(t.Label))
                     {
-                        int fId = ResolveFontId(fontObjId, c.Font);
-                        DrawTextCentered(sb, fId, Math.Min(9f, rowH * 0.4f), Color.Black, (x0 + x1) / 2f, y0 + h / 2f - 4f, t.Label);
+                        DrawTextCentered(sb, context, axisFont, Math.Min(9f, rowH * 0.4f), Color.Black, (x0 + x1) / 2f, y0 + h / 2f - 4f, t.Label);
                     }
                 }
             }
@@ -1424,14 +1424,13 @@ namespace PdfBuilder.Writer
             }
             foreach (var T in pieTexts)
             {
-                int fId = ResolveFontId(fontObjId, T.font);
-                DrawText(sb, fId, T.size, T.color, T.x, T.y, T.text);
+                DrawText(sb, context, T.font, T.size, T.color, T.x, T.y, T.text);
             }
          
             // ===== Legend (simple swatches per series) =====
             if (c.Series.Count > 0 && c.LegendPosition != LegendPos.None && c.ShowLegend)
             {
-                int labF2 = ResolveFontId(fontObjId, string.IsNullOrWhiteSpace(c.LegendFont) ? c.Font : c.LegendFont);
+                string legendFont = string.IsNullOrWhiteSpace(c.LegendFont) ? axisFont : c.LegendFont;
                 float lx, ly;
 
                 switch (c.LegendPosition)
@@ -1461,7 +1460,7 @@ namespace PdfBuilder.Writer
 
                             FillRect(sb, lx, ly - 8, 14, 6, sw);
                             StrokeRect(sb, lx, ly - 8, 14, 6, Color.Black, 0.5f);
-                            DrawText(sb, labF2, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, name);
+                            DrawText(sb, context, legendFont, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, name);
                             ly -= 14;
                         }
                         continue;
@@ -1475,7 +1474,7 @@ namespace PdfBuilder.Writer
                             Color sw = bp.Fill ?? c.Palette[i % c.Palette.Count];
                             FillRect(sb, lx, ly - 8, 14, 6, sw);
                             StrokeRect(sb, lx, ly - 8, 14, 6, Color.Black, 0.5f);
-                            DrawText(sb, labF2, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, name);
+                            DrawText(sb, context, legendFont, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, name);
                             ly -= 14;
                         }
                         continue;
@@ -1493,7 +1492,7 @@ namespace PdfBuilder.Writer
                     };
                     FillRect(sb, lx, ly - 8, 14, 6, swatch);
                     StrokeRect(sb, lx, ly - 8, 14, 6, s.Stroke, 0.5f);
-                    DrawText(sb, labF2, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, s.Name ?? "");
+                    DrawText(sb, context, legendFont, c.LegendFontSize, c.LegendTextColor, lx + 18, ly - 10, s.Name ?? "");
                     ly -= 14;
                 }
             }
@@ -1502,13 +1501,6 @@ namespace PdfBuilder.Writer
         }
 
         // ---- utilities ----
-        private static int ResolveFontId(Dictionary<string, int> fontObjId, string name)
-        {
-            if (!string.IsNullOrWhiteSpace(name) && fontObjId.TryGetValue(name, out var id)) return id;
-            var fallback = fontObjId.ContainsKey("Helvetica") ? "Helvetica" : fontObjId.Keys.First();
-            return fontObjId[fallback];
-        }
-
         private static (float niceMin, float niceMax, float niceStep) NiceTicks(float min, float max, int ticks)
         {
             if (max < min) (min, max) = (max, min);
@@ -1532,34 +1524,79 @@ namespace PdfBuilder.Writer
         private static string ToRgbStroke(Color c) => $"{(c.R / 255.0).ToString("0.###", Inv)} {(c.G / 255.0).ToString("0.###", Inv)} {(c.B / 255.0).ToString("0.###", Inv)} RG";
         private static string ToRgbFill(Color c) => $"{(c.R / 255.0).ToString("0.###", Inv)} {(c.G / 255.0).ToString("0.###", Inv)} {(c.B / 255.0).ToString("0.###", Inv)} rg";
 
-        private static void DrawText(StringBuilder sb, int fontId, float size, Color color, float x, float y, string s)
+        private static void DrawText(StringBuilder sb, PdfRenderContext context, string fontFamily, float size, Color color, float x, float y, string s)
         {
+            var run = ShapeText(s, fontFamily, size);
+            if (run == null || run.Glyphs.Count == 0)
+                return;
+
+            var encoded = GlyphRunEncoder.Encode(run, context);
             sb.Append("BT ");
-            sb.Append($"/F{fontId} {N(size)} Tf {ToRgbFill(color)} ");
-            sb.Append($"{N(x)} {N(y)} Td {PdfEnc.WinAnsiHex(AnsiSafe(s))} Tj ET\n");
-        }
-        private static void DrawTextCentered(StringBuilder sb, int fontId, float size, Color color, float cx, float cy, string s)
-        {
-            float dx = -0.5f * EstimateTextWidth(s, size);
-            DrawText(sb, fontId, size, color, cx + dx, cy, s);
-        }
-        private static void DrawTextRot(StringBuilder sb, int fontId, float size, Color color, float cx, float cy, string s, float deg, bool hCenter)
-        {
-            double a = Math.Cos(deg * Math.PI / 180.0), b = Math.Sin(deg * Math.PI / 180.0);
-            double c = -b, d = a;
-            float tx = cx, ty = cy;
-            sb.Append("q ");
-            sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(tx)} {N(ty)} cm ");
-            sb.Append($"{N(a)} {N(b)} {N(c)} {N(d)} 0 0 cm ");
-            sb.Append("BT ");
-            sb.Append($"/F{fontId} {N(size)} Tf {ToRgbFill(color)} ");
-            float dx = hCenter ? -0.5f * EstimateTextWidth(s, size) : 0f;
-            sb.Append($"{N(dx)} 0 Td {PdfEnc.WinAnsiHex(AnsiSafe(s))} Tj ET\n");
-            sb.Append("Q\n");
+            sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {ToRgbFill(color)} ");
+            sb.Append($"{N(x)} {N(y)} Td ");
+            sb.Append($"{encoded.TjCommand} ET\n");
         }
 
-        private static float EstimateTextWidth(string s, float size) => s?.Length > 0 ? size * 0.5f * s.Length : 0f;
-        private static string AnsiSafe(string s) => s?.Replace('–', '-').Replace('—', '-') ?? "";
+        private static void DrawTextCentered(StringBuilder sb, PdfRenderContext context, string fontFamily, float size, Color color, float cx, float cy, string s)
+        {
+            var run = ShapeText(s, fontFamily, size);
+            if (run == null || run.Glyphs.Count == 0)
+                return;
+
+            float dx = -0.5f * run.Width;
+            var encoded = GlyphRunEncoder.Encode(run, context);
+            sb.Append("BT ");
+            sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {ToRgbFill(color)} ");
+            sb.Append($"{N(cx + dx)} {N(cy)} Td ");
+            sb.Append($"{encoded.TjCommand} ET\n");
+        }
+
+        private static void DrawTextRot(StringBuilder sb, PdfRenderContext context, string fontFamily, float size, Color color, float cx, float cy, string s, float deg, bool hCenter)
+        {
+            var run = ShapeText(s, fontFamily, size);
+            if (run == null || run.Glyphs.Count == 0)
+                return;
+
+            float dx = hCenter ? -0.5f * run.Width : 0f;
+            var encoded = GlyphRunEncoder.Encode(run, context);
+
+            double radians = deg * Math.PI / 180.0;
+            double cos = Math.Cos(radians);
+            double sin = Math.Sin(radians);
+
+            sb.Append("BT ");
+            sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {ToRgbFill(color)} ");
+            sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} {N(cx + dx)} {N(cy)} Tm ");
+            sb.Append($"{encoded.TjCommand} ET\n");
+        }
+
+        private static float MeasureTextWidth(string s, string fontFamily, float size)
+        {
+            var run = ShapeText(s, fontFamily, size);
+            return run?.Width ?? 0f;
+        }
+
+        private static ShapedRun? ShapeText(string s, string fontFamily, float size)
+        {
+            if (string.IsNullOrEmpty(s))
+                return null;
+
+            var request = new TextShapingRequest(
+                s,
+                fontFamily,
+                size,
+                lineHeight: 1f,
+                maxWidth: float.PositiveInfinity,
+                bold: false,
+                italic: false,
+                smallCaps: false,
+                monospace: false,
+                fallbackFonts: null);
+
+            var paragraph = TextShaper.Shared.ShapeParagraph(request);
+            var line = paragraph.Lines.FirstOrDefault();
+            return line?.Runs.FirstOrDefault();
+        }
 
         private static void FillRect(StringBuilder sb, float x, float y, float w, float h, Color color)
             => sb.Append($"{ToRgbFill(color)} {N(x)} {N(y)} {N(w)} {N(h)} re f\n");

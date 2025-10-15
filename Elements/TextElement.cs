@@ -1,9 +1,11 @@
-﻿using PdfBuilder.Document;
+using System.Collections.Generic;
+using PdfBuilder.Document;
 using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 
 public class TextElement : PdfElement
 {
-    public string Text { get; set; } = "";
+    public string Text { get; set; } = string.Empty;
 
     // Font
     public float FontSize { get; set; } = 12;
@@ -15,6 +17,7 @@ public class TextElement : PdfElement
     public bool Overline { get; set; } = false;
     public bool SmallCaps { get; set; } = false;
     public bool Monospace { get; set; } = false;
+    public List<string>? FallbackFonts { get; set; }
 
     // Color and styling
     public string Color { get; set; } = "black";
@@ -55,12 +58,21 @@ public class TextElement : PdfElement
     public TextAlignment Alignment { get; set; } = TextAlignment.Left;
     public float? BaselineOffset { get; set; }
 
-    public TextElement() : base(0, 0) { }
-    public TextElement(string text, float x, float y) : base(x, y) { Text = text; }
+    public TextElement() : base(0, 0)
+    {
+    }
 
-    public bool KeepWithNext { get; set; } = false;   // P2 — simple version (no lookahead splitting)
+    public TextElement(string text, float x, float y) : base(x, y)
+    {
+        Text = text;
+    }
+
+    public bool KeepWithNext { get; set; } = false;   // P2 - simple version (no lookahead splitting)
     public bool AvoidBreakInside { get; set; } = true; // paragraphs are atomic now; future: split w/ widows/orphans
     public int WidowLines { get; set; } = 2;          // reserved for future line-splitting
     public int OrphanLines { get; set; } = 2;
 
+    internal ShapedParagraph? ShapedLayout { get; set; }
+    internal int ShapedStartLine { get; set; }
+    internal int ShapedLineCount { get; set; }
 }

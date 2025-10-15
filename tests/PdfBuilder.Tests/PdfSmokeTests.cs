@@ -53,8 +53,9 @@ namespace PdfBuilder.Tests
             ascii.Should().Contain("/Type /Pages");
             ascii.Should().Contain("/Type /Page");
 
-            // Expect the plain text to be visible in the content stream
-            ascii.Should().Contain("Hello World!");
+            // Expect the text to be present in decoded content
+            var blocks = PdfTextExtractor.ExtractTextBlocks(bytes);
+            blocks.Should().Contain("Hello World!");
         }
 
         [Fact]

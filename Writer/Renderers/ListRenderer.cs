@@ -1,4 +1,5 @@
 using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -13,51 +14,58 @@ namespace PdfBuilder.Writer
         private static string N(double v) => v.ToString("0.###", Inv);
 
         public static void Append(StringBuilder sb, ListElement list, float pageHeight,
-                                  Dictionary<string, int> fontObjId,
+                                  PdfRenderContext context,
                                   List<RichTextRenderer.LinkRect> outLinks)
         {
-            string baseFont = "Helvetica";
-            if (!fontObjId.ContainsKey(baseFont)) baseFont = fontObjId.Keys.First();
-            int markerFontId = fontObjId[baseFont];
+            if (sb == null) throw new ArgumentNullException(nameof(sb));
+            if (list == null) throw new ArgumentNullException(nameof(list));
+            if (context == null) throw new ArgumentNullException(nameof(context));
+            if (outLinks == null) throw new ArgumentNullException(nameof(outLinks));
 
-            float fs = list.FontSize;
             float y = list.Y;
             float xStart = list.X;
             float maxW = list.MaxWidth ?? 1_000_000f;
             string col = TryRgb(list.Color) ?? "0 0 0";
 
-            RenderItems(sb, list.Items, 0);
+            RenderItems(list.Items, 0);
 
-            void RenderItems(StringBuilder sb2, List<ListItem> items, int level)
+            void RenderItems(List<ListItem> items, int level)
             {
                 for (int i = 0; i < items.Count; i++)
                 {
-                    var it = items[i];
-                    // Marker text
+                    var item = items[i];
                     string marker = MarkerText(list.Marker, i, level);
                     float xLeft = xStart + level * list.IndentPerLevel;
 
-                    // Draw marker
-                    sb2.Append("BT ");
-                    sb2.Append($"/F{markerFontId} {N(fs)} Tf {col} rg {N(xLeft)} {N(y)} Td {PdfText(marker)} Tj ET\n");
+                    float markerWidth = 0f;
+                    var markerRun = ShapeMarker(marker, list);
+                    if (markerRun != null && markerRun.Glyphs.Count > 0)
+                    {
+                        var encoded = GlyphRunEncoder.Encode(markerRun, context);
+                        sb.Append("BT ");
+                        sb.Append($"{encoded.FontResourceName} {N(markerRun.FontSize)} Tf {col} rg ");
+                        sb.Append($"{N(xLeft)} {N(y)} Td ");
+                        sb.Append($"{encoded.TjCommand} ET\n");
+                        markerWidth = markerRun.Width;
+                    }
 
-                    // Rich content to the right with hanging indent
-                    float textX = xLeft + EstimateText(marker, fs) + list.BulletGap;
+                    float textX = xLeft + markerWidth + list.BulletGap;
+                    float available = Math.Max(0f, maxW - (textX - xStart));
                     var rt = new RichTextElement(textX, y)
                     {
                         FontFamily = list.FontFamily,
                         FontSize = list.FontSize,
                         LineHeight = list.LineHeight,
                         Alignment = TextAlignment.Left,
-                        MaxWidth = maxW - (textX - xStart)
+                        MaxWidth = available
                     };
-                    rt.Runs.AddRange(it.Content);
-                    float consumed = RichTextRenderer.Append(sb2, rt, pageHeight, fontObjId, outLinks);
+                    rt.Runs.AddRange(item.Content);
+                    float consumed = RichTextRenderer.Append(sb, rt, pageHeight, context, outLinks);
 
                     y -= consumed + list.ItemSpacing;
 
-                    if (it.Children.Count > 0)
-                        RenderItems(sb2, it.Children, level + 1);
+                    if (item.Children.Count > 0)
+                        RenderItems(item.Children, level + 1);
                 }
             }
         }
@@ -76,6 +84,28 @@ namespace PdfBuilder.Writer
             };
         }
 
+        private static ShapedRun? ShapeMarker(string marker, ListElement list)
+        {
+            if (string.IsNullOrEmpty(marker))
+                return null;
+
+            var request = new TextShapingRequest(
+                marker,
+                list.FontFamily,
+                list.FontSize,
+                list.LineHeight > 0 ? list.LineHeight : 1.2f,
+                float.PositiveInfinity,
+                bold: false,
+                italic: false,
+                smallCaps: false,
+                monospace: false,
+                fallbackFonts: null);
+
+            var paragraph = TextShaper.Shared.ShapeParagraph(request);
+            var line = paragraph.Lines.FirstOrDefault();
+            return line?.Runs.FirstOrDefault();
+        }
+
         private static string ToRoman(int number)
         {
             var map = new (int, string)[] {
@@ -86,40 +116,6 @@ namespace PdfBuilder.Writer
             var sb = new StringBuilder();
             foreach (var (v, s) in map) { while (number >= v) { sb.Append(s); number -= v; } }
             return sb.ToString();
-        }
-
-        private static float EstimateText(string s, float fs) =>
-            PdfBuilder.Document.PdfLayoutUtils.EstimateTextWidth(s, "Helvetica", fs);
-
-        private static readonly Encoding WinAnsi = GetWinAnsi();
-        private static Encoding GetWinAnsi()
-        {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            return Encoding.GetEncoding(1252, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
-        }
-
-        private static string PdfText(string s)
-        {
-            var bytes = WinAnsi.GetBytes(s ?? string.Empty);
-            if (bytes.Length == 0) return "()";
-            bool asciiSafe = true;
-            foreach (var b in bytes)
-            {
-                if (b < 0x20 || b > 0x7E || b == (byte)'(' || b == (byte)')' || b == (byte)'\\')
-                {
-                    asciiSafe = false;
-                    break;
-                }
-            }
-            if (asciiSafe)
-            {
-                var literal = Encoding.ASCII.GetString(bytes);
-                literal = literal.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
-                return $"({literal})";
-            }
-            var hex = new StringBuilder(bytes.Length * 2);
-            foreach (var b in bytes) hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
-            return $"<{hex}>";
         }
 
         private static string? TryRgb(string hex)

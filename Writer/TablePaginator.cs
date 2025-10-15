@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using TableModels = PdfBuilder.Elements.Table;
@@ -15,8 +15,8 @@ namespace PdfBuilder.Writer
             var outDoc = new PdfDocument
             {
                 Title = doc.Title,
-                HeaderFooter = CloneHeaderFooter(doc.HeaderFooter),
-                Master = CloneMaster(doc.Master)
+                HeaderFooter = CloneHeaderFooter(doc.HeaderFooter) ?? new HeaderFooterSpec(),
+                Master = CloneMaster(doc.Master) ?? new MasterPageSpec()
             };
             foreach (var page in doc.Pages)
             {
@@ -339,7 +339,7 @@ namespace PdfBuilder.Writer
             {
                 if (PdfLayoutUtils.EstimateTextWidth(line ?? "", font, size) <= maxWidth)
                 {
-                    outLines.Add(line);
+                    outLines.Add(line ?? string.Empty);
                     continue;
                 }
 
@@ -465,7 +465,7 @@ namespace PdfBuilder.Writer
             var clone = new TableElement(src.X, src.Y)
             {
                 TableWidth = src.TableWidth,
-                ColumnWidths = src.ColumnWidths?.ToList(),
+                ColumnWidths = src.ColumnWidths?.ToList() ?? new List<float>(),
                 DefaultFont = src.DefaultFont,
                 DefaultFontSize = src.DefaultFontSize,
                 CellPadding = src.CellPadding,
@@ -624,3 +624,6 @@ namespace PdfBuilder.Writer
 
     }
 }
+
+
+

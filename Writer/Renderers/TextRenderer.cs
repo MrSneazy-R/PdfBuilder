@@ -1,6 +1,8 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,220 +12,186 @@ using System.Text;
 namespace PdfBuilder.Writer
 {
     /// <summary>
-    /// Renders TextElement blocks into PDF content stream syntax.
-    /// Matches features we added: bold/italic/mono, small-caps, underline,
-    /// strikethrough, overline, rotation, alignment, and the background box
-    /// (padding, border, shadow, rounded corners).
+    /// Renders TextElement blocks using shaped glyph data and embedded fonts.
     /// </summary>
     public static class TextRenderer
     {
         private static readonly IFormatProvider Inv = CultureInfo.InvariantCulture;
-        private static readonly Encoding WinAnsiEncoding;
         private static string N(double v) => v.ToString("0.###", Inv);
 
-        static TextRenderer()
-        {
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            WinAnsiEncoding = Encoding.GetEncoding(
-                1252,
-                EncoderFallback.ReplacementFallback,
-                DecoderFallback.ReplacementFallback);
-        }
-
-        /// <param name="pageHeight">Unused (we’re already in PDF coords), kept for symmetry.</param>
         public static void Append(
-           StringBuilder sb, TextElement t, float pageHeight,
-           Dictionary<string, int> fontObjId)
+           StringBuilder sb, TextElement element, float pageHeight,
+           PdfRenderContext context)
         {
-            // Choose measurement family (Courier when monospace)
-            string measureFamily =
-                t.Monospace ? "Courier" :
-                string.IsNullOrWhiteSpace(t.FontFamily) ? "Helvetica" : t.FontFamily;
+            if (element == null) throw new ArgumentNullException(nameof(element));
+            if (context == null) throw new ArgumentNullException(nameof(context));
 
-            // Pick base-14 font name for actual painting (handles bold/italic + monospace)
-            string baseFont = PickBaseFont(t);
-            int fontId = fontObjId[baseFont];
+            var paragraph = EnsureShapedParagraph(element);
+            int startLine = Math.Clamp(element.ShapedStartLine, 0, Math.Max(0, paragraph.Lines.Count - 1));
+            int remaining = paragraph.Lines.Count - startLine;
+            int lineCount = element.ShapedLineCount > 0 ? Math.Min(element.ShapedLineCount, remaining) : remaining;
+            lineCount = Math.Max(1, lineCount);
+            var lines = paragraph.Lines.Skip(startLine).Take(lineCount).ToList();
 
-            float fs = t.FontSize > 0 ? t.FontSize : 12f;
-            float maxWidth = t.MaxWidth ?? 10000f;
-            float leading = fs * (t.LineHeight > 0 ? t.LineHeight : 1.2f);
+            float padL = element.PaddingLeft ?? 0f;
+            float padR = element.PaddingRight ?? 0f;
+            float padT = element.PaddingTop ?? 0f;
+            float padB = element.PaddingBottom ?? 0f;
 
-            // Wrap, strip control markers, and optionally apply simple small-caps (uppercase transform)
-            var rawLines = PdfLayoutUtils.WrapText(t.Text ?? string.Empty, measureFamily, fs, maxWidth);
-            var lines = rawLines.Select(line => PrepareLine(line, t.SmallCaps)).ToList();
+            float maxLineWidth = lines.Max(l => l.Width);
+            float textBlockWidth = element.MaxWidth ?? maxLineWidth;
+            float boxWidth = textBlockWidth + padL + padR;
 
-            // Pre-measure for background box, underline, etc.
-            float ascent = fs * 0.8f;
-            float descent = fs * 0.2f;
-            float padL = t.PaddingLeft ?? 0, padR = t.PaddingRight ?? 0;
-            float padT = t.PaddingTop ?? 0, padB = t.PaddingBottom ?? 0;
-
-            float maxLineW = lines.Count > 0
-                ? lines.Max(s => PdfLayoutUtils.EstimateTextWidth(s, measureFamily, fs))
-                : 0f;
-
-            // Box width: if MaxWidth is set, use it (more predictable centering); else max line width.
-            float textBlockW = t.MaxWidth ?? maxLineW;
-            float boxW = textBlockW + padL + padR;
-
-            // From baseline of first line (t.Y):
-            float firstBaseline = t.Y;
-            float lastBaseline = t.Y - (lines.Count - 1) * leading;
-
-            float yTop = firstBaseline + ascent + padT;
-            float yBottom = lastBaseline - descent - padB;
-            float boxH = Math.Max(0, yTop - yBottom);
-
-            // Box left X (respect align if MaxWidth known)
-            float xLeft = t.X;
-            if (t.MaxWidth.HasValue)
-            {
-                if (t.Alignment == TextAlignment.Center)
-                    xLeft = t.X;
-                else if (t.Alignment == TextAlignment.Right)
-                    xLeft = t.X;
-                // For right/center we already position text by shifting inside MaxWidth;
-                // the box anchors at t.X with width = MaxWidth (+padding).
-            }
-            else
-            {
-                // No MaxWidth: anchor box to text start for left-aligned,
-                // or to the min lineX among lines for other aligns.
-                if (t.Alignment != TextAlignment.Left)
-                {
-                    float minX = float.MaxValue;
-                    foreach (var s in lines)
-                    {
-                        float lineX = t.X;
-                        float lw = PdfLayoutUtils.EstimateTextWidth(s, measureFamily, fs);
-                        if (t.Alignment == TextAlignment.Center) lineX += (textBlockW - lw) / 2f;
-                        else if (t.Alignment == TextAlignment.Right) lineX += textBlockW - lw;
-                        minX = Math.Min(minX, lineX);
-                    }
-                    xLeft = minX == float.MaxValue ? t.X : minX;
-                }
-            }
-
-            // ---------- Background (shadow -> fill -> border) ----------
-            if (!string.IsNullOrWhiteSpace(t.BackgroundColor) ||
-                !string.IsNullOrWhiteSpace(t.BackgroundBorderColor) && (t.BackgroundBorderWidth ?? 0) > 0 ||
-                !string.IsNullOrWhiteSpace(t.BackgroundShadowColor))
-            {
-                float r = t.BackgroundCornerRadius ?? 0;
-
-                // Shadow (simple offset, no blur)
-                if (!string.IsNullOrWhiteSpace(t.BackgroundShadowColor) &&
-                    ((t.BackgroundShadowOffsetX ?? 0) != 0 || (t.BackgroundShadowOffsetY ?? 0) != 0))
-                {
-                    float sx = xLeft + (t.BackgroundShadowOffsetX ?? 0) - padL;
-                    float sy = yBottom + (t.BackgroundShadowOffsetY ?? 0);
-                    var sRGB = TryRgb(t.BackgroundShadowColor) ?? "0 0 0";
-                    sb.Append($"q {sRGB} rg ");
-                    AppendRoundedRectPath(sb, sx, sy, boxW, boxH, r);
-                    sb.Append("f Q\n");
-                }
-
-                // Fill
-                if (!string.IsNullOrWhiteSpace(t.BackgroundColor))
-                {
-                    var fillRGB = TryRgb(t.BackgroundColor) ?? "1 1 1";
-                    sb.Append($"q {fillRGB} rg ");
-                    AppendRoundedRectPath(sb, xLeft - padL, yBottom, boxW, boxH, r);
-                    sb.Append("f Q\n");
-                }
-
-                // Border
-                if (!string.IsNullOrWhiteSpace(t.BackgroundBorderColor) &&
-                    (t.BackgroundBorderWidth ?? 0) > 0)
-                {
-                    var strokeRGB = TryRgb(t.BackgroundBorderColor) ?? "0 0 0";
-                    sb.Append($"q {strokeRGB} RG {N(t.BackgroundBorderWidth ?? 1)} w ");
-                    AppendRoundedRectPath(sb, xLeft - padL, yBottom, boxW, boxH, r);
-                    sb.Append("S Q\n");
-                }
-            }
-
-            // ---------- Text lines + decorations ----------
-            float baselineY = firstBaseline;
-
+            float baseline = element.Y;
+            var baselines = new List<float>(lines.Count);
             foreach (var line in lines)
             {
-                float lineX = t.X;
-
-                if (t.MaxWidth.HasValue)
-                {
-                    float lw = PdfLayoutUtils.EstimateTextWidth(line, measureFamily, fs);
-                    if (t.Alignment == TextAlignment.Center) lineX += (textBlockW - lw) / 2f;
-                    else if (t.Alignment == TextAlignment.Right) lineX += textBlockW - lw;
-                }
-
-                sb.Append("BT ");
-                sb.Append($"/F{fontId} {N(fs)} Tf ");
-
-                var rgb = TryRgb(t.Color) ?? "0 0 0";
-                sb.Append($"{rgb} rg ");
-
-                if (Math.Abs(t.Rotation) < 0.0001)
-                    sb.Append($"{N(lineX)} {N(baselineY)} Td ");
-                else
-                {
-                    double rad = t.Rotation * Math.PI / 180.0;
-                    double cos = Math.Cos(rad);
-                    double sin = Math.Sin(rad);
-                    sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} {N(lineX)} {N(baselineY)} Tm ");
-                }
-
-                sb.Append($"{FormatText(line)} Tj ET\n");
-
-                // Decorations
-                float textWidth = PdfLayoutUtils.EstimateTextWidth(line, measureFamily, fs);
-                float underlineY = baselineY - Math.Max(1f, fs * 0.08f);
-                float strikeY = baselineY + fs * 0.30f;
-                float overlineY = baselineY + fs * 0.90f;
-
-                if (t.Underline)
-                    DrawLine(sb, lineX, underlineY, lineX + textWidth, underlineY, t.Color, Math.Max(0.7f, fs * 0.05f));
-                if (t.Strikethrough)
-                    DrawLine(sb, lineX, strikeY, lineX + textWidth, strikeY, t.Color, Math.Max(0.7f, fs * 0.05f));
-                if (t.Overline)
-                    DrawLine(sb, lineX, overlineY, lineX + textWidth, overlineY, t.Color, Math.Max(0.7f, fs * 0.05f));
-
-                baselineY -= leading;
+                baselines.Add(baseline);
+                baseline -= line.LineHeight;
             }
-        }
 
-        // ----- helpers (kept local to avoid coupling) -----
+            float topY = baselines[0] + lines[0].Ascent + padT;
+            float bottomY = baselines[^1] - lines[^1].Descent - padB;
+            float boxHeight = Math.Max(0f, topY - bottomY);
 
-        public static string PickBaseFont(TextElement t)
-        {
-            bool b = t.Bold;
-            bool i = t.Italic;
+            DrawBackground(sb, element, textBlockWidth, boxWidth, baselines[0], baselines[^1], lines, padL, padR, padT, padB, topY, bottomY);
 
-            // Monospace uses Courier family
-            if (t.Monospace)
+            var textRgb = TryRgb(element.Color) ?? "0 0 0";
+            for (int i = 0; i < lines.Count; i++)
             {
-                if (b && i) return "Courier-BoldOblique";
-                if (b) return "Courier-Bold";
-                if (i) return "Courier-Oblique";
-                return "Courier";
+                var line = lines[i];
+                float baselineY = baselines[i];
+
+                float lineX = element.X;
+                if (element.Alignment == TextAlignment.Center)
+                    lineX += (textBlockWidth - line.Width) / 2f;
+                else if (element.Alignment == TextAlignment.Right)
+                    lineX += textBlockWidth - line.Width;
+
+                float cursorX = lineX;
+                foreach (var run in line.Runs)
+                {
+                    if (run.Glyphs.Count == 0)
+                        continue;
+
+                    var encoded = GlyphRunEncoder.Encode(run, context);
+                    sb.Append("BT ");
+                    sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {textRgb} rg ");
+                    if (Math.Abs(element.Rotation) < 0.0001)
+                    {
+                        sb.Append($"{N(cursorX)} {N(baselineY)} Td ");
+                    }
+                    else
+                    {
+                        double rad = element.Rotation * Math.PI / 180.0;
+                        double cos = Math.Cos(rad);
+                        double sin = Math.Sin(rad);
+                        sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} {N(cursorX)} {N(baselineY)} Tm ");
+                    }
+                    sb.Append($"{encoded.TjCommand} ET\n");
+                    cursorX += run.Width;
+                }
+
+                DrawDecorations(sb, element, lineX, line.Width, baselineY);
+            }
+        }
+
+        private static ShapedParagraph EnsureShapedParagraph(TextElement element)
+        {
+            if (element.ShapedLayout != null)
+                return element.ShapedLayout;
+
+            var request = new TextShapingRequest(
+                element.Text ?? string.Empty,
+                element.FontFamily,
+                element.FontSize > 0 ? element.FontSize : 12f,
+                element.LineHeight > 0 ? element.LineHeight : 1.2f,
+                element.MaxWidth ?? 0f,
+                element.Bold,
+                element.Italic,
+                element.SmallCaps,
+                element.Monospace,
+                element.FallbackFonts);
+
+            var shaped = TextShaper.Shared.ShapeParagraph(request);
+            element.ShapedLayout = shaped;
+            element.ShapedStartLine = 0;
+            element.ShapedLineCount = shaped.Lines.Count;
+            return shaped;
+        }
+
+        private static void DrawBackground(
+            StringBuilder sb,
+            TextElement element,
+            float textBlockWidth,
+            float boxWidth,
+            float firstBaseline,
+            float lastBaseline,
+            IReadOnlyList<ShapedLine> lines,
+            float padL,
+            float padR,
+            float padT,
+            float padB,
+            float topY,
+            float bottomY)
+        {
+            if (string.IsNullOrWhiteSpace(element.BackgroundColor) &&
+                (string.IsNullOrWhiteSpace(element.BackgroundBorderColor) || (element.BackgroundBorderWidth ?? 0f) <= 0f) &&
+                string.IsNullOrWhiteSpace(element.BackgroundShadowColor))
+            {
+                return;
             }
 
-            // Default Helvetica family
-            if (b && i) return "Helvetica-BoldOblique";
-            if (b) return "Helvetica-Bold";
-            if (i) return "Helvetica-Oblique";
-            return "Helvetica";
+            float xLeft = element.X;
+            float boxHeight = Math.Max(0f, topY - bottomY);
+            float radius = element.BackgroundCornerRadius ?? 0f;
+
+            if (!string.IsNullOrWhiteSpace(element.BackgroundShadowColor) &&
+                ((element.BackgroundShadowOffsetX ?? 0) != 0 || (element.BackgroundShadowOffsetY ?? 0) != 0))
+            {
+                float shadowX = xLeft + (element.BackgroundShadowOffsetX ?? 0) - padL;
+                float shadowY = bottomY + (element.BackgroundShadowOffsetY ?? 0);
+                var shadowRgb = TryRgb(element.BackgroundShadowColor) ?? "0 0 0";
+                sb.Append($"q {shadowRgb} rg ");
+                AppendRoundedRectPath(sb, shadowX, shadowY, boxWidth, boxHeight, radius);
+                sb.Append("f Q\n");
+            }
+
+            if (!string.IsNullOrWhiteSpace(element.BackgroundColor))
+            {
+                var fillRgb = TryRgb(element.BackgroundColor) ?? "1 1 1";
+                sb.Append($"q {fillRgb} rg ");
+                AppendRoundedRectPath(sb, xLeft - padL, bottomY, boxWidth, boxHeight, radius);
+                sb.Append("f Q\n");
+            }
+
+            if (!string.IsNullOrWhiteSpace(element.BackgroundBorderColor) && (element.BackgroundBorderWidth ?? 0f) > 0f)
+            {
+                var strokeRgb = TryRgb(element.BackgroundBorderColor) ?? "0 0 0";
+                sb.Append($"q {strokeRgb} RG {N(element.BackgroundBorderWidth ?? 1f)} w ");
+                AppendRoundedRectPath(sb, xLeft - padL, bottomY, boxWidth, boxHeight, radius);
+                sb.Append("S Q\n");
+            }
         }
-        public static HashSet<string> CollectBaseFonts(PdfDocument doc)
+
+        private static void DrawDecorations(StringBuilder sb, TextElement element, float lineX, float lineWidth, float baseline)
         {
-            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (!element.Underline && !element.Strikethrough && !element.Overline)
+                return;
 
-            foreach (var t in doc.Pages.SelectMany(p => p.Elements).OfType<TextElement>())
-                set.Add(PickBaseFont(t));
+            float underlineY = baseline - Math.Max(1f, element.FontSize * 0.08f);
+            float strikeY = baseline + element.FontSize * 0.30f;
+            float overlineY = baseline + element.FontSize * 0.90f;
+            float strokeWidth = Math.Max(0.7f, element.FontSize * 0.05f);
 
-            if (set.Count == 0) set.Add("Helvetica");
-            return set;
+            if (element.Underline)
+                DrawLine(sb, lineX, underlineY, lineX + lineWidth, underlineY, element.Color, strokeWidth);
+            if (element.Strikethrough)
+                DrawLine(sb, lineX, strikeY, lineX + lineWidth, strikeY, element.Color, strokeWidth);
+            if (element.Overline)
+                DrawLine(sb, lineX, overlineY, lineX + lineWidth, overlineY, element.Color, strokeWidth);
         }
+
         private static void DrawLine(StringBuilder sb, float x1, float y1, float x2, float y2, string color, float width)
         {
             var rgb = TryRgb(color) ?? "0 0 0";
@@ -253,7 +221,6 @@ namespace PdfBuilder.Writer
                 return;
             }
 
-            // kappa for circle/quarter via cubic Béziers
             float c = r * 0.5522847498f;
             float x0 = x, x1 = x + r, x2 = x + w - r, x3 = x + w;
             float y0 = y, y1 = y + r, y2 = y + h - r, y3 = y + h;
@@ -270,83 +237,32 @@ namespace PdfBuilder.Writer
             sb.Append("h ");
         }
 
-        private static string PrepareLine(string? line, bool smallCaps)
+        public static string PickBaseFont(TextElement element)
         {
-            var cleaned = StripPdfInvisibles(line);
-            return smallCaps ? cleaned.ToUpperInvariant() : cleaned;
-        }
-
-        private static string StripPdfInvisibles(string? s)
-        {
-            if (string.IsNullOrEmpty(s)) return string.Empty;
-
-            ReadOnlySpan<char> banned = stackalloc char[]
+            bool bold = element.Bold;
+            bool italic = element.Italic;
+            if (element.Monospace)
             {
-                '\uFEFF', // BOM / zero-width no-break space
-                '\u200B', // zero-width space
-                '\u200C', // zero-width non-joiner
-                '\u200D', // zero-width joiner
-                '\u2060'  // word joiner
-            };
-
-            var sb = new StringBuilder(s.Length);
-            foreach (var ch in s)
-            {
-                if (ch < 0x20 && ch != '\t' && ch != '\n' && ch != '\r')
-                    continue;
-
-                bool skip = false;
-                for (int i = 0; i < banned.Length; i++)
-                {
-                    if (ch == banned[i])
-                    {
-                        skip = true;
-                        break;
-                    }
-                }
-                if (!skip) sb.Append(ch);
-            }
-            return sb.ToString();
-        }
-
-        private static string FormatText(string line)
-        {
-            var bytes = ToWinAnsiBytes(line);
-            if (bytes.Length == 0)
-                return "()";
-
-            if (CanUseLiteral(bytes))
-            {
-                var literal = WinAnsiEncoding.GetString(bytes);
-                return $"({Escape(literal)})";
+                if (bold && italic) return "Courier-BoldOblique";
+                if (bold) return "Courier-Bold";
+                if (italic) return "Courier-Oblique";
+                return "Courier";
             }
 
-            var hex = new StringBuilder(bytes.Length * 2);
-            foreach (var b in bytes)
-                hex.Append(b.ToString("X2", CultureInfo.InvariantCulture));
-
-            return $"<{hex}>";
+            if (bold && italic) return "Helvetica-BoldOblique";
+            if (bold) return "Helvetica-Bold";
+            if (italic) return "Helvetica-Oblique";
+            return "Helvetica";
         }
 
-        private static bool CanUseLiteral(byte[] bytes)
+        public static HashSet<string> CollectBaseFonts(PdfDocument doc)
         {
-            foreach (var b in bytes)
-            {
-                if (b < 0x20 || b > 0x7E) return false;
-                if (b == (byte)'(' || b == (byte)')' || b == (byte)'\\') return false;
-            }
-            return true;
-        }
-
-        private static string Escape(string s) =>
-            s.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
-
-        private static byte[] ToWinAnsiBytes(string line)
-        {
-            if (string.IsNullOrEmpty(line))
-                return Array.Empty<byte>();
-
-            return WinAnsiEncoding.GetBytes(line);
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var text in doc.Pages.SelectMany(p => p.Elements).OfType<TextElement>())
+                set.Add(PickBaseFont(text));
+            if (set.Count == 0)
+                set.Add("Helvetica");
+            return set;
         }
     }
 }

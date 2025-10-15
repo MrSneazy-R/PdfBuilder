@@ -1,4 +1,4 @@
-﻿// --- Imaging/WebpWicDecoder.cs ---
+// --- Imaging/WebpWicDecoder.cs ---
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -26,9 +26,10 @@ namespace PdfBuilder.Writer.Imaging
 
         public sealed class Result
         {
-            public int Width, Height;
-            public byte[] Rgb;   // packed RGBRGB...
-            public byte[]? Alpha;
+            public int Width { get; init; }
+            public int Height { get; init; }
+            public byte[] Rgb { get; init; } = Array.Empty<byte>();   // packed RGBRGB...
+            public byte[]? Alpha { get; init; }
         }
 
         public static Result Decode(byte[] webpBytes)
@@ -112,7 +113,14 @@ namespace PdfBuilder.Writer.Imaging
 
         private static object? TryCreateFactory(Guid clsid)
         {
-            try { return Activator.CreateInstance(Type.GetTypeFromCLSID(clsid)); }
+            if (!OperatingSystem.IsWindows())
+                return null;
+
+            Type? type = Type.GetTypeFromCLSID(clsid);
+            if (type == null)
+                return null;
+
+            try { return Activator.CreateInstance(type); }
             catch { return null; }
         }
 
@@ -188,3 +196,5 @@ namespace PdfBuilder.Writer.Imaging
 
     }
 }
+
+

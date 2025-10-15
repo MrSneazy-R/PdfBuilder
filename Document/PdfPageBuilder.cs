@@ -10,7 +10,7 @@ namespace PdfBuilder.Document
         private float _margin;
 
         // When set, ColumnBuilder will be given a factory to create new pages
-        private PdfDocument _autoDoc;
+        private PdfDocument? _autoDoc;
 
         public PdfPageBuilder(PdfPage page)
         {
@@ -49,25 +49,27 @@ namespace PdfBuilder.Document
             if (_autoDoc != null && !_autoDoc.Pages.Contains(_page))
                 _autoDoc.Pages.Add(_page);
 
-            Func<PdfPage> newPageFactory = null;
+            Func<PdfPage>? newPageFactory = null;
             if (_autoDoc != null)
             {
+                var autoDoc = _autoDoc;
                 newPageFactory = () =>
                 {
                     var p = new PdfPage(_page.Width, _page.Height)
                     {
                         BackgroundColor = _page.BackgroundColor,
+                        LayoutOptions = _page.LayoutOptions.Clone(),
                         MarginTop = _page.MarginTop,
                         MarginBottom = _page.MarginBottom,
                         MarginLeft = _page.MarginLeft,
                         MarginRight = _page.MarginRight
                     };
-                    _autoDoc.Pages.Add(p);
+                    autoDoc!.Pages.Add(p);
                     return p;
                 };
             }
 
-            var column = new ColumnBuilder(_page, _margin, defaultSpacing: 8f, newPage: newPageFactory);
+            var column = new ColumnBuilder(_page, _margin, defaultSpacing: 8f, newPage: newPageFactory, layoutOptions: _page.LayoutOptions);
             columnAction(column);
             return this;
         }

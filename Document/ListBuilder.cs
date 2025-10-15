@@ -1,4 +1,5 @@
-﻿using PdfBuilder.Models;
+using PdfBuilder.Document.Layout;
+using PdfBuilder.Models;
 using System.Collections.Generic;
 
 namespace PdfBuilder.Document
@@ -34,14 +35,11 @@ namespace PdfBuilder.Document
 
         public float Add()
         {
-            float height = _col.AddList(_list);
-            var flow = _col.GetFlow();
-            if (!flow.CanFit(height))
-                flow.Advance(height);
-            else
-                flow.Reserve(height);
-
-            return height;
+            return _col.AddList(_list);
         }
     }
 }
+
+
+
+

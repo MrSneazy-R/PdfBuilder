@@ -1,4 +1,5 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
+using PdfBuilder.Document.TextShaping;
 using PdfBuilder.Models;
 using System.Collections.Generic;
 
@@ -22,7 +23,7 @@ public sealed class RichTextElement : PdfElement
     public float? PaddingLeft { get; set; }
     public float? PaddingRight { get; set; }
 
-    public float? MaxWidth { get; set; } = null;
+    public float? MaxWidth { get; set; }
     public float Rotation { get; set; } = 0f;
 
     public RichTextElement(float x, float y) : base(x, y) { }
@@ -30,4 +31,8 @@ public sealed class RichTextElement : PdfElement
     public bool KeepWithNext { get; set; } = false;
     public bool AvoidBreakInside { get; set; } = true;
 
+    internal RichTextLayoutResult? ShapedLayout { get; set; }
+    internal float ShapedLayoutWidth { get; set; }
+    internal int ShapedStartLine { get; set; }
+    internal int ShapedLineCount { get; set; }
 }

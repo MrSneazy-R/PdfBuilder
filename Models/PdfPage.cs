@@ -1,4 +1,5 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using System.Collections.Generic;
 
@@ -6,12 +7,17 @@ namespace PdfBuilder.Models
 {
     public class PdfPage
     {
+        public const float DefaultWidth = 612f;
+        public const float DefaultHeight = 792f;
+
         // Dimensions
         public float Width { get; private set; }
         public float Height { get; private set; }
 
         // Content
         public List<PdfElement> Elements { get; } = new();
+
+        public LayoutOptions LayoutOptions { get; internal set; } = new();
 
         // Styling
         public string? BackgroundColor { get; set; } = "#FFFFFF"; // Default: white
@@ -35,7 +41,7 @@ namespace PdfBuilder.Models
             Elements.Add(element);
         }
 
-        // 🔁 Preset Sizes (in points)
+        // Preset Sizes (in points)
         public static PdfPage A4() => new PdfPage(595f, 842f);
         public static PdfPage A4Landscape() => new PdfPage(842f, 595f);
 
@@ -47,10 +53,8 @@ namespace PdfBuilder.Models
 
         public static PdfPage Custom(float width, float height) => new PdfPage(width, height);
 
-        // inside class PdfPage
         public HeaderFooterSpec? HeaderFooterOverride { get; set; } = null;
         public MasterPageSpec? MasterOverride { get; set; } = null;
         public ColumnLayoutSpec? Columns { get; set; } = null;
     }
-
 }

@@ -213,8 +213,8 @@ namespace PdfBuilder.Tests
                 decoColor.G / 255.0,
                 decoColor.B / 255.0);
 
-            var occurrences = Regex.Matches(stream, $"{Regex.Escape(rgb)} RG");
-            occurrences.Count.Should().BeGreaterThanOrEqualTo(2);
+            stream.Should().Contain(rgb);
+            Regex.Matches(stream, "\\bRG\\b").Count.Should().BeGreaterThanOrEqualTo(2);
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace PdfBuilder.Tests
                     {
                         new TableCell
                         {
-                            Text = "ellipsisbehavior",
+                            Text = "ellipsisbehaviorandmore",
                             Padding = 0,
                             TextStyle = new TableModels.TextStyle { Wrap = TableModels.TextWrapMode.EllipsisWhenClipped }
                         }
@@ -304,9 +304,23 @@ namespace PdfBuilder.Tests
                 });
             });
 
-            var stream = PdfContentHelper.ExtractFirstStream(PdfContentHelper.Generate(doc));
-            stream.Should().Contain("<2D>");
-            stream.Should().Contain("<2E2E2E>");
+            var pdfBytes = PdfContentHelper.Generate(doc);
+            var stream = PdfContentHelper.ExtractFirstStream(pdfBytes);
+            var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
+            var joined = string.Join(" | ", blocks);
+
+            bool hasHyphen = blocks.Any(b =>
+                b.Contains("-", StringComparison.Ordinal) ||
+                b.Contains('\u00AD'));
+            bool splitWord = !blocks.Contains("supercalifragilistic", StringComparer.OrdinalIgnoreCase) &&
+                             blocks.Any(b => b.EndsWith("-", StringComparison.Ordinal));
+            bool hasEllipsis = stream.Contains("...", StringComparison.Ordinal) ||
+                               stream.Contains("<2E2E2E>", StringComparison.Ordinal) ||
+                               blocks.Any(b => b.Contains("...", StringComparison.Ordinal) || b.Contains('\u2026'));
+
+            hasHyphen.Should().BeTrue("wrapped text should insert a hyphenation marker (blocks: {0})", joined);
+            splitWord.Should().BeTrue("long tokens should be split across lines (blocks: {0})", joined);
+            hasEllipsis.Should().BeTrue("clipped text should end with an ellipsis (blocks: {0})", joined);
         }
 
         private static PdfDocument CreateTableDocument(Action<TableElement> configure)

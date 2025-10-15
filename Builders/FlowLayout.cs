@@ -136,19 +136,62 @@ namespace PdfBuilder.Document
 
             if (explicitWidths != null && explicitWidths.Length == columnCount)
             {
-                float x = contentLeft;
+                float totalGutter = Math.Max(0f, (columnCount - 1) * gutter);
+                if (totalGutter > contentWidth && columnCount > 1)
+                {
+                    float gutterScale = contentWidth / totalGutter;
+                    gutter = Math.Max(0f, gutter * gutterScale);
+                    totalGutter = Math.Max(0f, (columnCount - 1) * gutter);
+                }
+
+                float available = Math.Max(0f, contentWidth - totalGutter);
+
+                // Normalize explicit widths so the total fits inside the content area.
+                var widths = new float[columnCount];
+                float widthSum = 0f;
                 for (int i = 0; i < columnCount; i++)
                 {
-                    float width = layout.Widths[i];
-                    columns[i] = new FlowColumn(i, x, width, top, bottom);
-                    float width = Math.Max(0f, explicitWidths[i]);
-                    columnsArr[i] = new FlowColumn(i, x, width, top, bottom);
-                    x += width + gutter;
+                    widths[i] = Math.Max(0f, explicitWidths[i]);
+                    widthSum += widths[i];
+                }
+
+                if (widthSum <= 0f)
+                {
+                    float fallback = columnCount > 0 ? available / columnCount : 0f;
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        columnsArr[i] = new FlowColumn(i, x, fallback, top, bottom);
+                        x += fallback + gutter;
+                    }
+                }
+                else
+                {
+                    float scale = available > 0f ? available / widthSum : 0f;
+                    float used = 0f;
+
+                    for (int i = 0; i < columnCount; i++)
+                    {
+                        float width = widths[i] * scale;
+                        if (i == columnCount - 1)
+                        {
+                            width = Math.Max(0f, available - used);
+                        }
+
+                        used += width;
+                        columnsArr[i] = new FlowColumn(i, x, width, top, bottom);
+                        x += width + gutter;
+                    }
                 }
             }
             else
             {
-                float totalGutter = (columnCount - 1) * gutter;
+                float totalGutter = Math.Max(0f, (columnCount - 1) * gutter);
+                if (totalGutter > contentWidth && columnCount > 1)
+                {
+                    float gutterScale = contentWidth / totalGutter;
+                    gutter = Math.Max(0f, gutter * gutterScale);
+                    totalGutter = Math.Max(0f, (columnCount - 1) * gutter);
+                }
                 float width = columnCount > 0 ? (contentWidth - totalGutter) / columnCount : contentWidth;
                 width = Math.Max(0f, width);
 

@@ -44,10 +44,11 @@ namespace PdfBuilder.Tests
 
             doc.HeaderFooter.HeaderTemplate.Should().Be("Page {page} of {pages}");
 
-            var pdf = Encoding.ASCII.GetString(Generate(doc));
+            var pdfBytes = Generate(doc);
+            var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
 
-            pdf.Should().Contain("Page 1 of 1");
-            pdf.Should().Contain("Generated ");
+            blocks.Should().Contain("Page 1 of 1");
+            blocks.Any(t => t.StartsWith("Generated ", StringComparison.Ordinal)).Should().BeTrue();
         }
 
         [Fact]
@@ -75,7 +76,9 @@ namespace PdfBuilder.Tests
                        .Add();
                 });
 
-            var stream = PdfContentHelper.ExtractFirstStream(PdfContentHelper.Generate(doc));
+            var pdfBytes = PdfContentHelper.Generate(doc);
+            var stream = PdfContentHelper.ExtractFirstStream(pdfBytes);
+            var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
 
             string CaptionHex(string text)
             {
@@ -84,10 +87,11 @@ namespace PdfBuilder.Tests
             }
 
             stream.Should().Contain(CaptionHex("Inventory Table"));
-            stream.Should().Contain(CaptionHex("Coffee"));
-            stream.Should().Contain(CaptionHex(" "));
-            stream.Should().Contain(CaptionHex("Beans"));
-            stream.Should().Contain(CaptionHex("42"));
+            blocks.Should().Contain("Item");
+            blocks.Should().Contain("Qty");
+            blocks.Should().Contain("Coffee");
+            blocks.Should().Contain("Beans");
+            blocks.Should().Contain("42");
         }
 
         [Fact]

@@ -1,4 +1,4 @@
-﻿// PdfBuilder/Elements/ChartElement.cs
+// PdfBuilder/Elements/ChartElement.cs
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using System;
@@ -102,7 +102,7 @@ namespace PdfBuilder.Elements
     // -----------------------------
     public sealed class LineSeries : IChartSeries, ICartesianSeries
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public Color Stroke { get; set; } = Color.Black;
         public float StrokeWidth { get; set; } = 1f;
         public List<System.Drawing.PointF> Points { get;set; } = new ();
@@ -139,7 +139,7 @@ namespace PdfBuilder.Elements
 
 public sealed class BarSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public Color Fill { get; set; } = Color.FromArgb(230, 230, 255);
     public float StrokeWidth { get; set; } = 0.5f;
@@ -174,7 +174,7 @@ public sealed class BarSeries : IChartSeries, ICartesianSeries
     // -----------------------------
     public sealed class PieSeries : IChartSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.White;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -222,7 +222,7 @@ public sealed class PieSlice
     /// <summary>Optional override for the data label text.</summary>
     public string? CustomLabel { get; set; }
 
-    public string LabelFontOverride { get; set; }          // e.g., "Helvetica-Bold"
+    public string? LabelFontOverride { get; set; }          // e.g., "Helvetica-Bold"
     public float? LabelSizeOverride { get; set; }
     public Color? LabelColorOverride { get; set; }
     public float? LabelOffsetOverride { get; set; }
@@ -235,7 +235,7 @@ public sealed class PieSlice
 // -----------------------------
 public sealed class ScatterSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -267,7 +267,7 @@ public enum MarkerShape
 // -----------------------------
 public sealed class BubbleSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -321,7 +321,7 @@ public sealed class BubblePoint
 // -----------------------------
 public sealed class WaterfallSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -343,7 +343,7 @@ public sealed class WaterfallSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class HistogramSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
     public Color Fill { get; set; } = Color.FromArgb(220, 220, 250);
@@ -374,7 +374,7 @@ public sealed class HistogramSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class BoxPlotSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.7f;
     public Color Fill { get; set; } = Color.FromArgb(235, 235, 255);
@@ -395,7 +395,7 @@ public sealed class BoxPlotSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class HeatmapSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Transparent;
     public float StrokeWidth { get; set; } = 0f;
 
@@ -417,7 +417,7 @@ public sealed class HeatmapSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class RadarSeries : IChartSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.8f;
     public Color? Fill { get; set; } = null;
@@ -440,7 +440,7 @@ public sealed class RadarSeries : IChartSeries
 // -----------------------------
 public sealed class FunnelSeries : IChartSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -465,7 +465,7 @@ public sealed class FunnelStage
 // -----------------------------
 public sealed class CandleSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.7f;
 
@@ -486,7 +486,7 @@ public sealed class CandleSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class BulletSeries : IChartSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -505,7 +505,7 @@ public sealed class BulletSeries : IChartSeries
 // -----------------------------
 public sealed class ParetoSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black; // cumulative line
     public float StrokeWidth { get; set; } = 1f;
 
@@ -526,7 +526,7 @@ public sealed class ParetoSeries : IChartSeries, ICartesianSeries
 // -----------------------------
 public sealed class RangeAreaSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Empty;
     public float StrokeWidth { get; set; } = 0f;
 
@@ -556,7 +556,7 @@ public sealed class RangePoint
 // -----------------------------
 public sealed class ErrorBarSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.8f;
 
@@ -586,7 +586,7 @@ public sealed class ErrorBarPoint
 // -----------------------------
 public sealed class GanttSeries : IChartSeries, ICartesianSeries
 {
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public Color Stroke { get; set; } = Color.Black;
     public float StrokeWidth { get; set; } = 0.5f;
 
@@ -609,3 +609,4 @@ public sealed class GanttTask
     public Color? Stroke { get; set; } = null;
 }
 }
+
