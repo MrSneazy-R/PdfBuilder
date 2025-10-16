@@ -1,267 +1,372 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Globalization;
+using System.IO;
+using System.Linq;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder
 {
     public static class DecodedPdf
     {
-        public static PdfDocument Build()
-        {
-            var doc = new PdfDocument { Title = "Revenue Pulse | FY25 Q3" };
+        private const float ContentMargin = 56f;
+        private static byte[]? _bannerLogo;
+        private static byte[]? _sealLogo;
 
-            var builder = new PdfDocumentBuilder(doc)
-                .Title("Revenue Pulse | FY25 Q3")
+        public static PdfDocument CreateTestDoc()
+        {
+            var doc = new PdfDocument();
+            doc.Title = "Aurora Dynamics Q2 Insight Brief";
+
+            var docBuilder = new PdfDocumentBuilder(doc)
+                .Title("Aurora Dynamics Q2 Insight Brief")
                 .HeaderFooter(hf =>
                 {
-                    hf.HeaderTemplate = "{title}";
-                    hf.FooterTemplate = "Generated {date:yyyy-MM-dd HH:mm} · Page {page}/{pages}";
-                    hf.HeaderAlign = TextAlignment.Left;
+                    hf.HeaderTemplate = "Aurora Dynamics - Executive Intelligence {date:yyyy}";
+                    hf.FooterTemplate = "Confidential - {page}/{pages}";
+                    hf.HeaderAlign = TextAlignment.Center;
                     hf.FooterAlign = TextAlignment.Right;
                     hf.FontFamily = "Helvetica";
                     hf.FontSize = 9f;
-                    hf.Color = "#4A4D57";
+                    hf.Color = "#1F2937";
                 })
                 .Master(master =>
                 {
-                    master.BackgroundColor = "#F7F9FC";
+                    master.BackgroundColor = "#F7FAFC";
                     master.Watermark = new WatermarkSpec
                     {
-                        Text = "INTERNAL",
+                        Text = "Aurora Dynamics",
                         FontFamily = "Helvetica",
-                        FontSize = 60f,
+                        FontSize = 64f,
                         Color = "#1C64F2",
-                        Opacity = 0.08f,
+                        Opacity = 0.035f,
                         RotationDegrees = 45f,
                         Layer = WatermarkLayer.BehindContent
                     };
                 });
 
-            var page = doc.AddPage();
-            page.Columns = new ColumnLayoutSpec { Columns = 2, Gutter = 18f };
-            builder.ApplySectionTo(page);
-
-            new PdfPageBuilder(page)
-                .Margin(36f)
-                .AutoPaginate(doc)
-                .Content(col =>
-                {
-                    AppendHeadline(col);
-                    AppendRevenueTable(col);
-                    AppendRevenueNotes(col);
-
-                    col.ActivateColumn(1, reset: true);
-                    AppendPipelineSection(col);
-                    AppendRetentionSection(col);
-                    AppendNextSteps(col);
-                });
+            BuildOverviewPage(doc, docBuilder);
+            BuildAnalyticsPage(doc, docBuilder);
+            BuildOutlookPage(doc, docBuilder);
 
             return doc;
         }
 
-        private static void AppendHeadline(ColumnBuilder col)
+        private static void BuildOverviewPage(PdfDocument doc, PdfDocumentBuilder docBuilder)
         {
-            col.Text("Revenue Pulse")
-                .FontFamily("Helvetica")
-                .FontSize(20f)
-                .Bold()
-                .Color("#101828")
-                .MarginBottom(4f)
-                .Add();
+            var page = doc.AddPage();
+            docBuilder.ApplySectionTo(page);
 
-            col.Text("FY25 · Q3 Executive Summary")
-                .FontFamily("Helvetica")
-                .FontSize(12f)
-                .Color("#475467")
-                .MarginBottom(6f)
-                .Add();
+            float contentWidth = page.Width - (ContentMargin * 2f);
 
-            new RichTextBuilder(col, 0, 0, 0)
-                .Font("Helvetica", 11f)
-                .LineHeight(1.32f)
-                .Span("A condensed dashboard covering revenue acceleration, pipeline health, and retention signals. Designed for leadership review and portfolio planning.")
-                    .Color("#344054")
-                    .EndSpan()
-                .Add();
+            new PdfPageBuilder(page)
+                .Margin(ContentMargin)
+                .Background("#FFFFFF")
+                .Content(col =>
+                {
+                    col.Text("Aurora Dynamics Q2 Insight Brief")
+                        .FontFamily("Helvetica")
+                        .FontSize(26f)
+                        .Bold()
+                        .Color("#FFFFFF")
+                        .BackgroundColor("#1C64F2")
+                        .PaddingTop(14f)
+                        .PaddingBottom(14f)
+                        .PaddingLeft(18f)
+                        .PaddingRight(18f)
+                        .BackgroundCornerRadius(12f)
+                        .MarginBottom(18f)
+                        .Add();
 
-            col.GetFlow().Advance(12f);
+                    col.Text("Executive Summary")
+                        .FontFamily("Helvetica")
+                        .FontSize(16f)
+                        .Bold()
+                        .Color("#0F172A")
+                        .MarginBottom(8f)
+                        .Add();
+
+                    col.Text("Aurora Dynamics closes the second quarter with accelerated revenue momentum, renewed customer sentiment, and a tighter alignment between product delivery and go-to-market execution. The business sustained double digit growth while preserving a disciplined cost profile.")
+                        .FontFamily("Helvetica")
+                        .FontSize(12.5f)
+                        .LineHeight(1.35f)
+                        .Color("#1F2937")
+                        .MarginBottom(10f)
+                        .Add();
+
+                    col.Text("This brief distills the leading indicators that leadership teams are monitoring ahead of the second-half planning cycle. Core highlights include demand velocity across enterprise accounts, marketing-influenced pipeline, and customer success interventions to reduce churn.")
+                        .FontFamily("Helvetica")
+                        .FontSize(12.5f)
+                        .LineHeight(1.35f)
+                        .Color("#1F2937")
+                        .MarginBottom(16f)
+                        .Add();
+
+                    new ListBuilder(col, ContentMargin, col.GetCurrentY(), contentWidth)
+                        .Marker(ListMarker.Bullet)
+                        .Font("Helvetica", 12f)
+                        .Item(new RichRun { Text = "Net revenue retention climbed to 114%, driven by strategic platform expansions.", Color = "#1C64F2" })
+                        .Item(new RichRun { Text = "Enterprise pipeline accelerated 18% quarter-over-quarter with improved close velocity.", Color = "#0EA472" })
+                        .Item(new RichRun { Text = "Customer sentiment reached a two-year high led by proactive support playbooks.", Color = "#F97316" })
+                        .Item(new RichRun { Text = "Operational expenditure remained 4% under plan despite continued hiring in R&D.", Color = "#1F2937" })
+                        .Add();
+
+                    var banner = GetBannerLogo();
+                    if (banner != null)
+                    {
+                        col.Image(banner, ContentMargin, col.GetCurrentY() + 18f, 220f, 72f)
+                            .CornerRadius(18f)
+                            .Shadow("#0B1E3B", 4f, -4f, 8f)
+                            .MarginTop(20f)
+                            .Add();
+                    }
+
+                    col.Text("Prepared by the Strategic Operations Office - July 2025")
+                        .FontFamily("Helvetica")
+                        .FontSize(10.5f)
+                        .Color("#475569")
+                        .MarginTop(12f)
+                        .Add();
+                });
         }
 
-        private static void AppendRevenueTable(ColumnBuilder col)
+        private static void BuildAnalyticsPage(PdfDocument doc, PdfDocumentBuilder docBuilder)
         {
-            var table = col.Table(0, 0, 0, 0)
-                .Caption("Regional Revenue Breakdown")
-                .DefaultFont("Helvetica")
-                .DefaultFontSize(10f)
-                .CellPadding(6f)
-                .Border(Color.FromArgb(28, 100, 242), 0.5f)
-                .RepeatHeaders(true)
-                .EnablePageBreaks(true);
+            var page = doc.AddPage();
+            docBuilder.ApplySectionTo(page);
 
-            table.HeaderRow(
-                c => c.Text("Region").Bold().BorderBottom(Color.FromArgb(28, 100, 242), 1f),
-                c => c.Text("YoY").Bold().AlignRight().BorderBottom(Color.FromArgb(28, 100, 242), 1f),
-                c => c.Text("FY25 Q3").Bold().AlignRight().BorderBottom(Color.FromArgb(28, 100, 242), 1f),
-                c => c.Text("Notes").Bold().BorderBottom(Color.FromArgb(28, 100, 242), 1f)
-            );
-
-            var rows = new[]
+            float contentWidth = page.Width - (ContentMargin * 2f);
+            var revenueRows = new List<RevenueRow>
             {
-                new { Region = "North America", Growth = "18%", Revenue = "$22.4M", Notes = "Enterprise upsell and cross-sell momentum sustained." },
-                new { Region = "EMEA",          Growth = "11%", Revenue = "$17.9M", Notes = "Renewals steady; fintech pipeline accelerating." },
-                new { Region = "APAC",          Growth = "24%", Revenue = "$13.2M", Notes = "Net-new marketplace integrations driving lift." },
-                new { Region = "LATAM",         Growth = "7%",  Revenue = "$6.8M",  Notes = "Retail demand offsets FX pressure." }
+                new("Enterprise Platforms", 32.4f, 29.5f, 93),
+                new("Growth Accounts", 18.9f, 17.3f, 89),
+                new("Public Sector", 14.1f, 15.0f, 84),
+                new("Channel", 8.6f, 7.9f, 88),
+                new("International Expansion", 12.3f, 11.0f, 91)
             };
 
-            foreach (var row in rows)
+            new PdfPageBuilder(page)
+                .Margin(ContentMargin)
+                .Background("#FFFFFF")
+                .Content(col =>
+                {
+                    col.Text("Performance Drivers")
+                        .FontFamily("Helvetica")
+                        .FontSize(18f)
+                        .Bold()
+                        .Color("#0F172A")
+                        .MarginBottom(10f)
+                        .Add();
+
+                    col.Text("Quarterly operating metrics quantify how marketing, sales, and customer success collaboration expanded deal velocity while anchoring retention. The table below highlights portfolio-level contributions alongside customer sentiment.")
+                        .FontFamily("Helvetica")
+                        .FontSize(12.5f)
+                        .LineHeight(1.3f)
+                        .Color("#1F2937")
+                        .MarginBottom(14f)
+                        .Add();
+
+                    float planTotal = revenueRows.Sum(r => r.Plan);
+                    float actualTotal = revenueRows.Sum(r => r.Actual);
+                    float totalDelta = planTotal <= 0f ? 0f : (actualTotal - planTotal) / planTotal * 100f;
+                    int averagePulse = (int)Math.Round(revenueRows.Average(r => r.Pulse), MidpointRounding.AwayFromZero);
+
+                    var tableBuilder = col.Table(ContentMargin, col.GetCurrentY(), contentWidth, 0f)
+                        .Caption("Q2 Revenue Drivers")
+                        .DefaultFont("Helvetica")
+                        .DefaultFontSize(10.5f)
+                        .CellPadding(6f)
+                        .HeaderBackground("#1E3A8A")
+                        .Border("#1E3A8A", 0.75f)
+                        .AltRowBackground("#EEF2FF")
+                        .AltRowEvery(2)
+                        .HeaderRow(
+                            c => c.Text("Segment").Bold().TextColor("#FFFFFF").AlignLeft(),
+                            c => c.Text("Actual (USD M)").Bold().TextColor("#FFFFFF").AlignRight(),
+                            c => c.Text("Plan").Bold().TextColor("#FFFFFF").AlignRight(),
+                            c => c.Text("Delta vs Plan").Bold().TextColor("#FFFFFF").AlignRight(),
+                            c => c.Text("Customer Pulse").Bold().TextColor("#FFFFFF").AlignRight()
+                        );
+
+                    foreach (var row in revenueRows)
+                    {
+                        float delta = row.Plan <= 0f ? 0f : (row.Actual - row.Plan) / row.Plan * 100f;
+                        tableBuilder.Row(
+                            c => c.Text(row.Segment).AlignLeft().TextColor("#0F172A"),
+                            c => c.Text(row.Actual.ToString("0.0", CultureInfo.InvariantCulture)).AlignRight().TextColor("#0F172A"),
+                            c => c.Text(row.Plan.ToString("0.0", CultureInfo.InvariantCulture)).AlignRight().TextColor("#0F172A"),
+                            c => c.Text(FormatDelta(delta)).AlignRight().TextColor(delta >= 0 ? "#0EA472" : "#BE123C"),
+                            c => c.Text($"{row.Pulse}%").AlignRight().TextColor("#0F172A")
+                        );
+                    }
+
+                    tableBuilder.FooterRow(
+                        c => c.Text("Total / Weighted").Bold(),
+                        c => c.Text(actualTotal.ToString("0.0", CultureInfo.InvariantCulture)).AlignRight().Bold(),
+                        c => c.Text(planTotal.ToString("0.0", CultureInfo.InvariantCulture)).AlignRight().Bold(),
+                        c => c.Text(FormatDelta(totalDelta)).AlignRight().Bold().TextColor(totalDelta >= 0 ? "#0EA472" : "#BE123C"),
+                        c => c.Text($"{averagePulse}%").AlignRight().Bold()
+                    )
+                    .Add();
+
+                    col.Text("Enterprise and international cohorts delivered outsized expansion, offsetting procurement delays in the public sector pipeline. Channel productivity rose with new enablement assets, sustaining partner-driven momentum.")
+                        .FontFamily("Helvetica")
+                        .FontSize(12f)
+                        .LineHeight(1.3f)
+                        .Color("#1F2937")
+                        .MarginTop(14f)
+                        .Add();
+
+                    col.Chart(ContentMargin, col.GetCurrentY() + 18f, contentWidth, 240f)
+                        .Title("Pipeline Velocity & Conversion")
+                        .TitleFont("Helvetica-Bold", 12f)
+                        .NumericX(0f, 3f, 4, v => new[] { "Q3'24", "Q4'24", "Q1'25", "Q2'25" }[(int)v])
+                        .NumericY(0f, 45f, 7, v => $"{v:0}%")
+                        .GridY(true)
+                        .AddBars("Conversion Rate", Color.FromArgb(28, 100, 242), Color.FromArgb(20, 83, 220), 0.6f, 26f, 28f, 31f, 35f)
+                        .BarCornerRadius(6f)
+                        .AddLine("Cycle Time (days)", Color.FromArgb(14, 166, 120), 1.5f, 38f, 36f, 33f, 29f)
+                        .Legend(true)
+                        .LabelsFont("Helvetica", 9f)
+                        .Add();
+                });
+        }
+
+        private static void BuildOutlookPage(PdfDocument doc, PdfDocumentBuilder docBuilder)
+        {
+            var page = doc.AddPage();
+            docBuilder.ApplySectionTo(page);
+
+            float contentWidth = page.Width - (ContentMargin * 2f);
+
+            new PdfPageBuilder(page)
+                .Margin(ContentMargin)
+                .Background("#FFFFFF")
+                .Content(col =>
+                {
+                    col.Text("Forward Outlook & Actions")
+                        .FontFamily("Helvetica")
+                        .FontSize(18f)
+                        .Bold()
+                        .Color("#0F172A")
+                        .MarginBottom(12f)
+                        .Add();
+
+                    col.Text("Leadership will anchor second-half resourcing on sustaining enterprise momentum, hardening delivery reliability, and deepening customer partnerships. The initiatives below provide a phased blueprint for execution.")
+                        .FontFamily("Helvetica")
+                        .FontSize(12.5f)
+                        .LineHeight(1.3f)
+                        .Color("#1F2937")
+                        .MarginBottom(10f)
+                        .Add();
+
+                    new RichTextBuilder(col, ContentMargin, col.GetCurrentY() + 6f, contentWidth)
+                        .Font("Helvetica", 12.5f)
+                        .LineHeight(1.35f)
+                        .Span("Confidence Index: ").Bold().Color("#1C64F2").EndSpan()
+                        .Span("7.6 / 10").Bold().Color("#0EA472").EndSpan()
+                        .Span(" - Weighted by revenue coverage, product roadmap execution, and customer health.")
+                            .Color("#1F2937").EndSpan()
+                        .Add();
+
+                    new ListBuilder(col, ContentMargin, col.GetCurrentY() + 14f, contentWidth)
+                        .Marker(ListMarker.Decimal)
+                        .Font("Helvetica", 12f)
+                        .Item(new RichRun { Text = "Launch an advisory council with ten strategic customers to co-author FY26 platform themes.", Color = "#0F172A" })
+                        .Item(new RichRun { Text = "Accelerate onboarding for 45 new enterprise sellers with scenario-based enablement sprints.", Color = "#0F172A" })
+                        .Item(new RichRun { Text = "Deploy predictive churn scores into success playbooks, prioritizing health interventions.", Color = "#0F172A" })
+                        .Item(new RichRun { Text = "Expand telemetry coverage across cloud regions to protect uptime commitments.", Color = "#0F172A" })
+                        .Add();
+
+                    var seal = GetSealLogo();
+                    if (seal != null)
+                    {
+                        col.Image(seal, ContentMargin, col.GetCurrentY() + 24f, 120f, 120f)
+                            .Clip(ImageClipShape.Circle)
+                            .Border("#1C64F2", 3f)
+                            .Shadow("#1F2937", 4f, -2f, 8f)
+                            .MarginTop(24f)
+                            .Add();
+                    }
+
+                    col.Text("\"We are tracking ahead of plan while reinforcing a resilient customer community.\"")
+                        .FontFamily("Helvetica")
+                        .FontSize(12f)
+                        .Italic()
+                        .Color("#475569")
+                        .LineHeight(1.3f)
+                        .MarginTop(16f)
+                        .Add();
+
+                    new RichTextBuilder(col, ContentMargin, col.GetCurrentY() + 12f, contentWidth)
+                        .Font("Helvetica", 11.5f)
+                        .LineHeight(1.25f)
+                        .Span("Chief Executive Officer: ").Bold().Color("#0F172A").EndSpan()
+                        .Span("Amelia Reyes").Color("#1F2937").EndSpan()
+                        .Span(" - Chief Revenue Officer: ").Bold().Color("#0F172A").EndSpan()
+                        .Span("Theo Martin").Color("#1F2937").EndSpan()
+                        .Add();
+
+                    col.Text("Next Check-in: September 18 - Dallas HQ - Agenda: FY26 North Star Metrics")
+                        .FontFamily("Helvetica")
+                        .FontSize(11f)
+                        .Color("#F8FAFC")
+                        .BackgroundColor("#1C64F2")
+                        .PaddingTop(10f)
+                        .PaddingBottom(10f)
+                        .PaddingLeft(16f)
+                        .PaddingRight(16f)
+                        .BackgroundCornerRadius(10f)
+                        .MarginTop(24f)
+                        .Add();
+                });
+        }
+
+        private static string FormatDelta(float value)
+        {
+            var formatted = value.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture);
+            return $"{formatted}%";
+        }
+
+        private static byte[]? GetBannerLogo()
+        {
+            if (_bannerLogo != null)
+                return _bannerLogo;
+
+            _bannerLogo = LoadImageBytes("./samples/aurora-banner.png")
+                          ?? LoadImageBytes("./samples/banner.png");
+            return _bannerLogo;
+        }
+
+        private static byte[]? GetSealLogo()
+        {
+            if (_sealLogo != null)
+                return _sealLogo;
+
+            _sealLogo = LoadImageBytes("./samples/aurora-seal.png")
+                        ?? LoadImageBytes("./samples/seal.png");
+            return _sealLogo;
+        }
+
+        private static byte[]? LoadImageBytes(string relativePath)
+        {
+            if (string.IsNullOrWhiteSpace(relativePath))
+                return null;
+
+            try
             {
-                table.Row(
-                    c => c.Text(row.Region),
-                    c => c.Text(row.Growth).AlignRight(),
-                    c => c.Text(row.Revenue).AlignRight(),
-                    c => c.Text(row.Notes).LineHeight(1.15f)
-                );
+                var full = Path.GetFullPath(relativePath, Directory.GetCurrentDirectory());
+                return File.Exists(full) ? File.ReadAllBytes(full) : null;
             }
-
-            table.FooterRow(
-                c => c.Text("Global Forecast").Bold().ColSpan(2),
-                c =>
-                {
-                    c.Text("$69.1M").Bold().AlignRight();
-                    c.BorderTop(Color.FromArgb(28, 100, 242), 1f);
-                },
-                c => c.Text("Confidence: High").AlignRight()
-            );
-
-            var tableElement = table.Build();
-            tableElement.BorderCollapse = TableModels.BorderCollapseMode.Collapse;
-            tableElement.ResolveBorderConflicts = true;
-            tableElement.OuterBorder = new TableModels.BorderStyle
+            catch
             {
-                Color = Color.FromArgb(28, 100, 242),
-                Width = 1f
-            };
-            tableElement.InnerBorder = new TableModels.BorderStyle
-            {
-                Color = Color.FromArgb(197, 205, 222),
-                Width = 0.5f
-            };
-            tableElement.RowBanding = new TableModels.RowBandingSpec
-            {
-                Step = 2,
-                Fills = new List<TableModels.BandFill>
-                {
-                    new TableModels.BandFill { FillColor = Color.FromArgb(246, 249, 255) },
-                    new TableModels.BandFill { FillColor = Color.White }
-                }
-            };
-            tableElement.ColumnBanding = new TableModels.ColumnBandingSpec
-            {
-                Step = 2,
-                Fills = new List<TableModels.BandFill>
-                {
-                    new TableModels.BandFill { FillColor = null },
-                    new TableModels.BandFill { FillColor = Color.FromArgb(250, 252, 255) }
-                }
-            };
-            tableElement.OuterCornerRadiusTopLeft = 6f;
-            tableElement.OuterCornerRadiusTopRight = 6f;
-            tableElement.OuterCornerRadiusBottomLeft = 6f;
-            tableElement.OuterCornerRadiusBottomRight = 6f;
-
-            table.Add();
-
-            col.GetFlow().Advance(10f);
+                return null;
+            }
         }
 
-        private static void AppendRevenueNotes(ColumnBuilder col)
-        {
-            col.Text("Top Highlights")
-                .FontFamily("Helvetica")
-                .FontSize(12f)
-                .Bold()
-                .Color("#101828")
-                .MarginBottom(4f)
-                .Add();
-
-            new ListBuilder(col, 0, 0, 0)
-                .Marker(ListMarker.Bullet)
-                .Font("Helvetica", 10f)
-                .LineHeight(1.2f)
-                .Item(new RichRun { Text = "APAC leads growth with 24% YoY increase driven by partner marketplaces." })
-                .Item(new RichRun { Text = "EMEA renewals steady; mid-market fintech wins add $3.2M incremental ARR." })
-                .Item(new RichRun { Text = "North America focus: pipeline conversion improving yet still below target in Enterprise West." })
-                .Add();
-
-            col.GetFlow().Advance(12f);
-        }
-
-        private static void AppendPipelineSection(ColumnBuilder col)
-        {
-            col.Text("Pipeline vs Plan")
-                .FontFamily("Helvetica")
-                .FontSize(12f)
-                .Bold()
-                .Color("#101828")
-                .MarginBottom(4f)
-                .Add();
-
-            col.Chart(0, 0, 0, 0)
-                .Title("Net Revenue vs Target")
-                .TitleFont("Helvetica-Bold", 11f)
-                .NumericX(0f, 3f, 4, value => new[] { "Q1", "Q2", "Q3", "Q4" }[(int)value])
-                .NumericY(0f, 35f, 8, value => $"{value:0}M")
-                .GridY(true)
-                .AddBars("Actual",
-                    Color.FromArgb(28, 100, 242),
-                    Color.FromArgb(16, 92, 200),
-                    0.5f, 18f, 21f, 26f, 29f)
-                .AddLine("Target", Color.FromArgb(12, 166, 120), 1.5f, 20f, 22f, 28f, 32f)
-                .Legend(false)
-                .Add();
-
-            col.GetFlow().Advance(12f);
-        }
-
-        private static void AppendRetentionSection(ColumnBuilder col)
-        {
-            col.Text("Retention Outlook")
-                .FontFamily("Helvetica")
-                .FontSize(12f)
-                .Bold()
-                .Color("#101828")
-                .MarginBottom(4f)
-                .Add();
-
-            col.Chart(0, 0, 0, 0)
-                .Title("Logo Retention Trend")
-                .TitleFont("Helvetica-Bold", 11f)
-                .NumericX(0f, 5f, 6, value => new[] { "Apr", "May", "Jun", "Jul", "Aug", "Sep" }[(int)value])
-                .NumericY(88f, 101f, 7, value => $"{value:0}%")
-                .AddLine("Retention", Color.FromArgb(234, 88, 12), 1.8f, 89.2f, 90.4f, 92.1f, 93.5f, 95.8f, 97.3f)
-                .Legend(false)
-                .Add();
-
-            col.GetFlow().Advance(12f);
-        }
-
-        private static void AppendNextSteps(ColumnBuilder col)
-        {
-            new RichTextBuilder(col, 0, 0, 0)
-                .Font("Helvetica", 10.5f)
-                .LineHeight(1.25f)
-                .Span("Next Focus · ")
-                    .Bold()
-                    .Color("#1C64F2")
-                    .EndSpan()
-                .Span("Finalize Q4 pipeline acceleration playbook, reinforce APAC enablement, and pressure-test LATAM currency hedges.")
-                    .Color("#475467")
-                    .EndSpan()
-                .Add();
-        }
+        private readonly record struct RevenueRow(string Segment, float Actual, float Plan, int Pulse);
     }
 }
