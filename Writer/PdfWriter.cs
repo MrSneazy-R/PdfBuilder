@@ -7,6 +7,7 @@ using System.Text;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
+using PdfBuilder.Writer.Fonts;
 
 namespace PdfBuilder.Writer
 {
@@ -46,7 +47,10 @@ namespace PdfBuilder.Writer
                 writer.EndObject();
                 fontObjId[baseFont] = id;
             }
-            string fontRes = string.Join(" ", fontObjId.Select(kv => $"/F{kv.Value} {kv.Value} 0 R"));
+            string baseFontRes = string.Join(" ", fontObjId.Select(kv => $"/F{kv.Value} {kv.Value} 0 R"));
+
+            var embeddedFonts = new EmbeddedFontRegistry();
+            var renderContext = new PdfRenderContext(fontObjId, embeddedFonts);
 
             // Images / ExtGState -----------------------------------------------------------------
             var resources = new PdfResourceManager();
@@ -71,6 +75,7 @@ namespace PdfBuilder.Writer
                     page,
                     i + 1,
                     pageCount,
+                    renderContext,
                     fontObjId,
                     pageImgMap,
                     nowUtc);
@@ -85,6 +90,10 @@ namespace PdfBuilder.Writer
                         anchorLookup[anchor.Id] = (i, xPdf, yPdf);
                 }
             }
+
+            var embeddedFontResources = FontResourceWriter.WriteEmbeddedFonts(writer, embeddedFonts);
+            string embeddedFontRes = string.Join(" ", embeddedFontResources.Select(kv => $"{kv.Key} {kv.Value} 0 R"));
+            string fontRes = CombineFontResources(baseFontRes, embeddedFontRes);
 
             // Annotation counts -> predict page object ids (content + annots interleave) ---------
             var annCount = pageAnnotations.Select(list => list.Count).ToArray();
@@ -152,7 +161,7 @@ namespace PdfBuilder.Writer
 
                 var resSb = new StringBuilder();
                 resSb.Append(" /Resources <<");
-                if (fontObjId.Count > 0) resSb.Append($" /Font << {fontRes} >>");
+                if (!string.IsNullOrWhiteSpace(fontRes)) resSb.Append($" /Font << {fontRes} >>");
                 if (!string.IsNullOrWhiteSpace(xobjRes)) resSb.Append($" /XObject << {xobjRes} >>");
                 if (!string.IsNullOrWhiteSpace(gsRes)) resSb.Append($" /ExtGState << {gsRes} >>");
                 resSb.Append(" /ProcSet [/PDF /Text /ImageB /ImageC /ImageI] >>");
@@ -247,6 +256,16 @@ namespace PdfBuilder.Writer
             return result;
         }
 
+        private static string CombineFontResources(string baseEntries, string embeddedEntries)
+        {
+            bool hasBase = !string.IsNullOrWhiteSpace(baseEntries);
+            bool hasEmbedded = !string.IsNullOrWhiteSpace(embeddedEntries);
+            if (hasBase && hasEmbedded) return $"{baseEntries.Trim()} {embeddedEntries.Trim()}";
+            if (hasBase) return baseEntries.Trim();
+            if (hasEmbedded) return embeddedEntries.Trim();
+            return string.Empty;
+        }
+
         private static void PreRegisterWatermarks(
             PdfDocument doc,
             PdfResourceManager resources,
@@ -284,6 +303,7 @@ namespace PdfBuilder.Writer
             PdfPage page,
             int pageIndex1,
             int pageCount,
+            PdfRenderContext context,
             Dictionary<string, int> fontObjId,
             Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
             DateTime nowUtc)
@@ -299,7 +319,7 @@ namespace PdfBuilder.Writer
             {
                 MasterRenderer.AppendBackground(sb, page, effectiveMaster);
                 if (effectiveMaster.Watermark != null && effectiveMaster.Watermark.Layer == WatermarkLayer.BehindContent)
-                    MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, fontObjId, aboveContent: false);
+                    MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false);
             }
 
             foreach (var element in page.Elements)
@@ -307,7 +327,7 @@ namespace PdfBuilder.Writer
                 switch (element)
                 {
                     case TextElement text:
-                        TextRenderer.Append(sb, text, page.Height, fontObjId);
+                        TextRenderer.Append(sb, text, page.Height, context);
                         break;
 
                     case TableElement table:
@@ -322,7 +342,7 @@ namespace PdfBuilder.Writer
                     case RichTextElement richText:
                     {
                         var linkRects = new List<RichTextRenderer.LinkRect>();
-                        _ = RichTextRenderer.Append(sb, richText, page.Height, fontObjId, linkRects);
+                        _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
                         annotations.AddRange(ConvertLinkRects(linkRects));
                         break;
                     }
@@ -330,13 +350,13 @@ namespace PdfBuilder.Writer
                     case ListElement list:
                     {
                         var linkRects = new List<RichTextRenderer.LinkRect>();
-                        ListRenderer.Append(sb, list, page.Height, fontObjId, linkRects);
+                        ListRenderer.Append(sb, list, page.Height, context, linkRects);
                         annotations.AddRange(ConvertLinkRects(linkRects));
                         break;
                     }
 
                     case ChartElement chart:
-                        ChartRenderer.Append(sb, chart, fontObjId);
+                        ChartRenderer.Append(sb, chart, context);
                         break;
 
                     case UnderlineElement underline:
@@ -354,10 +374,10 @@ namespace PdfBuilder.Writer
             }
 
             if (effectiveHeaderFooter != null)
-                HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, fontObjId, pageIndex1, pageCount, nowUtc);
+                HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc);
 
             if (effectiveMaster?.Watermark != null && effectiveMaster.Watermark.Layer == WatermarkLayer.AboveContent)
-                MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, fontObjId, aboveContent: true);
+                MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: true);
 
             return (Encoding.ASCII.GetBytes(sb.ToString()), annotations, anchorsOnPage);
         }

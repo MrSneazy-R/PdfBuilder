@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace PdfBuilder.TextShaping
         public static TextShaper Shared => _shared;
 
         private readonly SKFontManager _fontManager;
-        private readonly Dictionary<string, SKTypeface> _typefaceCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, SKTypeface> _typefaceCache = new(StringComparer.OrdinalIgnoreCase);
 
         private TextShaper()
         {
@@ -283,16 +284,14 @@ namespace PdfBuilder.TextShaping
         {
             string resolvedFamily = monospace ? ResolveMonospaceFamily(fontFamily) : fontFamily;
             string key = $"{resolvedFamily}|{(bold ? "b" : "n")}|{(italic ? "i" : "r")}";
-            if (_typefaceCache.TryGetValue(key, out var cached) && cached != null)
-                return cached;
+            return _typefaceCache.GetOrAdd(key, _ =>
+            {
+                var weight = bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
+                var slant = italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
+                var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
 
-            var weight = bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
-            var slant = italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
-            var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
-
-            var typeface = _fontManager.MatchFamily(resolvedFamily, style) ?? SKTypeface.Default;
-            _typefaceCache[key] = typeface;
-            return typeface;
+                return _fontManager.MatchFamily(resolvedFamily, style) ?? SKTypeface.Default;
+            });
         }
 
         private static string ResolveMonospaceFamily(string requested)
