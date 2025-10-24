@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
@@ -6,11 +6,16 @@ using System.Linq;
 using System.Text;
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
+using PdfBuilder.Models;
+using PdfBuilder.Fonts;
 
 namespace PdfBuilder.TextShaping
 {
     internal sealed class TextShaper
     {
+        private const int MaxGlyphsPerRun = 512;
+        private const int MaxTokenTextElements = 256;
+
         private static readonly TextShaper _shared = new();
         public static TextShaper Shared => _shared;
 
@@ -26,9 +31,8 @@ namespace PdfBuilder.TextShaping
         {
             if (request == null) throw new ArgumentNullException(nameof(request));
 
-            string text = request.Text?.Replace("\r\n", "\n") ?? string.Empty;
-            if (request.SmallCaps && text.Length > 0)
-                text = text.ToUpperInvariant();
+            string text = NormalizeNewlines(request.Text);
+            text = ApplyTransform(text, request.Transform, request.SmallCaps);
 
             var lines = new List<ShapedLine>();
             float maxWidth = 0f;
@@ -62,39 +66,214 @@ namespace PdfBuilder.TextShaping
         {
             float maxWidth = request.MaxWidth <= 0 ? float.PositiveInfinity : request.MaxWidth;
             var lines = new List<ShapedLine>();
-
-            var words = paragraph.Split(' ');
-            string currentText = string.Empty;
+            var current = new StringBuilder();
             ShapedLine? currentShape = null;
 
-            foreach (var word in words)
+            foreach (var token in TokenizeParagraph(paragraph))
             {
-                string candidate = string.IsNullOrEmpty(currentText) ? word : $"{currentText} {word}";
+                if (token.Length == 0)
+                    continue;
+
+                string candidate = current.Length == 0 ? token : string.Concat(current.ToString(), token);
                 var candidateShape = ShapeLine(candidate, request);
 
-                if (candidateShape.Width <= maxWidth || float.IsInfinity(maxWidth) || string.IsNullOrEmpty(currentText))
+                if (candidateShape.Width <= maxWidth || float.IsInfinity(maxWidth))
                 {
-                    currentText = candidate;
+                    current.Clear();
+                    current.Append(candidate);
                     currentShape = candidateShape;
+                    continue;
+                }
+
+                if (current.Length > 0)
+                {
+                    currentShape ??= ShapeLine(current.ToString(), request);
+                    if (!string.IsNullOrWhiteSpace(currentShape.Text))
+                        lines.Add(currentShape);
+                    current.Clear();
+                    currentShape = null;
+
+                    string trimmedRemainder = RemoveLeadingWhitespace(token);
+                    if (trimmedRemainder.Length > 0)
+                        AppendBrokenPieces(trimmedRemainder);
                 }
                 else
                 {
-                    if (currentShape != null)
-                        lines.Add(currentShape);
-                    else if (!string.IsNullOrEmpty(currentText))
-                        lines.Add(ShapeLine(currentText, request));
-
-                    currentText = word;
-                    currentShape = ShapeLine(currentText, request);
+                    string trimmed = RemoveLeadingWhitespace(token);
+                    AppendBrokenPieces(trimmed.Length == 0 ? token : trimmed);
                 }
             }
 
-            if (currentShape != null)
+            if (current.Length > 0)
+            {
+                currentShape ??= ShapeLine(current.ToString(), request);
                 lines.Add(currentShape);
-            else if (!string.IsNullOrEmpty(currentText))
-                lines.Add(ShapeLine(currentText, request));
+            }
 
             return lines;
+
+            void AppendBrokenPieces(string tokenText)
+            {
+                foreach (var piece in BreakToken(tokenText, request, maxWidth))
+                {
+                    if (string.IsNullOrEmpty(piece))
+                        continue;
+
+                    var pieceShape = ShapeLine(piece, request);
+                    if (!float.IsInfinity(maxWidth) && pieceShape.Width > maxWidth)
+                    {
+                        lines.Add(pieceShape);
+                        current.Clear();
+                        currentShape = null;
+                        continue;
+                    }
+
+                    if (current.Length == 0)
+                    {
+                        current.Append(piece);
+                        currentShape = pieceShape;
+                    }
+                    else
+                    {
+                        lines.Add(currentShape ?? ShapeLine(current.ToString(), request));
+                        current.Clear();
+                        current.Append(piece);
+                        currentShape = pieceShape;
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<string> TokenizeParagraph(string paragraph)
+        {
+            if (string.IsNullOrEmpty(paragraph))
+                yield break;
+
+            int start = 0;
+            bool isWhitespace = char.IsWhiteSpace(paragraph[0]);
+            for (int i = 1; i < paragraph.Length; i++)
+            {
+                bool currentWhitespace = char.IsWhiteSpace(paragraph[i]);
+                if (currentWhitespace != isWhitespace)
+                {
+                    foreach (var part in SplitToken(paragraph.Substring(start, i - start), isWhitespace))
+                        yield return part;
+                    start = i;
+                    isWhitespace = currentWhitespace;
+                }
+            }
+
+            if (start < paragraph.Length)
+            {
+                foreach (var part in SplitToken(paragraph.Substring(start), isWhitespace))
+                    yield return part;
+            }
+        }
+
+        private static IEnumerable<string> SplitToken(string token, bool isWhitespace)
+        {
+            if (string.IsNullOrEmpty(token))
+                yield break;
+
+            if (isWhitespace || token.Length <= MaxTokenTextElements)
+            {
+                yield return token;
+                yield break;
+            }
+
+            var enumerator = StringInfo.GetTextElementEnumerator(token);
+            var builder = new StringBuilder();
+            int count = 0;
+
+            while (enumerator.MoveNext())
+            {
+                builder.Append(enumerator.GetTextElement());
+                count++;
+
+                if (count >= MaxTokenTextElements)
+                {
+                    yield return builder.ToString();
+                    builder.Clear();
+                    count = 0;
+                }
+            }
+
+            if (builder.Length > 0)
+                yield return builder.ToString();
+        }
+
+        private static string RemoveLeadingWhitespace(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return string.Empty;
+
+            int index = 0;
+            while (index < token.Length && char.IsWhiteSpace(token[index]))
+                index++;
+            return index == 0 ? token : token[index..];
+        }
+
+        private IEnumerable<string> BreakToken(string token, TextShapingRequest request, float maxWidth)
+        {
+            if (string.IsNullOrEmpty(token))
+                yield break;
+
+            if (float.IsInfinity(maxWidth) || maxWidth <= 0f)
+            {
+                yield return token;
+                yield break;
+            }
+
+            var buffer = new StringBuilder();
+            ShapedLine? cached = null;
+
+            var enumerator = StringInfo.GetTextElementEnumerator(token);
+            while (enumerator.MoveNext())
+            {
+                string element = enumerator.GetTextElement();
+                buffer.Append(element);
+                var shape = ShapeLine(buffer.ToString(), request);
+
+                if (shape.Width <= maxWidth)
+                {
+                    cached = shape;
+                    continue;
+                }
+
+                if (buffer.Length == element.Length)
+                {
+                    yield return element;
+                    buffer.Clear();
+                    cached = null;
+                    continue;
+                }
+
+                if (cached != null)
+                {
+                    yield return cached.Text;
+                    buffer.Clear();
+                    buffer.Append(element);
+                    cached = ShapeLine(buffer.ToString(), request);
+                    if (cached.Width > maxWidth)
+                    {
+                        yield return element;
+                        buffer.Clear();
+                        cached = null;
+                    }
+                }
+                else
+                {
+                    yield return element;
+                    buffer.Clear();
+                }
+            }
+
+            if (buffer.Length > 0)
+            {
+                if (cached == null || !string.Equals(cached.Text, buffer.ToString(), StringComparison.Ordinal))
+                    cached = ShapeLine(buffer.ToString(), request);
+                yield return cached.Text;
+            }
         }
 
         private ShapedLine ShapeLine(string text, TextShapingRequest request)
@@ -119,6 +298,24 @@ namespace PdfBuilder.TextShaping
                 if (run.Descent > lineDescent) lineDescent = run.Descent;
             }
 
+            if (runs.Count > 0)
+            {
+                var processed = new List<ShapedRun>(runs.Count);
+                foreach (var run in runs)
+                {
+                    if (run.Glyphs.Count > MaxGlyphsPerRun)
+                        processed.AddRange(SplitRun(run));
+                    else
+                        processed.Add(run);
+                }
+
+                if (processed.Count != runs.Count)
+                {
+                    runs = processed;
+                    width = runs.Sum(r => r.Width);
+                }
+            }
+
             float lineHeight = GetLineHeight(request.FontSize, request.LineHeight, lineAscent, lineDescent);
             return new ShapedLine(text, runs, width, lineAscent, lineDescent, lineHeight);
         }
@@ -130,47 +327,32 @@ namespace PdfBuilder.TextShaping
             return Math.Max(preferred, natural);
         }
 
-        private IEnumerable<TextSegment> SegmentText(string text, TextShapingRequest request)
+        private IEnumerable<TextSegment> SegmentText(string text, TextShapingRequest req)
         {
-            if (string.IsNullOrEmpty(text))
-                yield break;
+            if (string.IsNullOrEmpty(text)) yield break;
 
-            var builder = new StringBuilder();
-            SKTypeface? currentTypeface = null;
+            SKTypeface? current = null;
+            var sb = new StringBuilder();
+
             foreach (var rune in text.EnumerateRunes())
             {
-                string runeText = rune.ToString();
-                SKTypeface typefaceForRune = ResolveTypefaceForRune(request, rune);
-
-                if (currentTypeface == null)
+                var face = ResolveTypefaceForRune(req, rune);
+                if (current is null || !ReferenceEquals(current, face))
                 {
-                    currentTypeface = typefaceForRune;
-                    builder.Append(runeText);
+                    if (sb.Length > 0 && current != null)
+                        yield return new TextSegment(sb.ToString(), current, req.FontFamily, req.FontSize, req.Bold, req.Italic);
+                    sb.Clear();
+                    current = face;
                 }
-                else
-                {
-                    builder.Append(runeText);
-                    if (!currentTypeface.ContainsGlyphs(builder.ToString()))
-                    {
-                        builder.Length -= runeText.Length;
-                        if (builder.Length > 0)
-                        {
-                            yield return new TextSegment(builder.ToString(), currentTypeface, request.FontFamily, request.FontSize, request.Bold, request.Italic);
-                        }
-
-                        builder.Clear();
-                        builder.Append(runeText);
-                        currentTypeface = typefaceForRune;
-                    }
-                }
+                sb.Append(rune.ToString());
             }
-
-            if (builder.Length > 0 && currentTypeface != null)
-            {
-                yield return new TextSegment(builder.ToString(), currentTypeface, request.FontFamily, request.FontSize, request.Bold, request.Italic);
-            }
+            if (sb.Length > 0 && current != null)
+                yield return new TextSegment(sb.ToString(), current, req.FontFamily, req.FontSize, req.Bold, req.Italic);
         }
 
+        private readonly ConcurrentDictionary<SKTypeface, SKShaper> _shaperCache = new();
+        private SKShaper GetShaper(SKTypeface tf) =>
+            _shaperCache.GetOrAdd(tf, t => new SKShaper(t));
         private ShapedRun ShapeRun(TextSegment segment, TextShapingRequest request)
         {
             using var paint = new SKPaint
@@ -184,7 +366,7 @@ namespace PdfBuilder.TextShaping
                 TextEncoding = SKTextEncoding.Utf16
             };
 
-            using var shaper = new SKShaper(segment.Typeface);
+            var shaper = GetShaper(segment.Typeface);
             var result = shaper.Shape(segment.Text, 0, 0, paint);
 
             var glyphs = new List<ShapedGlyph>(result?.Codepoints?.Length ?? 0);
@@ -231,7 +413,9 @@ namespace PdfBuilder.TextShaping
                 // HarfBuzz width is in result.Width
             }
 
-            float runWidth = result?.Width ?? glyphs.Sum(g => g.AdvanceX);
+            var adjustedGlyphs = ApplySpacing(glyphs, request);
+            glyphs = adjustedGlyphs;
+            float runWidth = glyphs.Sum(g => g.AdvanceX);
             using var metricsFont = new SKFont(segment.Typeface, segment.FontSize);
             var metrics = metricsFont.Metrics;
             float ascent = Math.Abs(metrics.Ascent);
@@ -242,26 +426,121 @@ namespace PdfBuilder.TextShaping
 
         private static Dictionary<int, (int start, int end)> BuildClusterRanges(IReadOnlyList<uint> clusters, string text)
         {
-            var unique = new SortedSet<int>();
-            foreach (var cluster in clusters)
-                unique.Add((int)cluster);
+            if (clusters == null || clusters.Count == 0)
+                return new() { [0] = (0, text.Length) };
 
-            var list = unique.ToList();
-            var dict = new Dictionary<int, (int start, int end)>(list.Count);
+            // Distinct, sorted starts in UTF-16 code units
+            var starts = new SortedSet<int>(clusters.Select(c => (int)c));
+            var list = starts.ToList();
+
+            var dict = new Dictionary<int, (int, int)>(list.Count);
             for (int i = 0; i < list.Count; i++)
             {
-                int start = list[i];
-                int end = (i + 1 < list.Count) ? list[i + 1] : text.Length;
-                if (end < start)
-                    (start, end) = (end, start);
-                if (end < start)
-                    end = start;
-                dict[start] = (start, Math.Min(text.Length, end));
+                int start = Math.Clamp(list[i], 0, text.Length);
+                int end = (i + 1 < list.Count) ? Math.Clamp(list[i + 1], 0, text.Length) : text.Length;
+                if (end < start) (start, end) = (end, start); // defend against odd ordering
+                dict[start] = (start, end);
             }
             if (!dict.ContainsKey(0))
                 dict[0] = (0, text.Length);
             return dict;
         }
+
+        private static string NormalizeNewlines(string? text) =>
+            string.IsNullOrEmpty(text) ? string.Empty : text.Replace("\r\n", "\n");
+
+        private static string ApplyTransform(string text, TextTransform transform, bool smallCaps)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            TextTransform effective = transform;
+            if (effective == TextTransform.None && smallCaps)
+                effective = TextTransform.SmallCaps;
+
+            return effective switch
+            {
+                TextTransform.Uppercase => text.ToUpperInvariant(),
+                TextTransform.Lowercase => text.ToLowerInvariant(),
+                TextTransform.Capitalize => CapitalizeFirst(text),
+                TextTransform.TitleCase => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(text),
+                TextTransform.SmallCaps => text.ToUpperInvariant(),
+                _ => text
+            };
+        }
+
+        private static string CapitalizeFirst(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+            if (text.Length == 1)
+                return text.ToUpperInvariant();
+            return char.ToUpperInvariant(text[0]) + text.Substring(1).ToLowerInvariant();
+        }
+
+        private static List<ShapedGlyph> ApplySpacing(List<ShapedGlyph> glyphs, TextShapingRequest request)
+        {
+            if (glyphs == null || glyphs.Count == 0)
+                return glyphs ?? new List<ShapedGlyph>();
+
+            float letterSpacing = request.LetterSpacing ?? 0f;
+            float wordSpacing = request.WordSpacing ?? 0f;
+            if (Math.Abs(letterSpacing) < 0.0001f && Math.Abs(wordSpacing) < 0.0001f)
+                return glyphs;
+
+            var adjusted = new List<ShapedGlyph>(glyphs.Count);
+            for (int i = 0; i < glyphs.Count; i++)
+            {
+                var glyph = glyphs[i];
+                float extra = 0f;
+                bool isLast = i == glyphs.Count - 1;
+
+                if (!isLast && Math.Abs(letterSpacing) > 0.0001f)
+                    extra += letterSpacing;
+
+                if (Math.Abs(wordSpacing) > 0.0001f && IsWordSpacingGlyph(glyph.Unicode))
+                    extra += wordSpacing;
+
+                if (Math.Abs(extra) > 0.0001f)
+                {
+                    var modified = new ShapedGlyph(
+                        glyph.GlyphId,
+                        glyph.X,
+                        glyph.Y,
+                        glyph.AdvanceX + extra,
+                        glyph.AdvanceY,
+                        glyph.OffsetX,
+                        glyph.OffsetY,
+                        glyph.DesignAdvance,
+                        glyph.Cluster,
+                        glyph.Unicode);
+                    modified.AssignedCid = glyph.AssignedCid;
+                    adjusted.Add(modified);
+                }
+                else
+                {
+                    adjusted.Add(glyph);
+                }
+            }
+            return adjusted;
+        }
+
+        private static bool IsWordSpacingGlyph(string unicode)
+        {
+            if (string.IsNullOrEmpty(unicode))
+                return false;
+
+            foreach (char ch in unicode)
+            {
+                if (ch == ' ' || ch == '\t' || ch == '\u00A0')
+                    return true;
+                if (!char.IsWhiteSpace(ch))
+                    return false;
+            }
+
+            return true;
+        }
+
 
         private ShapedRun CreateEmptyRun(TextShapingRequest request)
         {
@@ -289,6 +568,10 @@ namespace PdfBuilder.TextShaping
                 var weight = bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
                 var slant = italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
                 var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
+
+                var custom = FontCatalog.Resolve(resolvedFamily, style);
+                if (custom != null)
+                    return custom;
 
                 return _fontManager.MatchFamily(resolvedFamily, style) ?? SKTypeface.Default;
             });
@@ -327,6 +610,14 @@ namespace PdfBuilder.TextShaping
             var slant = request.Italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
             var style = new SKFontStyle(weight, SKFontStyleWidth.Normal, slant);
 
+            foreach (var custom in FontCatalog.EnumerateRegisteredTypefaces())
+            {
+                if (ReferenceEquals(custom, primary))
+                    continue;
+                if (custom.ContainsGlyphs(runeString))
+                    return custom;
+            }
+
             var matched = _fontManager.MatchCharacter(request.FontFamily, style, Array.Empty<string>(), rune.Value);
             if (matched != null)
                 return matched;
@@ -354,5 +645,53 @@ namespace PdfBuilder.TextShaping
             public bool Bold { get; }
             public bool Italic { get; }
         }
+
+        private static IEnumerable<ShapedRun> SplitRun(ShapedRun source)
+        {
+            var glyphs = source.Glyphs;
+            int count = glyphs.Count;
+            int index = 0;
+
+            while (index < count)
+            {
+                int end = Math.Min(index + MaxGlyphsPerRun, count);
+                int cluster = glyphs[end - 1].Cluster;
+                while (end < count && glyphs[end].Cluster == cluster)
+                    end++;
+
+                var slice = new List<ShapedGlyph>(end - index);
+                var textBuilder = new StringBuilder();
+                float sliceWidth = 0f;
+
+                for (int i = index; i < end; i++)
+                {
+                    var glyph = glyphs[i];
+                    slice.Add(glyph);
+                    sliceWidth += glyph.AdvanceX;
+                    if (!string.IsNullOrEmpty(glyph.Unicode))
+                        textBuilder.Append(glyph.Unicode);
+                }
+
+                string sliceText = textBuilder.Length > 0 ? textBuilder.ToString() : source.Text;
+
+                yield return new ShapedRun(
+                    sliceText,
+                    source.FontFamily,
+                    source.FontSize,
+                    source.Bold,
+                    source.Italic,
+                    source.Typeface,
+                    slice,
+                    sliceWidth,
+                    source.Ascent,
+                    source.Descent);
+
+                index = end;
+            }
+        }
     }
 }
+
+
+
+

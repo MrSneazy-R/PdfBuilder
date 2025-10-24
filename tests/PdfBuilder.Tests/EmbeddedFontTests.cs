@@ -20,7 +20,7 @@ namespace PdfBuilder.Tests
                 .Margin(36)
                 .Content(col =>
                 {
-                    col.Text("Hello embedded world").FontSize(14).Add();
+                    col.Text("Hello caf\u00E9 world").FontSize(14).Add();
                 });
 
             var pdfBytes = PdfContentHelper.Generate(doc);
@@ -31,7 +31,30 @@ namespace PdfBuilder.Tests
             ascii.Should().Contain("/ToUnicode");
 
             var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
-            blocks.Should().Contain("Hello embedded world");
+            blocks.Should().Contain("Hello caf\u00E9 world");
+        }
+
+        [Fact]
+        public void PdfWriter_AsciiText_UsesBaseFont()
+        {
+            var doc = new PdfDocument();
+            var page = doc.AddPage();
+
+            new PdfPageBuilder(page)
+                .Margin(36)
+                .Content(col =>
+                {
+                    col.Text("Simple ascii content").FontSize(12).Add();
+                });
+
+            var pdfBytes = PdfContentHelper.Generate(doc);
+            var ascii = Encoding.ASCII.GetString(pdfBytes);
+
+            ascii.Should().Contain("/Subtype /Type1");
+            ascii.Should().NotContain("/FontFile2");
+
+            var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
+            blocks.Should().Contain("Simple ascii content");
         }
 
         [Fact]
@@ -43,7 +66,7 @@ namespace PdfBuilder.Tests
                 {
                     Watermark = new WatermarkSpec
                     {
-                        Text = "CONFIDENTIAL",
+                        Text = "CONFIDENTIAL \u03A9",
                         FontFamily = "Helvetica",
                         FontSize = 48,
                         Opacity = 0.4f
@@ -65,7 +88,7 @@ namespace PdfBuilder.Tests
             ascii.Should().Contain("/Font <<").And.Contain("/Ff");
 
             var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
-            blocks.Should().Contain("CONFIDENTIAL");
+            blocks.Should().Contain("CONFIDENTIAL \u03A9");
         }
     }
 }

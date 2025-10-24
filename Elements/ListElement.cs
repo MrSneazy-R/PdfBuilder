@@ -13,6 +13,7 @@ public sealed class ListElement : PdfElement
     public string FontFamily { get; set; } = "Helvetica";
     public float FontSize { get; set; } = 11f;
     public string Color { get; set; } = "#000";
+    public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
 
     public List<ListItem> Items { get; } = new();
 

@@ -16,8 +16,15 @@ namespace PdfBuilder.Models
 
         // Content
         public List<PdfElement> Elements { get; } = new();
+        internal List<PdfElement> HeaderElements { get; } = new();
+        internal List<PdfElement> FooterElements { get; } = new();
 
         public LayoutOptions LayoutOptions { get; internal set; } = new();
+
+        public TextStyleDefaults TextDefaults { get; set; } = new TextStyleDefaults();
+        internal PdfDocument? Owner { get; set; }
+        internal PaginationRegistry? Pagination { get; set; }
+        internal LayoutProfilerSession? ProfilerSession { get; set; }
 
         // Styling
         public string? BackgroundColor { get; set; } = "#FFFFFF"; // Default: white
@@ -56,5 +63,24 @@ namespace PdfBuilder.Models
         public HeaderFooterSpec? HeaderFooterOverride { get; set; } = null;
         public MasterPageSpec? MasterOverride { get; set; } = null;
         public ColumnLayoutSpec? Columns { get; set; } = null;
+
+        internal void SetHeaderElements(IEnumerable<PdfElement> elements)
+        {
+            HeaderElements.Clear();
+            if (elements == null)
+                return;
+            HeaderElements.AddRange(elements);
+        }
+
+        internal void SetFooterElements(IEnumerable<PdfElement> elements)
+        {
+            FooterElements.Clear();
+            if (elements == null)
+                return;
+            FooterElements.AddRange(elements);
+        }
     }
 }
+
+
+

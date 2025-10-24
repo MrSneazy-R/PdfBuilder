@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 
 namespace PdfBuilder.Writer
 {
@@ -24,7 +25,7 @@ namespace PdfBuilder.Writer
             return assignedId;
         }
 
-       public string ResolveBaseFontName(string fontKey)
+        public string ResolveBaseFontName(string fontKey)
         {
             return fontKey switch
             {
@@ -39,6 +40,7 @@ namespace PdfBuilder.Writer
                 _ => "/Helvetica"
             };
         }
+
         public static string NormalizeFontKey(string? fontFamily, bool bold = false, bool italic = false)
         {
             if (string.IsNullOrWhiteSpace(fontFamily)) fontFamily = "Helvetica";
@@ -76,8 +78,40 @@ namespace PdfBuilder.Writer
             return key;
         }
 
+        public static string MapToBase14(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return "Helvetica";
+            string normalized = key.Trim();
+            string lower = normalized.ToLowerInvariant();
 
+            static bool Has(string text, string token) => text.Contains(token, StringComparison.OrdinalIgnoreCase);
 
+            if (lower.Contains("courier"))
+            {
+                bool bold = Has(normalized, "Bold");
+                bool italic = Has(normalized, "Oblique") || Has(normalized, "Italic");
+                if (bold && italic) return "Courier-BoldOblique";
+                if (bold) return "Courier-Bold";
+                if (italic) return "Courier-Oblique";
+                return "Courier";
+            }
 
+            if (lower.Contains("times"))
+            {
+                bool bold = Has(normalized, "Bold");
+                bool italic = Has(normalized, "Italic") || Has(normalized, "Oblique");
+                if (bold && italic) return "Times-BoldItalic";
+                if (bold) return "Times-Bold";
+                if (italic) return "Times-Italic";
+                return "Times-Roman";
+            }
+
+            bool boldSans = Has(normalized, "Bold");
+            bool italicSans = Has(normalized, "Italic") || Has(normalized, "Oblique");
+            if (boldSans && italicSans) return "Helvetica-BoldOblique";
+            if (boldSans) return "Helvetica-Bold";
+            if (italicSans) return "Helvetica-Oblique";
+            return "Helvetica";
+        }
     }
 }

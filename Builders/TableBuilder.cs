@@ -1,3 +1,4 @@
+﻿using TableModels = PdfBuilder.Elements.Table;
 using PdfBuilder.Elements;
 using System;
 using System.Collections.Generic;
@@ -24,6 +25,7 @@ namespace PdfBuilder.Document
             {
                 TableWidth = tableWidth > 0 ? tableWidth : null
             };
+            _column.ApplyTableDefaults(_table);
         }
 
         /// <summary>Retrieve the built TableElement without adding to the column.</summary>
@@ -42,6 +44,19 @@ namespace PdfBuilder.Document
         public TableBuilder ColumnWidths(params float[] widths)
         {
             _table.ColumnWidths = (widths ?? Array.Empty<float>()).ToList();
+            if (_table.ColumnDefinitions.Count > 0)
+                _table.ColumnDefinitions.Clear();
+            return this;
+        }
+
+        public TableBuilder ColumnLayout(params TableModels.TableColumnDefinition[] definitions)
+        {
+            _table.ColumnDefinitions = (definitions ?? Array.Empty<TableModels.TableColumnDefinition>())
+                .Where(d => d != null)
+                .Select(d => d!.Clone())
+                .ToList();
+            if (_table.ColumnWidths.Count > 0)
+                _table.ColumnWidths.Clear();
             return this;
         }
 
@@ -269,6 +284,7 @@ namespace PdfBuilder.Document
         {
             private readonly TableCell _cell;
             public TableCellBuilder(TableCell cell) { _cell = cell; }
+            internal TableCell Cell => _cell;
 
             // -------- Content / Typography --------
             public TableCellBuilder Text(string? text) { _cell.Text = text ?? string.Empty; return this; }
@@ -427,5 +443,7 @@ namespace PdfBuilder.Document
         }
     }
 }
+
+
 
 

@@ -11,10 +11,15 @@ namespace PdfBuilder.Models
         public float? FontSize { get; set; }             // null = inherit paragraph
         public bool Bold { get; set; }
         public bool Italic { get; set; }
+        public bool Monospace { get; set; }
         public bool Underline { get; set; }
         public bool Strikethrough { get; set; }
         public bool SmallCaps { get; set; }
         public string Color { get; set; } = "#000";
+        public List<string>? FallbackFonts { get; set; }
+        public float? LetterSpacing { get; set; }
+        public float? WordSpacing { get; set; }
+        public TextTransform? Transform { get; set; }
 
         // Links (choose one)
         public string? LinkUrl { get; set; }             // "https://", "mailto:..."

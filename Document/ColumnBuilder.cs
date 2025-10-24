@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Document.Layout.Components;
 using PdfBuilder.Elements;
+using PdfBuilder.Elements.Table;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
 using System;
@@ -17,7 +19,14 @@ namespace PdfBuilder.Document
         private readonly float _defaultSpacing;
         private readonly float _margin;
         private readonly LayoutOptions _layoutOptions;
+        private TextStyleDefaults _textDefaults;
+        private readonly Func<PdfPage, FlowColumn[]>? _customColumnFactory;
         private readonly Dictionary<CacheKey, LayoutMeasurement> _measurementCache = new();
+        private readonly HashSet<string> _showOnceKeys = new(StringComparer.Ordinal);
+        private readonly PdfDocument? _document;
+        private readonly PaginationRegistry? _pagination;
+        private readonly LayoutProfilerSession? _profilerSession;
+        private readonly bool _profilerEnabled;
 
         // Header/Footer reserved heights
         private readonly Func<PdfPage, HeaderFooterSpec?>? _hfForPage; // optional
@@ -40,7 +49,10 @@ namespace PdfBuilder.Document
             float defaultSpacing = 8f,
             Func<PdfPage>? newPage = null,
             Func<PdfPage, HeaderFooterSpec?>? hfForPage = null,
-            LayoutOptions? layoutOptions = null)
+            LayoutOptions? layoutOptions = null,
+            TextStyleDefaults? textDefaults = null,
+            Func<PdfPage, FlowColumn[]>? columnFactory = null,
+            PdfDocument? document = null)
         {
             _page = page ?? throw new ArgumentNullException(nameof(page));
             _margin = margin;
@@ -48,10 +60,25 @@ namespace PdfBuilder.Document
             _newPage = newPage;
             _hfForPage = hfForPage;
             _layoutOptions = layoutOptions ?? page.LayoutOptions ?? new LayoutOptions();
+            _textDefaults = (textDefaults ?? page.TextDefaults ?? new TextStyleDefaults()).Clone();
+            _customColumnFactory = columnFactory;
+            _document = document ?? page.Owner;
+            _pagination = page.Pagination ?? _document?.Pagination;
+            _profilerSession = page.ProfilerSession ?? _document?.ProfilerSession;
+            _profilerEnabled = (_layoutOptions?.Profiler.Enabled ?? false) && _profilerSession != null;
 
             ResolveHeaderFooterBands(_page, out _headerH, out _footerH);
             InitColumns(_page);
             _pageSequence = 1;
+        }
+
+        public ColumnBuilder DefaultTextStyle(Action<TextStyleDefaults> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var clone = _textDefaults.Clone();
+            configure(clone);
+            _textDefaults = clone;
+            return this;
         }
 
         private void Trace(string message)
@@ -78,21 +105,37 @@ namespace PdfBuilder.Document
 
         private void InitColumns(PdfPage page)
         {
-            var layout = page.Columns ?? new ColumnLayoutSpec { Columns = 1, Gutter = 14f };
-            int columnCount = Math.Max(1, layout.Widths?.Length ?? layout.Columns);
-            float gutter = layout.Gutter;
-            float[]? widths = null;
-            if (layout.Widths != null && layout.Widths.Length == columnCount)
-                widths = (float[])layout.Widths.Clone();
-
-            _columns = FlowGrid.Create(page, _margin, columnCount, gutter, _headerH, _footerH, widths);
-            if (_columns.Length == 0)
+            if (_customColumnFactory != null)
             {
-                float width = Math.Max(0, page.Width - (_margin > 0 ? _margin * 2 : page.MarginLeft + page.MarginRight));
-                float top = page.Height - (_margin > 0 ? _margin : page.MarginTop) - _headerH;
-                float bottom = (_margin > 0 ? _margin : page.MarginBottom) + _footerH;
-                _columns = new[] { new FlowColumn(0, _margin > 0 ? _margin : page.MarginLeft, width, top, bottom) };
+                var columns = _customColumnFactory(page) ?? Array.Empty<FlowColumn>();
+                if (columns.Length == 0)
+                {
+                    float width = Math.Max(0, page.Width - (_margin > 0 ? _margin * 2 : page.MarginLeft + page.MarginRight));
+                    float top = page.Height - (_margin > 0 ? _margin : page.MarginTop);
+                    float bottom = (_margin > 0 ? _margin : page.MarginBottom);
+                    columns = new[] { new FlowColumn(0, _margin > 0 ? _margin : page.MarginLeft, width, top, bottom) };
+                }
+                _columns = columns;
             }
+            else
+            {
+                var layout = page.Columns ?? new ColumnLayoutSpec { Columns = 1, Gutter = 14f };
+                int columnCount = Math.Max(1, layout.Widths?.Length ?? layout.Columns);
+                float gutter = layout.Gutter;
+                float[]? widths = null;
+                if (layout.Widths != null && layout.Widths.Length == columnCount)
+                    widths = (float[])layout.Widths.Clone();
+
+                _columns = FlowGrid.Create(page, _margin, columnCount, gutter, _headerH, _footerH, widths);
+                if (_columns.Length == 0)
+                {
+                    float width = Math.Max(0, page.Width - (_margin > 0 ? _margin * 2 : page.MarginLeft + page.MarginRight));
+                    float top = page.Height - (_margin > 0 ? _margin : page.MarginTop) - _headerH;
+                    float bottom = (_margin > 0 ? _margin : page.MarginBottom) + _footerH;
+                    _columns = new[] { new FlowColumn(0, _margin > 0 ? _margin : page.MarginLeft, width, top, bottom) };
+                }
+            }
+
             _colIndex = Math.Min(Math.Max(0, _colIndex), _columns.Length - 1);
             _columns[_colIndex].Reset();
             _flowGuidesInjected = false;
@@ -139,6 +182,7 @@ namespace PdfBuilder.Document
             if (_newPage == null) return this;
             Trace($"Flow requested page break from page {_pageSequence}");
             _page = _newPage();
+            _textDefaults = _page.TextDefaults.Clone();
             ResolveHeaderFooterBands(_page, out _headerH, out _footerH);
             InitColumns(_page);
 
@@ -216,6 +260,13 @@ namespace PdfBuilder.Document
         internal LayoutOptions LayoutOptions => _layoutOptions;
         internal float DefaultSpacing => _defaultSpacing;
 
+        internal bool TryConsumeShowOnce(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("ShowOnce key cannot be null or empty.", nameof(key));
+            return _showOnceKeys.Add(key);
+        }
+
 
         // -- Drawing helpers (kept) ------------------------------------------
 
@@ -247,6 +298,95 @@ namespace PdfBuilder.Document
         // Row/Grid container (NEW)
         public RowBuilder Row(float gap = 12f) => new RowBuilder(this, gap, CurrentColumn.X, CurrentColumn.Y, CurrentColumn.Width);
 
+        public ColumnBuilder Section(string title, Action<SectionContext>? configure = null, int level = 1, bool startOnNewPage = false, bool includeInToc = true)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                throw new ArgumentNullException(nameof(title));
+
+            if (startOnNewPage && (_page.Elements.Count > 0 || CurrentColumn.Y < CurrentColumn.TopY - 0.1f))
+                PageBreak();
+
+            string anchorId = _pagination?.EnsureAnchorId(title) ?? Guid.NewGuid().ToString("N");
+            var entry = _pagination?.RegisterSection(title, level, anchorId, includeInToc);
+            string number = entry?.Number ?? string.Empty;
+
+            var anchor = new AnchorElement(anchorId, CurrentColumn.X, CurrentColumn.Y)
+            {
+                Title = includeInToc ? (string.IsNullOrEmpty(number) ? title : $"{number} {title}") : null,
+                Level = Math.Max(1, level)
+            };
+            AddAnchor(anchor);
+
+            var context = new SectionContext(this, title, number, anchorId, level);
+            configure?.Invoke(context);
+            return this;
+        }
+
+        public ColumnBuilder TableOfContents(Action<TableOfContentsOptions>? configure = null)
+        {
+            if (_pagination == null || _pagination.Sections.Count == 0)
+                return this;
+
+            var sections = _pagination.Sections.Where(s => s.IncludeInToc).ToList();
+            if (sections.Count == 0)
+                return this;
+
+            var options = new TableOfContentsOptions();
+            configure?.Invoke(options);
+
+            var table = Table(CurrentColumn.X, CurrentColumn.Y, CurrentColumn.Width, 0f);
+            table.TableWidth(CurrentColumn.Width);
+            table.Border("#FFFFFF", 0f);
+            table.ColumnLayout(
+                TableColumn.Relative(1f),
+                TableColumn.Fixed(options.PageNumberColumnWidth, minWidth: options.PageNumberColumnWidth, maxWidth: options.PageNumberColumnWidth));
+
+            var pending = new List<(int rowIndex, SectionEntry section)>();
+            int rowIndex = 0;
+
+            foreach (var section in sections)
+            {
+                table.Row(row => row.Cells(
+                    cell =>
+                    {
+                        cell.NoBorder();
+                        cell.PaddingLeft(options.IndentPerLevel * Math.Max(0, section.Level - 1));
+                        string text = options.IncludeNumbers && !string.IsNullOrEmpty(section.Number)
+                            ? string.Concat(section.Number, options.NumberSeparator, section.Title)
+                            : section.Title;
+                        cell.Text(text);
+                    },
+                    cell =>
+                    {
+                        cell.NoBorder();
+                        cell.AlignRight();
+                        cell.Text(options.PendingPageText);
+                    }));
+
+                pending.Add((rowIndex, section));
+                rowIndex++;
+            }
+
+            table.Add();
+
+            var addedTable = _page.Elements.OfType<TableElement>().LastOrDefault();
+            if (addedTable != null)
+            {
+                foreach (var entry in pending)
+                {
+                    if (entry.rowIndex >= 0 &&
+                        entry.rowIndex < addedTable.Rows.Count &&
+                        addedTable.Rows[entry.rowIndex].Cells.Count > 1)
+                    {
+                        var cell = addedTable.Rows[entry.rowIndex].Cells[1];
+                        _pagination.RegisterPageReference(cell, entry.section, options);
+                    }
+                }
+            }
+
+            return this;
+        }
+
         public ColumnBuilder Compose(IMeasurable component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
@@ -268,11 +408,29 @@ namespace PdfBuilder.Document
             return this;
         }
 
+        public ColumnBuilder ComposeContent(Action<ContentComposer> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var collection = new LayoutComponentCollection(this);
+            var composer = new ContentComposer(collection);
+            configure(composer);
+
+            foreach (var component in collection.Components)
+            {
+                AddComponent(component);
+            }
+
+            return this;
+        }
+
         // -- Adders invoked by builders (kept + tiny changes) ----------------
 
         internal float AddComponent(IMeasurable component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
+
+            if (_profilerEnabled)
+                _profilerSession!.EnsureComponent(component.GetType());
 
             float totalHeight = 0f;
             IMeasurable? current = component;
@@ -330,7 +488,7 @@ namespace PdfBuilder.Document
         {
             if (!_layoutOptions.EnableMeasurementCaching)
             {
-                return component.Measure(context);
+                return MeasureCore(component, context);
             }
 
             int widthKey = Quantize(context.AvailableWidth);
@@ -343,7 +501,7 @@ namespace PdfBuilder.Document
                 return cached;
             }
 
-            var measurement = component.Measure(context);
+            var measurement = MeasureCore(component, context);
             if (measurement.Result == LayoutResultKind.Full && measurement.Remainder == null)
             {
                 _measurementCache[key] = measurement;
@@ -351,6 +509,21 @@ namespace PdfBuilder.Document
             }
             return measurement;
         }
+
+        private LayoutMeasurement MeasureCore(IMeasurable component, LayoutMeasureContext context)
+        {
+            if (_profilerEnabled)
+            {
+                var sw = Stopwatch.StartNew();
+                var measurement = component.Measure(context);
+                sw.Stop();
+                _profilerSession!.RecordMeasurement(component.GetType(), sw.Elapsed.TotalMilliseconds);
+                return measurement;
+            }
+
+            return component.Measure(context);
+        }
+
 
         private static int Quantize(float value)
         {
@@ -406,6 +579,37 @@ namespace PdfBuilder.Document
             _flowGuidesInjected = true;
         }
 
+        internal void ApplyTextDefaults(TextElement element)
+        {
+            _textDefaults.ApplyTo(element);
+            element.FlowDirection = _textDefaults.FlowDirection;
+        }
+
+        internal void ApplyRichTextDefaults(RichTextElement element)
+        {
+            _textDefaults.ApplyTo(element);
+            element.FlowDirection = _textDefaults.FlowDirection;
+        }
+
+        internal void ApplyListDefaults(ListElement element)
+        {
+            _textDefaults.ApplyTo(element);
+            element.FlowDirection = _textDefaults.FlowDirection;
+        }
+
+        internal void ApplyRunDefaults(RichRun run)
+        {
+            _textDefaults.ApplyTo(run);
+        }
+
+        internal FlowDirection CurrentFlowDirection => _textDefaults.FlowDirection;
+
+        internal void ApplyTableDefaults(TableElement table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            _textDefaults.ApplyTo(table.DefaultTextStyle);
+        }
+
         internal float AddText(TextElement text)
         {
             var component = new TextComponent(text, _defaultSpacing);
@@ -415,6 +619,12 @@ namespace PdfBuilder.Document
         internal float AddImage(ImageElement image)
         {
             var component = new ImageComponent(image, _defaultSpacing);
+            return AddComponent(component);
+        }
+
+        internal float AddCanvas(CanvasElement canvas)
+        {
+            var component = new CanvasComponent(canvas, _defaultSpacing);
             return AddComponent(component);
         }
 
@@ -547,6 +757,17 @@ namespace PdfBuilder.Document
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 

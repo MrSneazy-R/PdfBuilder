@@ -1,4 +1,4 @@
-namespace PdfBuilder.Document.Layout
+﻿namespace PdfBuilder.Document.Layout
 {
     public sealed class LayoutDebugOptions
     {
@@ -17,6 +17,8 @@ namespace PdfBuilder.Document.Layout
         public bool EnableMeasurementCaching { get; set; }
 
         public LayoutDebugOptions Debug { get; } = new LayoutDebugOptions();
+
+        public LayoutProfilerConfig Profiler { get; } = new LayoutProfilerConfig();
 
         /// <summary>
         /// Backwards compatible access to trace flag.
@@ -41,7 +43,11 @@ namespace PdfBuilder.Document.Layout
             clone.Debug.DrawBoundingBoxes = Debug.DrawBoundingBoxes;
             clone.Debug.ShowFlowGuides = Debug.ShowFlowGuides;
             clone.Debug.TraceLayout = Debug.TraceLayout;
+            clone.Profiler.Enabled = Profiler.Enabled;
+            clone.Profiler.OutputPath = Profiler.OutputPath;
+            clone.Profiler.OnCompleted = Profiler.OnCompleted;
             return clone;
         }
     }
 }
+

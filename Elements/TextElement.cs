@@ -52,11 +52,20 @@ public class TextElement : PdfElement
     // Wrapping and spacing
     public float? MaxWidth { get; set; } = null;
     public float LineHeight { get; set; } = 1.2f;
+    public float? LetterSpacing { get; set; }
+    public float? WordSpacing { get; set; }
 
     // Position, alignment
     public float Rotation { get; set; } = 0;
     public TextAlignment Alignment { get; set; } = TextAlignment.Left;
     public float? BaselineOffset { get; set; }
+    public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
+    public TextTransform Transform { get; set; } = TextTransform.None;
+
+    // Decorations
+    public string? DecorationColor { get; set; }
+    public float? DecorationThickness { get; set; }
+    public TextDecorationStyle DecorationStyle { get; set; } = TextDecorationStyle.Solid;
 
     public TextElement() : base(0, 0)
     {
@@ -71,8 +80,42 @@ public class TextElement : PdfElement
     public bool AvoidBreakInside { get; set; } = true; // paragraphs are atomic now; future: split w/ widows/orphans
     public int WidowLines { get; set; } = 2;          // reserved for future line-splitting
     public int OrphanLines { get; set; } = 2;
+    public List<TextSpan> Spans { get; } = new();
 
     internal ShapedParagraph? ShapedLayout { get; set; }
     internal int ShapedStartLine { get; set; }
     internal int ShapedLineCount { get; set; }
+}
+
+public sealed class TextSpan
+{
+    public string Text { get; set; } = string.Empty;
+    public string? FontFamily { get; set; }
+    public float? FontSize { get; set; }
+    public bool? Bold { get; set; }
+    public bool? Italic { get; set; }
+    public bool? SmallCaps { get; set; }
+    public bool? Monospace { get; set; }
+    public float? LetterSpacing { get; set; }
+    public float? WordSpacing { get; set; }
+    public TextTransform? Transform { get; set; }
+    public List<string>? FallbackFonts { get; set; }
+
+    public TextSpan Clone()
+    {
+        return new TextSpan
+        {
+            Text = Text,
+            FontFamily = FontFamily,
+            FontSize = FontSize,
+            Bold = Bold,
+            Italic = Italic,
+            SmallCaps = SmallCaps,
+            Monospace = Monospace,
+            LetterSpacing = LetterSpacing,
+            WordSpacing = WordSpacing,
+            Transform = Transform,
+            FallbackFonts = FallbackFonts == null ? null : new List<string>(FallbackFonts)
+        };
+    }
 }

@@ -173,7 +173,21 @@ namespace PdfBuilder.Tests
             Dictionary<string, Dictionary<int, string>> unicodeMaps)
         {
             if (!unicodeMaps.TryGetValue(currentFont, out var map))
-                return string.Empty;
+            {
+                var sbFallback = new StringBuilder();
+                var tokenRegexFallback = new Regex(@"<(?<hex>[0-9A-F]+)>", RegexOptions.IgnoreCase);
+                foreach (Match token in tokenRegexFallback.Matches(arr))
+                {
+                    if (!token.Success) continue;
+                    string hex = token.Groups["hex"].Value;
+                    if (hex.Length % 2 != 0) continue;
+                    var bytes = new byte[hex.Length / 2];
+                    for (int i = 0; i < bytes.Length; i++)
+                        bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+                    sbFallback.Append(Encoding.GetEncoding(1252).GetString(bytes));
+                }
+                return sbFallback.ToString();
+            }
 
             var sb = new StringBuilder();
             var tokenRegex = new Regex(@"<(?<hex>[0-9A-F]+)>", RegexOptions.IgnoreCase);

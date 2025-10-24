@@ -1,16 +1,9 @@
 using System.Collections.Generic;
 using System.Drawing;
+using PdfBuilder.Models;
 
 namespace PdfBuilder.Elements.Table
 {
-    public enum TextDecorationStyle
-    {
-        Solid,
-        Dotted,
-        Dashed,
-        Double
-    }
-
     public enum TextWrapMode
     {
         Wrap,
@@ -60,6 +53,8 @@ namespace PdfBuilder.Elements.Table
         // Wrap & overflow
         public TextWrapMode Wrap { get; set; } = TextWrapMode.Wrap;
 
+        public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
+
         // Hyperlinks
         public string? Hyperlink { get; set; }
         public string? ToolTip { get; set; }
@@ -96,7 +91,8 @@ namespace PdfBuilder.Elements.Table
             Wrap = Wrap,
             Hyperlink = Hyperlink,
             ToolTip = ToolTip,
-            FallbackFonts = FallbackFonts == null ? null : new List<string>(FallbackFonts)
+            FallbackFonts = FallbackFonts == null ? null : new List<string>(FallbackFonts),
+            FlowDirection = FlowDirection
         };
     }
 

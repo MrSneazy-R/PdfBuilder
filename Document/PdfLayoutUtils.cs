@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PdfBuilder.Models;
 using PdfBuilder.TextShaping;
 
 namespace PdfBuilder.Document
@@ -30,7 +31,7 @@ namespace PdfBuilder.Document
                     case ')': sb.Append(@"\)"); break;
 
                     // ASCII-only output: emit a few common non-ASCII via octal so you don't need CP1252
-                    case '�': sb.Append(@"\260"); break; // 176 dec = 260 oct
+                    case '°': sb.Append(@"\260"); break; // 176 dec = 260 oct
 
                     default:
                         // keep ASCII; replace other non-ASCII with '?'
@@ -88,7 +89,8 @@ namespace PdfBuilder.Document
                 italic: false,
                 smallCaps: false,
                 monospace: monospace,
-                fallbackFonts: null);
+                fallbackFonts: null,
+                FlowDirection.LeftToRight);
 
             var shaped = TextShaper.Shared.ShapeParagraph(request);
             return shaped.MaxLineWidth;
@@ -165,6 +167,7 @@ namespace PdfBuilder.Document
     public enum VerticalAlign { Top, Middle, Bottom }
     public enum HorizontalAlign { Left, Center, Right }
 }
+
 
 
 

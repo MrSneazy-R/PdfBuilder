@@ -1,4 +1,4 @@
-using PdfBuilder.Document.Layout;
+﻿using PdfBuilder.Document.Layout;
 using PdfBuilder.Models;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +15,16 @@ namespace PdfBuilder.Document
 
         public LayoutOptions LayoutOptions { get; } = new();
 
+        public PdfOutputOptions OutputOptions { get; } = new();
+
+        public DocumentMetadata Metadata { get; } = new();
+
+        public TextStyleDefaults TextDefaults { get; } = new TextStyleDefaults();
+
+        public PaginationRegistry Pagination { get; } = new();
+
+        public LayoutProfilerSession ProfilerSession { get; } = new();
+
         public PdfDocument()
         {
         }
@@ -28,9 +38,13 @@ namespace PdfBuilder.Document
         {
             var page = new PdfPage(width, height)
             {
-                LayoutOptions = LayoutOptions.Clone()
+                LayoutOptions = LayoutOptions.Clone(),
+                TextDefaults = TextDefaults.Clone()
             };
             Pages.Add(page);
+            page.Owner = this;
+            page.Pagination = Pagination;
+            page.ProfilerSession = ProfilerSession;
             return page;
         }
 
@@ -39,3 +53,6 @@ namespace PdfBuilder.Document
         public MasterPageSpec Master { get; set; } = new();
     }
 }
+
+
+

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using SkiaSharp;
+using PdfBuilder.Writer;
 
 namespace PdfBuilder.Writer.Fonts
 {
@@ -22,12 +23,52 @@ namespace PdfBuilder.Writer.Fonts
                 if (font.Glyphs.Count == 0)
                     continue;
 
-                byte[] fontData = font.GetFontData();
+                var glyphEntries = font.Glyphs.Values.OrderBy(g => g.Cid).ToList();
+                var originalData = font.GetFontData();
+                byte[] fontData = originalData;
+
+                var glyphIds = glyphEntries.Select(g => g.GlyphId);
+                var unicodePoints = glyphEntries.SelectMany(g => EnumerateCodepoints(g.Unicode));
+
+                try
+                {
+                    if (FontSubsetter.TrySubset(originalData, glyphIds, unicodePoints, font.BaseFontName, out var subsetData))
+                    {
+                        if (subsetData.Length > 0 && subsetData.Length + 64 < originalData.Length)
+                        {
+                            fontData = subsetData;
+                        }
+                        else if (subsetData.Length > 0)
+                        {
+                            FontDiagnostics.Report($"Font subset for '{font.BaseFontName}' yielded {subsetData.Length} bytes (original {originalData.Length}); retaining original.");
+                        }
+                    }
+                }
+                catch (DllNotFoundException ex)
+                {
+                    FontDiagnostics.Report($"HarfBuzz native library missing ({ex.Message}); embedding full font '{font.BaseFontName}'.");
+                }
+                catch (EntryPointNotFoundException ex)
+                {
+                    FontDiagnostics.Report($"HarfBuzz subset entry point not found ({ex.Message}); embedding full font '{font.BaseFontName}'.");
+                }
+
+                byte[] flatedFont = PdfCompression.Flate(fontData);
+                bool compressFont = flatedFont.Length > 0 && flatedFont.Length + 12 < fontData.Length;
                 int fontFileId = writer.BeginObject();
-                writer.WriteLine($"<< /Length {fontData.Length} /Length1 {fontData.Length} >>");
-                writer.WriteLine("stream");
-                writer.WriteBytes(fontData);
-                writer.WriteRaw("\nendstream\n");
+                if (compressFont)
+                {
+                    writer.WriteStream(
+                        flatedFont,
+                        ("/Filter", "/FlateDecode"),
+                        ("/Length1", fontData.Length.ToString("0", Inv)));
+                }
+                else
+                {
+                    writer.WriteStream(
+                        fontData,
+                        ("/Length1", fontData.Length.ToString("0", Inv)));
+                }
                 writer.EndObject();
 
                 using var metricsFont = new SKFont(font.Typeface, 1000f);
@@ -61,7 +102,6 @@ namespace PdfBuilder.Writer.Fonts
                 writer.WriteLine(">>");
                 writer.EndObject();
 
-                var glyphEntries = font.Glyphs.Values.OrderBy(g => g.Cid).ToList();
                 string widthSpec = BuildWidthArray(glyphEntries);
 
                 int cidFontId = writer.BeginObject();
@@ -78,10 +118,7 @@ namespace PdfBuilder.Writer.Fonts
                 string cmap = BuildToUnicodeCMap(glyphEntries);
                 byte[] cmapBytes = Encoding.ASCII.GetBytes(cmap);
                 int toUnicodeId = writer.BeginObject();
-                writer.WriteLine($"<< /Length {cmapBytes.Length} >>");
-                writer.WriteLine("stream");
-                writer.WriteBytes(cmapBytes);
-                writer.WriteRaw("\nendstream\n");
+                writer.WriteStream(cmapBytes);
                 writer.EndObject();
 
                 int type0Id = writer.BeginObject();
@@ -197,6 +234,15 @@ namespace PdfBuilder.Writer.Fonts
             sb.AppendLine("end");
             sb.AppendLine("end");
             return sb.ToString();
+        }
+
+        private static IEnumerable<int> EnumerateCodepoints(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                yield break;
+
+            foreach (var rune in text.EnumerateRunes())
+                yield return rune.Value;
         }
     }
 }

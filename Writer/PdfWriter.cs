@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -22,18 +22,45 @@ namespace PdfBuilder.Writer
 
         public byte[] GenerateBytes(PdfDocument doc)
         {
+            using var ms = new MemoryStream();
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTime.UtcNow);
+            return ms.ToArray();
+        }
+
+        public void GenerateStream(PdfDocument doc, Stream destination)
+        {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
+            if (destination == null) throw new ArgumentNullException(nameof(destination));
+            if (!destination.CanWrite) throw new ArgumentException("Destination stream must be writable.", nameof(destination));
+
+            WriteDocument(doc, destination, DateTime.UtcNow);
+            destination.Flush();
+        }
+
+        public void Save(PdfDocument doc, string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path must be provided.", nameof(path));
+            using var fileStream = File.Create(path);
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTime.UtcNow);
+        }
+
+        public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(PdfDocument doc, int dpi = 144)
+        {
+            if (doc == null) throw new ArgumentNullException(nameof(doc));
+            return new PdfPreviewGenerator().Generate(doc, dpi);
+        }
+
+        private void WriteDocument(PdfDocument doc, Stream destination, DateTime nowUtc)
+        {
             if (doc.Pages.Count == 0) throw new InvalidOperationException("Document has no pages.");
 
-            // Allow table paginator to split long tables across pages before we render.
             var laidOut = TablePaginator.Paginate(doc);
             int pageCount = laidOut.Pages.Count;
             if (pageCount == 0) throw new InvalidOperationException("Document has no pages after pagination.");
 
-            DateTime nowUtc = DateTime.UtcNow;
+            HeaderFooterLayoutComposer.Prepare(laidOut, nowUtc);
 
-            using var ms = new MemoryStream();
-            using var writer = new PdfStreamWriter(ms);
+            using var writer = new PdfStreamWriter(destination);
             writer.WriteHeader("1.6");
 
             // Fonts (base-14 Type1) ---------------------------------------------------------------
@@ -53,7 +80,9 @@ namespace PdfBuilder.Writer
             var renderContext = new PdfRenderContext(fontObjId, embeddedFonts);
 
             // Images / ExtGState -----------------------------------------------------------------
-            var resources = new PdfResourceManager();
+            var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
+
+            var resources = new PdfResourceManager(outputOptions);
             var imageResourceMap = PreRegisterImages(laidOut, resources, writer);
             PreRegisterWatermarks(laidOut, resources, writer);
             string xobjRes = resources.BuildXObjectResources();
@@ -90,6 +119,8 @@ namespace PdfBuilder.Writer
                         anchorLookup[anchor.Id] = (i, xPdf, yPdf);
                 }
             }
+
+            laidOut.Pagination?.ApplyPageLookup(anchorLookup);
 
             var embeddedFontResources = FontResourceWriter.WriteEmbeddedFonts(writer, embeddedFonts);
             string embeddedFontRes = string.Join(" ", embeddedFontResources.Select(kv => $"{kv.Key} {kv.Value} 0 R"));
@@ -128,7 +159,16 @@ namespace PdfBuilder.Writer
 
                 // a) content stream
                 int contentId = writer.BeginObject();
-                writer.WriteInlineStream(preContent[i]);
+                var rawContent = preContent[i];
+                if (outputOptions.CompressContentStreams && rawContent.Length > 0)
+                {
+                    var compressed = PdfCompression.Flate(rawContent, outputOptions.ContentCompressionLevel);
+                    writer.WriteStream(compressed, ("/Filter", "/FlateDecode"));
+                }
+                else
+                {
+                    writer.WriteInlineStream(rawContent);
+                }
                 writer.EndObject();
 
                 // b) annotations (external + internal anchors)
@@ -207,20 +247,37 @@ namespace PdfBuilder.Writer
             writer.EndObject();
 
             // Info ----------------------------------------------------------------------------------
+            var metadata = laidOut.Metadata ?? new DocumentMetadata();
             int infoId = writer.BeginObject();
             writer.WriteLine("<<");
             if (!string.IsNullOrWhiteSpace(doc.Title))
                 writer.WriteLine($"/Title ({Escape(doc.Title!)})");
-            writer.WriteLine($"/Producer (PdfBuilder)");
-            writer.WriteLine($"/Creator (PdfBuilder)");
-            writer.WriteLine($"/CreationDate (D:{nowUtc:yyyyMMddHHmmss}Z)");
+            if (!string.IsNullOrWhiteSpace(metadata.Author))
+                writer.WriteLine($"/Author ({Escape(metadata.Author!)})");
+            if (!string.IsNullOrWhiteSpace(metadata.Subject))
+                writer.WriteLine($"/Subject ({Escape(metadata.Subject!)})");
+            if (!string.IsNullOrWhiteSpace(metadata.Keywords))
+                writer.WriteLine($"/Keywords ({Escape(metadata.Keywords!)})");
+
+            string creator = !string.IsNullOrWhiteSpace(metadata.Creator) ? metadata.Creator! : "PdfBuilder";
+            string producer = !string.IsNullOrWhiteSpace(metadata.Producer) ? metadata.Producer! : "PdfBuilder";
+            writer.WriteLine($"/Creator ({Escape(creator)})");
+            writer.WriteLine($"/Producer ({Escape(producer)})");
+
+            DateTime creationDate = metadata.CreatedUtc ?? nowUtc;
+            writer.WriteLine($"/CreationDate {FormatPdfDate(creationDate)}");
+            if (metadata.ModifiedUtc.HasValue)
+                writer.WriteLine($"/ModDate {FormatPdfDate(metadata.ModifiedUtc.Value)}");
+            else if (metadata.CreatedUtc.HasValue)
+                writer.WriteLine($"/ModDate {FormatPdfDate(creationDate)}");
+
             writer.WriteLine(">>");
             writer.EndObject();
 
             // XRef & trailer ------------------------------------------------------------------------
             writer.WriteXRefAndTrailer(catalogId, infoId);
 
-            return ms.ToArray();
+            laidOut.ProfilerSession.Emit(laidOut.LayoutOptions.Profiler);
         }
 
         // -----------------------------------------------------------------------------------------
@@ -234,7 +291,7 @@ namespace PdfBuilder.Writer
         {
             var map = new Dictionary<ImageElement, (int imageObjId, string? gsName)>(ReferenceEqualityComparer.Instance);
 
-            foreach (var img in doc.Pages.SelectMany(p => p.Elements).OfType<ImageElement>())
+            foreach (var img in doc.Pages.SelectMany(EnumerateAllElements).OfType<ImageElement>())
             {
                 var (imageObj, _, gsName, _) = resources.EnsureImageXObject(writer, img);
                 map[img] = (imageObj, gsName);
@@ -248,7 +305,7 @@ namespace PdfBuilder.Writer
             Dictionary<ImageElement, (int imageObjId, string? gsName)> globalMap)
         {
             var result = new Dictionary<ImageElement, (int imageObjId, string? gsName)>(ReferenceEqualityComparer.Instance);
-            foreach (var img in page.Elements.OfType<ImageElement>())
+            foreach (var img in EnumerateAllElements(page).OfType<ImageElement>())
             {
                 if (globalMap.TryGetValue(img, out var ids))
                     result[img] = ids;
@@ -322,56 +379,9 @@ namespace PdfBuilder.Writer
                     MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false);
             }
 
-            foreach (var element in page.Elements)
-            {
-                switch (element)
-                {
-                    case TextElement text:
-                        TextRenderer.Append(sb, text, page.Height, context);
-                        break;
-
-                    case TableElement table:
-                        TableRenderer.Append(sb, table, fontObjId);
-                        break;
-
-                    case ImageElement image:
-                        if (pageImageMap.TryGetValue(image, out var ids))
-                            ImageRenderer.Append(sb, image, page.Height, ids.imageObjId, ids.gsName);
-                        break;
-
-                    case RichTextElement richText:
-                    {
-                        var linkRects = new List<RichTextRenderer.LinkRect>();
-                        _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
-                        annotations.AddRange(ConvertLinkRects(linkRects));
-                        break;
-                    }
-
-                    case ListElement list:
-                    {
-                        var linkRects = new List<RichTextRenderer.LinkRect>();
-                        ListRenderer.Append(sb, list, page.Height, context, linkRects);
-                        annotations.AddRange(ConvertLinkRects(linkRects));
-                        break;
-                    }
-
-                    case ChartElement chart:
-                        ChartRenderer.Append(sb, chart, context);
-                        break;
-
-                    case UnderlineElement underline:
-                        AppendUnderline(sb, underline);
-                        break;
-
-                    case AnchorElement anchor:
-                        anchorsOnPage.Add((anchor, anchor.X, anchor.Y));
-                        break;
-
-                    case LinkRectElement linkRect:
-                        annotations.Add(ConvertLinkRect(linkRect));
-                        break;
-                }
-            }
+            RenderElements(page.HeaderElements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
+            RenderElements(page.Elements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
+            RenderElements(page.FooterElements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
 
             if (effectiveHeaderFooter != null)
                 HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc);
@@ -433,13 +443,88 @@ namespace PdfBuilder.Writer
             sb.Append($"{rgb} RG {N(line.Thickness)} w {N(line.X)} {N(line.Y)} m {N(x2)} {N(y2)} l S Q\n");
         }
 
+        private static IEnumerable<PdfElement> EnumerateAllElements(PdfPage page)
+        {
+            foreach (var element in page.HeaderElements)
+                yield return element;
+            foreach (var element in page.Elements)
+                yield return element;
+            foreach (var element in page.FooterElements)
+                yield return element;
+        }
+
+        private static void RenderElements(
+            IEnumerable<PdfElement> elements,
+            StringBuilder sb,
+            PdfPage page,
+            PdfRenderContext context,
+            Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
+            List<AnnotationWriter.LinkAnnot> annotations,
+            List<(AnchorElement anchor, float xPdf, float yPdf)> anchorsOnPage)
+        {
+            foreach (var element in elements)
+            {
+                switch (element)
+                {
+                    case TextElement text:
+                        TextRenderer.Append(sb, text, page.Height, context);
+                        break;
+
+                    case TableElement table:
+                        TableRenderer.Append(sb, table, context);
+                        break;
+
+                    case ImageElement image:
+                        if (pageImageMap.TryGetValue(image, out var ids))
+                            ImageRenderer.Append(sb, image, page.Height, ids.imageObjId, ids.gsName);
+                        break;
+
+                    case CanvasElement canvas:
+                        CanvasRenderer.Append(sb, canvas, page.Height);
+                        break;
+
+                    case RichTextElement richText:
+                    {
+                        var linkRects = new List<RichTextRenderer.LinkRect>();
+                        _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
+                        annotations.AddRange(ConvertLinkRects(linkRects));
+                        break;
+                    }
+
+                    case ListElement list:
+                    {
+                        var linkRects = new List<RichTextRenderer.LinkRect>();
+                        ListRenderer.Append(sb, list, page.Height, context, linkRects);
+                        annotations.AddRange(ConvertLinkRects(linkRects));
+                        break;
+                    }
+
+                    case ChartElement chart:
+                        ChartRenderer.Append(sb, chart, context);
+                        break;
+
+                    case UnderlineElement underline:
+                        AppendUnderline(sb, underline);
+                        break;
+
+                    case AnchorElement anchor:
+                        anchorsOnPage.Add((anchor, anchor.X, anchor.Y));
+                        break;
+
+                    case LinkRectElement linkRect:
+                        annotations.Add(ConvertLinkRect(linkRect));
+                        break;
+                }
+            }
+        }
+
         private static HashSet<string> CollectBaseFonts(PdfDocument doc)
         {
             var fonts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             void AddFont(string? family, bool bold = false, bool italic = false)
             {
-                var base14 = MapToBase14(FontManager.NormalizeFontKey(family, bold, italic));
+                var base14 = FontManager.MapToBase14(FontManager.NormalizeFontKey(family, bold, italic));
                 fonts.Add(base14);
             }
 
@@ -466,7 +551,7 @@ namespace PdfBuilder.Writer
                 if (pageMaster?.Watermark != null)
                     AddFont(pageMaster.Watermark.FontFamily);
 
-                foreach (var element in page.Elements)
+                foreach (var element in EnumerateAllElements(page))
                 {
                     switch (element)
                     {
@@ -552,41 +637,10 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private static string MapToBase14(string key)
+        private static string FormatPdfDate(DateTime value)
         {
-            if (string.IsNullOrWhiteSpace(key)) return "Helvetica";
-            string normalized = key.Trim();
-            string lower = normalized.ToLowerInvariant();
-
-            static bool Has(string text, string token) => text.Contains(token, StringComparison.OrdinalIgnoreCase);
-
-            if (lower.Contains("courier"))
-            {
-                bool bold = Has(normalized, "Bold");
-                bool italic = Has(normalized, "Oblique") || Has(normalized, "Italic");
-                if (bold && italic) return "Courier-BoldOblique";
-                if (bold) return "Courier-Bold";
-                if (italic) return "Courier-Oblique";
-                return "Courier";
-            }
-
-            if (lower.Contains("times"))
-            {
-                bool bold = Has(normalized, "Bold");
-                bool italic = Has(normalized, "Italic") || Has(normalized, "Oblique");
-                if (bold && italic) return "Times-BoldItalic";
-                if (bold) return "Times-Bold";
-                if (italic) return "Times-Italic";
-                return "Times-Roman";
-            }
-
-            // Treat Arial and other sans-serif families as Helvetica
-            bool boldSans = Has(normalized, "Bold");
-            bool italicSans = Has(normalized, "Italic") || Has(normalized, "Oblique");
-            if (boldSans && italicSans) return "Helvetica-BoldOblique";
-            if (boldSans) return "Helvetica-Bold";
-            if (italicSans) return "Helvetica-Oblique";
-            return "Helvetica";
+            var utc = value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
+            return $"(D:{utc:yyyyMMddHHmmss}Z)";
         }
 
         private static string Escape(string value) =>
@@ -619,5 +673,8 @@ namespace PdfBuilder.Writer
         }
     }
 }
+
+
+
 
 

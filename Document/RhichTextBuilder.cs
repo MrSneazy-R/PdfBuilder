@@ -11,6 +11,7 @@ namespace PdfBuilder.Document
         {
             _col = col;
             _rt = new RichTextElement(x, y) { MaxWidth = defaultWidth };
+            _col.ApplyRichTextDefaults(_rt);
         }
 
         public RichTextBuilder Font(string family, float size) { _rt.FontFamily = family; _rt.FontSize = size; return this; }
@@ -19,11 +20,13 @@ namespace PdfBuilder.Document
         public RichTextBuilder MaxWidth(float v) { _rt.MaxWidth = v; return this; }
         public RichTextBuilder MarginTop(float v) { _rt.MarginTop = v; return this; }
         public RichTextBuilder MarginBottom(float v) { _rt.MarginBottom = v; return this; }
+        public RichTextBuilder FlowDirection(FlowDirection direction) { _rt.FlowDirection = direction; return this; }
 
         // Add a span then fluently style it
         public SpanBuilder Span(string text)
         {
             var run = new RichRun { Text = text, FontFamily = _rt.FontFamily, FontSize = _rt.FontSize };
+            _col.ApplyRunDefaults(run);
             _rt.Runs.Add(run);
             return new SpanBuilder(this, run);
         }

@@ -1,6 +1,10 @@
-using PdfBuilder.Document.Layout;
+﻿using PdfBuilder.Document.Layout;
+using PdfBuilder.Fonts;
 using PdfBuilder.Models;
+using PdfBuilder.Writer.Fonts;
 using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace PdfBuilder.Document
 {
@@ -9,6 +13,7 @@ namespace PdfBuilder.Document
         private readonly PdfDocument _doc;
         private HeaderFooterSpec _currentSectionHF;
         private MasterPageSpec _currentSectionMaster;
+        private TextStyleDefaults _currentTextDefaults;
         private float _defaultContentMargin = 36f;
 
         public PdfDocumentBuilder(PdfDocument doc)
@@ -16,8 +21,10 @@ namespace PdfBuilder.Document
             _doc = doc ?? throw new ArgumentNullException(nameof(doc));
             _currentSectionHF = _doc.HeaderFooter;     // start off pointing at doc defaults
             _currentSectionMaster = _doc.Master;
+            _currentTextDefaults = _doc.TextDefaults.Clone();
 
             ApplyLayoutDebugFromEnvironment();
+            ApplyFontSettingsFromEnvironment();
         }
 
         internal PdfDocument Document => _doc;
@@ -39,6 +46,13 @@ namespace PdfBuilder.Document
         public PdfDocumentBuilder LayoutDebug(Action<LayoutDebugOptions> configure)
         {
             configure?.Invoke(_doc.LayoutOptions.Debug);
+            return this;
+        }
+
+        public PdfDocumentBuilder Profiler(Action<LayoutProfilerConfig> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_doc.LayoutOptions.Profiler);
             return this;
         }
 
@@ -74,6 +88,20 @@ namespace PdfBuilder.Document
         // --- New: Document title (used by {title}) ---
         public PdfDocumentBuilder Title(string title) { _doc.Title = title; return this; }
 
+        public PdfDocumentBuilder DefaultTextStyle(Action<TextStyleDefaults> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_doc.TextDefaults);
+            _currentTextDefaults = _doc.TextDefaults.Clone();
+            return this;
+        }
+
+        public PdfDocumentBuilder Metadata(Action<DocumentMetadata> configure)
+        {
+            configure?.Invoke(_doc.Metadata);
+            return this;
+        }
+
         // --- New: Header/Footer full control on the document defaults ---
         public PdfDocumentBuilder HeaderFooter(Action<HeaderFooterSpec> cfg)
         {
@@ -82,11 +110,33 @@ namespace PdfBuilder.Document
             return this;
         }
 
+        public PdfDocumentBuilder Header(Action<ContentComposer> configure, float? spacing = null)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var definition = new HeaderFooterLayoutDefinition(configure) { DefaultSpacing = spacing };
+            (_currentSectionHF ?? _doc.HeaderFooter).HeaderLayout = definition;
+            return this;
+        }
+
+        public PdfDocumentBuilder Footer(Action<ContentComposer> configure, float? spacing = null)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var definition = new HeaderFooterLayoutDefinition(configure) { DefaultSpacing = spacing };
+            (_currentSectionHF ?? _doc.HeaderFooter).FooterLayout = definition;
+            return this;
+        }
+
         // --- New: Master page / background / watermark defaults ---
         public PdfDocumentBuilder Master(Action<MasterPageSpec> cfg)
         {
             cfg?.Invoke(_doc.Master);
             _currentSectionMaster = _doc.Master;
+            return this;
+        }
+
+        public PdfDocumentBuilder OutputOptions(Action<PdfOutputOptions> configure)
+        {
+            configure?.Invoke(_doc.OutputOptions);
             return this;
         }
 
@@ -99,13 +149,16 @@ namespace PdfBuilder.Document
 
         // --- New: Section semantics (subsequent pages inherit these until changed) ---
         public PdfDocumentBuilder StartSection(Action<HeaderFooterSpec>? headerFooter = null,
-                                               Action<MasterPageSpec>? master = null)
+                                               Action<MasterPageSpec>? master = null,
+                                               Action<TextStyleDefaults>? textDefaults = null)
         {
             // Clone current so edits don't mutate the doc defaults
             _currentSectionHF = Clone(_currentSectionHF);
             _currentSectionMaster = Clone(_currentSectionMaster);
+            _currentTextDefaults = _currentTextDefaults.Clone();
             headerFooter?.Invoke(_currentSectionHF);
             master?.Invoke(_currentSectionMaster);
+            textDefaults?.Invoke(_currentTextDefaults);
             return this;
         }
 
@@ -115,6 +168,7 @@ namespace PdfBuilder.Document
             page.HeaderFooterOverride = Clone(_currentSectionHF);
             page.MasterOverride = Clone(_currentSectionMaster);
             page.LayoutOptions = _doc.LayoutOptions.Clone();
+            page.TextDefaults = _currentTextDefaults.Clone();
             return this;
         }
 
@@ -162,8 +216,64 @@ namespace PdfBuilder.Document
             FirstPageDifferent = s.FirstPageDifferent,
             FirstPageHeaderTemplate = s.FirstPageHeaderTemplate,
             FirstPageFooterTemplate = s.FirstPageFooterTemplate,
-            HideOnLastPage = s.HideOnLastPage
+            HideOnLastPage = s.HideOnLastPage,
+            HeaderLayout = s.HeaderLayout?.Clone(),
+            FooterLayout = s.FooterLayout?.Clone()
         };
+
+        private void ApplyFontSettingsFromEnvironment()
+        {
+            const string diagnosticsVariable = "PDFBUILDER_FONT_DIAGNOSTICS";
+            var diagValue = Environment.GetEnvironmentVariable(diagnosticsVariable);
+            if (!string.IsNullOrWhiteSpace(diagValue))
+            {
+                if (IsTrue(diagValue))
+                {
+                    FontDiagnostics.Enabled = true;
+                }
+                else if (IsFalse(diagValue))
+                {
+                    FontDiagnostics.Enabled = false;
+                }
+            }
+
+            const string foldersVariable = "PDFBUILDER_FONT_FOLDERS";
+            var folderValue = Environment.GetEnvironmentVariable(foldersVariable);
+            if (string.IsNullOrWhiteSpace(folderValue))
+                return;
+
+            var separators = new[] { ';', ',', '|', ':' };
+            var tokens = folderValue.Split(separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var token in tokens)
+            {
+                if (token.Equals("system", StringComparison.OrdinalIgnoreCase))
+                {
+                    FontCatalog.RegisterSystemFonts();
+                    continue;
+                }
+
+                try
+                {
+                    FontCatalog.RegisterFolder(token, SearchOption.AllDirectories);
+                }
+                catch (Exception ex)
+                {
+                    FontDiagnostics.Report($"Failed to register font folder '{token}': {ex.Message}");
+                }
+            }
+
+            static bool IsTrue(string value)
+                => value.Equals("true", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("1", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("on", StringComparison.OrdinalIgnoreCase);
+
+            static bool IsFalse(string value)
+                => value.Equals("false", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("0", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("no", StringComparison.OrdinalIgnoreCase)
+                   || value.Equals("off", StringComparison.OrdinalIgnoreCase);
+        }
 
         private static MasterPageSpec Clone(MasterPageSpec m) => new MasterPageSpec
         {
@@ -226,3 +336,5 @@ namespace PdfBuilder.Document
         }
     }
 }
+
+

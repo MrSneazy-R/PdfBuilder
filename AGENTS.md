@@ -38,38 +38,10 @@
 
 ## Agent-Specific Instructions (Document layout & pagination)
 - Problem
-  - Overlapping elements and inconsistent placement indicate column/flow measurement gaps and missing “advance Y” coordination between builders.
+  - Decoded Pdf shows alot of maybe corrupt data, with current harfbuzz integration 1 line of normal text rendering shows almost 20k lines of code behind pdf
 - Goals
-  - Provide reliable **flow layout** helpers, predictable **column grids**, and safe **Y-position management** to avoid overlap.
-  - Make watermark opacity honor `WatermarkSpec.Opacity`.
-  - Deepen **table** borders/banding and rich text rendering.
-
-### Page Flow & Columns
-- Add a simple layout engine in `Builders/`:
-  - `FlowColumn { X, Y, Width, BottomY }` with methods:
-    - `Reserve(height)` → advances `Y`, returns rect.
-    - `Advance(pixels)` → manual nudge.
-    - `SwitchTo(nextColumn)` → returns the next column when current would overflow.
-  - `FlowGrid.Create(page, margin, columns, gutter)` → returns `FlowColumn[]`.
-- Update `PdfPageBuilder.Content(...)` to expose the active column and a `GetFlow()` accessor so builders can:
-  - Read current `Y` and `BottomY`.
-  - Reserve vertical space after adding content.
-- All high-level builders (`TextBuilder`, `ImageBuilder`, `TableBuilder`, `ChartBuilder`, `ListBuilder`) must:
-  - Return the final drawn height.
-  - Call `flow.Reserve(height + spacing)` to move the cursor.
-  - Respect `BottomY` and request a page break via the existing `OnPageBreak` when needed.
-
-### Watermark Opacity Fix
-- Register and apply a reusable ExtGState for watermarks.
-- Touch points
-  - `Writer/PdfResourceManager.cs` — add `/GSwm` with `/ca {opacity}`, `/CA {opacity}`, `/BM /Normal`.
-  - Watermark renderer (master page draw) — wrap with `q /GSwm gs ... Q` and use fill text operators so `/ca` applies.
-  - Respect `WatermarkLayer`:
-    - `BehindContent`: background → watermark → page content.
-    - `AboveContent`: page content → watermark.
-- Tests
-  - `Watermark_Opacity_GraphicsStateApplied`.
-  - `Watermark_Layer_Order_IsRespected`.
+  - Fix the bloated Pdf Issue
+  - verify the Harfbuzz integration that it works fully as intended
 
 ### Tables: Borders, Banding, Rich Text
 - API
@@ -99,15 +71,7 @@
   - `TableCell_Text_Underline_And_Strikethrough_Positioned_Correctly`.
   - `TableCell_RichRuns_MixStyles_And_FallbackFonts`.
 
-### Diagnostics for Layout Work
-- Add `LayoutDebug` toggles (env var or flag on `PdfDocumentBuilder`):
-  - `DrawBoundingBoxes` — strokes the rect each builder reserved.
-  - `ShowFlowGuides` — shows grid/column boundaries and current cursor `Y`.
-  - `TraceLayout` — logs reservations and page breaks to console/test output.
-
 ## Acceptance Criteria
-- No overlapping elements when using `FlowGrid` and builder heights.
-- Watermark opacity visibly matches `WatermarkSpec.Opacity`; layer order is correct; graphics state is restored.
-- Tables render per-side borders, inner/outer styles, alternating banding, and rich text (including strikethrough) with correct metrics.
-- Pagination keeps headers and banding across pages without double-stroking.
-- All new and existing tests pass with `dotnet build -warnaserror` and `dotnet test`.
+- No Bloated pdf
+- Pdf's Generate fast if there is little items to render
+- Harfbuzz integration is verified and working as intended

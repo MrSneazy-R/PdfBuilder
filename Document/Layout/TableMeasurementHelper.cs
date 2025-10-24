@@ -1,4 +1,4 @@
-using TableModels = PdfBuilder.Elements.Table;
+﻿using TableModels = PdfBuilder.Elements.Table;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -313,6 +313,9 @@ namespace PdfBuilder.Document.Layout
             $"#{color.R:X2}{color.G:X2}{color.B:X2}";
     }
 }
+
+
+
 
 
 

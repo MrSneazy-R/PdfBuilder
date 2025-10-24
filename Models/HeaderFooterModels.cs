@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Drawing;
 
+using PdfBuilder.Document;
+
 namespace PdfBuilder.Models
 {
     public sealed class HeaderFooterSpec
@@ -28,6 +30,10 @@ namespace PdfBuilder.Models
         public string? FirstPageFooterTemplate { get; set; } = null;
 
         public bool HideOnLastPage { get; set; } = false;
+
+        public HeaderFooterLayoutDefinition? HeaderLayout { get; set; }
+
+        public HeaderFooterLayoutDefinition? FooterLayout { get; set; }
     }
 
     public enum WatermarkLayer { BehindContent, AboveContent }

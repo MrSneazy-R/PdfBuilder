@@ -173,7 +173,7 @@ namespace PdfBuilder.TextShaping
         {
             string fontFamily = string.IsNullOrWhiteSpace(run.FontFamily) ? element.FontFamily : run.FontFamily!;
             float fontSize = run.FontSize ?? element.FontSize;
-            bool monospace = string.Equals(fontFamily, "Courier", StringComparison.OrdinalIgnoreCase);
+            bool monospace = run.Monospace || string.Equals(fontFamily, "Courier", StringComparison.OrdinalIgnoreCase);
 
             var request = new TextShapingRequest(
                 text,
@@ -183,9 +183,13 @@ namespace PdfBuilder.TextShaping
                 maxWidth: float.PositiveInfinity,
                 bold: run.Bold,
                 italic: run.Italic,
-                smallCaps: false,
+                smallCaps: run.SmallCaps,
                 monospace: monospace,
-                fallbackFonts: null);
+                fallbackFonts: run.FallbackFonts,
+                element.FlowDirection,
+                run.LetterSpacing,
+                run.WordSpacing,
+                run.Transform ?? TextTransform.None);
 
             var paragraph = TextShaper.Shared.ShapeParagraph(request);
             var shapedLine = paragraph.Lines.FirstOrDefault();

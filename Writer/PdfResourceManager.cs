@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
 using PdfBuilder.Elements;
+using PdfBuilder.Models;
 using PdfBuilder.Writer.Imaging;
 
 namespace PdfBuilder.Writer
@@ -27,6 +28,17 @@ namespace PdfBuilder.Writer
 
         // New image map: main image object + optional SMask object
         private readonly Dictionary<string, (int imObj, int? smaskObj)> _imageMap = new();
+        private readonly PdfOutputOptions _options;
+
+        public PdfResourceManager()
+            : this(null)
+        {
+        }
+
+        public PdfResourceManager(PdfOutputOptions? options)
+        {
+            _options = options ?? new PdfOutputOptions();
+        }
 
         private readonly struct ExtGStateHandle
         {
@@ -287,12 +299,12 @@ namespace PdfBuilder.Writer
                     {
                         bool alphaHasPredictor = dec.AlphaContainsFilterBytes;
                         byte[] alphaPayload = dec.Alpha;
-                        if (!alphaHasPredictor)
+                        if (!alphaHasPredictor && _options.UsePngPredictor)
                         {
                             alphaPayload = AddPngPredictorRows(dec.Alpha, dec.Width, 1, dec.Height);
                             alphaHasPredictor = true;
                         }
-                        byte[] alphaFlated = Flate(alphaPayload);
+                        byte[] alphaFlated = PdfCompression.Flate(alphaPayload, _options.ImageCompressionLevel);
                         smask = w.BeginObject();
                         w.WriteLine("<< /Type /XObject /Subtype /Image");
                         w.WriteLine($"   /Width {dec.Width} /Height {dec.Height}");
@@ -316,12 +328,12 @@ namespace PdfBuilder.Writer
             int colorsForPredictor = (dec.IsIndexed ? 1 : (dec.Components == 1 ? 1 : 3));
             bool pixelsHavePredictor = dec.PixelsContainFilterBytes;
             byte[] pixelPayload = dec.Pixels;
-            if (!pixelsHavePredictor)
+            if (!pixelsHavePredictor && _options.UsePngPredictor)
             {
                 pixelPayload = AddPngPredictorRows(dec.Pixels, dec.Width, colorsForPredictor, dec.Height);
                 pixelsHavePredictor = true;
             }
-            byte[] mainFlated = Flate(pixelPayload);
+            byte[] mainFlated = PdfCompression.Flate(pixelPayload, _options.ImageCompressionLevel);
 
             string colorSpace;
             if (dec.IsIndexed && paletteObj.HasValue)
@@ -383,7 +395,7 @@ namespace PdfBuilder.Writer
         {
             // Main image (DeviceRGB, 8bpc) without PNG predictor framing (already raw pixels)
             int im = w.BeginObject();
-            var deflated = Deflate(rgb);
+            var deflated = PdfCompression.Flate(rgb, _options.ImageCompressionLevel);
             w.WriteLine("<< /Type /XObject /Subtype /Image");
             w.WriteLine($"   /Width {width} /Height {height}");
             w.WriteLine("   /ColorSpace /DeviceRGB /BitsPerComponent 8");
@@ -409,7 +421,7 @@ namespace PdfBuilder.Writer
                 if (!allZero && !allFull)
                 {
                     smask = w.BeginObject();
-                    var aDef = Deflate(alpha);
+                    var aDef = PdfCompression.Flate(alpha, _options.ImageCompressionLevel);
                     w.WriteLine("<< /Type /XObject /Subtype /Image");
                     w.WriteLine($"   /Width {width} /Height {height}");
                     w.WriteLine("   /ColorSpace /DeviceGray /BitsPerComponent 8");
@@ -436,25 +448,6 @@ namespace PdfBuilder.Writer
             if (v < 0f) return 0f;
             if (v > 1f) return 1f;
             return v;
-        }
-
-        private static byte[] Flate(byte[] raw)
-        {
-            using var ms = new MemoryStream();
-            using (var z = new ZLibStream(ms, CompressionLevel.Optimal, leaveOpen: true))
-                z.Write(raw, 0, raw.Length);
-            return ms.ToArray();
-        }
-
-        // Replace the existing Deflate(...) in PdfResourceManager.cs
-        private static byte[] Deflate(byte[] raw)
-        {
-            using var ms = new MemoryStream();
-            using (var ds = new ZLibStream(ms, CompressionLevel.Optimal, leaveOpen: true))
-            {
-                ds.Write(raw, 0, raw.Length);
-            }
-            return ms.ToArray();
         }
 
         // Adds a one-byte PNG predictor flag (0=None) at start of each row

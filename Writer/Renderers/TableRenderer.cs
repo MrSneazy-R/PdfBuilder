@@ -1,7 +1,9 @@
+﻿using PdfBuilder.Document.Layout;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
+using PdfBuilder.Models;
 using TableModels = PdfBuilder.Elements.Table;
-using PdfBuilder.Encoder;
+using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -24,7 +26,7 @@ namespace PdfBuilder.Writer
             public float Width;
             public Color Color;
             public int OriginRank; // cell > row > table (lower is stronger)
-            public string Style;   // legacy style tag for tie-breaking
+            public string? Style { get; set; }  // legacy style tag for tie-breaking
             public TableModels.BorderStyle? BorderStyle;
         }
 
@@ -46,7 +48,7 @@ namespace PdfBuilder.Writer
             public bool Strikethrough;
             public Color? DecorationColor;
             public float? DecorationThickness;
-            public TableModels.TextDecorationStyle DecorationStyle = TableModels.TextDecorationStyle.Solid;
+            public TextDecorationStyle DecorationStyle = TextDecorationStyle.Solid;
             public Color? Background;
             public float HighlightPadding;
             public bool Superscript;
@@ -54,6 +56,7 @@ namespace PdfBuilder.Writer
             public float RotationOverride;
             public List<string>? FallbackFonts;
             public float Width;
+            public Dictionary<string, ShapedLine>? ShapeCache;
         }
 
         private sealed class Fragment
@@ -63,6 +66,9 @@ namespace PdfBuilder.Writer
             public float Width;
             public bool IsWhitespace;
             public bool IsLineBreak;
+            public ShapedLine? ShapedLine;
+            public float Ascent;
+            public float Descent;
         }
 
         private sealed class LineLayout
@@ -72,6 +78,8 @@ namespace PdfBuilder.Writer
             public float MaxFontSize;
             public float Height;
             public float BaselineOffset;
+            public float Ascent;
+            public float Descent;
         }
 
         // Compare a and b; return +1 if b wins, 0 if a wins, -1 if none (no competitor)
@@ -93,9 +101,10 @@ namespace PdfBuilder.Writer
             return preferSecondOnTie ? +1 : 0;
         }
 
-        public static void Append(StringBuilder sb, TableElement table, Dictionary<string, int> fontObjId)
+        public static void Append(StringBuilder sb, TableElement table, PdfRenderContext context)
         {
             if (table == null || table.Rows == null || table.Rows.Count == 0) return;
+            var rows = table.Rows!;
 
             // local helper: a side is "explicit" if caller set color and/or width on that side
             static bool IsExplicitSide(Color? c, float? w) => c.HasValue || w.HasValue && w.Value > 0f;
@@ -106,24 +115,21 @@ namespace PdfBuilder.Writer
                              || table.ResolveBorderConflicts;
 
             // -- Geometry: columns --
-            int totalCols = table.Rows.Max(r => r.Cells.Sum(c => Math.Max(1, c.ColSpan)));
+            int totalCols = rows.Max(r => r.Cells.Sum(c => Math.Max(1, c.ColSpan)));
             float tableWidth = table.TableWidth ?? 500f;
 
             float[] colWidths;
-            bool useFixed =
-                table.ColumnWidths != null &&
-                table.ColumnWidths.Count == totalCols &&
-                table.ColumnWidths.All(w => w > 0f);
-
-            if (useFixed || table.AutoSizeColumns == false)
+            if (table.ColumnWidths != null && table.ColumnWidths.Count == totalCols && table.ColumnWidths.All(w => w > 0f))
             {
-                colWidths = useFixed
-                    ? table.ColumnWidths.ToArray()
-                    : Enumerable.Repeat(tableWidth / Math.Max(1, totalCols), totalCols).ToArray();
+                colWidths = table.ColumnWidths.ToArray();
+            }
+            else if (table.AutoSizeColumns == false)
+            {
+                colWidths = Enumerable.Repeat(tableWidth / Math.Max(1, totalCols), totalCols).ToArray();
             }
             else
             {
-                colWidths = AutoSizeColumnWidths(table, totalCols, tableWidth);
+                colWidths = TableColumnWidthCalculator.Calculate(table, totalCols, tableWidth);
             }
 
             // -- Heights (row/colspan-aware) --
@@ -133,11 +139,28 @@ namespace PdfBuilder.Writer
             float y = table.Y;
             if (!string.IsNullOrWhiteSpace(table.CaptionText))
             {
-                string capFont = table.DefaultFont;
+                string captionText = table.CaptionText;
+                string captionFont = string.IsNullOrWhiteSpace(table.DefaultFont) ? "Helvetica" : table.DefaultFont;
                 float capSize = Math.Max(table.DefaultFontSize, 11f);
-                float lineH = capSize * PdfDefaults.LineHeightMultiplier;
+                float lineMult = PdfDefaults.LineHeightMultiplier;
 
-                float textWidth = PdfLayoutUtils.EstimateTextWidth(table.CaptionText, capFont, capSize);
+                var capRequest = new TextShapingRequest(
+                    captionText,
+                    captionFont,
+                    capSize,
+                    lineMult,
+                    maxWidth: 0f,
+                    bold: true,
+                    italic: false,
+                    smallCaps: false,
+                    monospace: false,
+                    fallbackFonts: table.DefaultTextStyle?.FallbackFonts,
+                    table.DefaultTextStyle?.FlowDirection ?? FlowDirection.LeftToRight);
+
+                var capParagraph = TextShaper.Shared.ShapeParagraph(capRequest);
+                var capLine = capParagraph.Lines.FirstOrDefault();
+                float textWidth = capLine?.Width ?? 0f;
+
                 float totalWidth = colWidths.Sum();
                 float xCap = table.X;
                 if (table.CaptionAlign == HorizontalAlign.Center)
@@ -145,14 +168,30 @@ namespace PdfBuilder.Writer
                 else if (table.CaptionAlign == HorizontalAlign.Right)
                     xCap = table.X + Math.Max(0, totalWidth - textWidth);
 
-                int fId = ResolveFontId(fontObjId, MapFontVariant(capFont, bold: true, italic: false));
-                sb.Append("BT ");
-                sb.Append($"/F{fId} {N(capSize)} Tf ");
-                sb.Append($"{ToRgbFill(Color.Black)} ");
-                sb.Append($"{N(xCap)} {N(y)} Td ");
-                sb.Append($"{PdfEnc.WinAnsiHex(table.CaptionText)} Tj ET\n");
+                if (capLine != null)
+                {
+                    float cursor = xCap;
+                    const string fill = "0 0 0 rg";
+                    foreach (var run in capLine.Runs)
+                    {
+                        var encoded = GlyphRunEncoder.Encode(run, context);
+                        sb.Append("BT ");
+                        sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf ");
+                        sb.Append(fill);
+                        sb.Append(' ');
+                        sb.Append($"{N(cursor)} {N(y)} Td ");
+                        sb.Append($"{encoded.TjCommand} ET\n");
+                        cursor += run.Width;
+                    }
 
-                y -= lineH + 4; // spacing under caption
+                    float captionHeight = Math.Max(capLine.LineHeight, capSize * lineMult);
+                    y -= captionHeight + 4f;
+                }
+                else
+                {
+                    float captionHeight = capSize * lineMult;
+                    y -= captionHeight + 4f;
+                }
             }
 
             // -- Outer frame (behind cells so cell borders stay visible) --
@@ -374,7 +413,7 @@ namespace PdfBuilder.Writer
                         sb.Append("q ");
                         sb.Append($"{N(x)} {N(y - cellHeight)} {N(cellWidth)} {N(cellHeight)} re W n\n");
 
-                        RenderCellText(sb, table, eff, x, y, cellWidth, cellHeight, pad, fontObjId);
+                        RenderCellText(sb, table, eff, x, y, cellWidth, cellHeight, pad, context);
 
                         sb.Append("Q\n");
                     }
@@ -416,6 +455,7 @@ namespace PdfBuilder.Writer
             public int? MaxLines;
             public CellWordBreak WordBreak = CellWordBreak.Normal;
             public float RotationDegrees = 0f;
+            public FlowDirection FlowDirection = FlowDirection.LeftToRight;
 
             public HorizontalAlign HorizontalAlign = HorizontalAlign.Left;
             public VerticalAlign VerticalAlign = VerticalAlign.Top;
@@ -442,7 +482,10 @@ namespace PdfBuilder.Writer
             public Color BorderColorTop, BorderColorRight, BorderColorBottom, BorderColorLeft;
             public float BorderWidthTop, BorderWidthRight, BorderWidthBottom, BorderWidthLeft;
             public TableModels.BorderStyle? BorderStyleTop, BorderStyleRight, BorderStyleBottom, BorderStyleLeft;
-            public BorderDrawSpec? DrawTop, DrawRight, DrawBottom, DrawLeft;
+            public BorderDrawSpec DrawTop = new BorderDrawSpec();
+            public BorderDrawSpec DrawRight = new BorderDrawSpec();
+            public BorderDrawSpec DrawBottom = new BorderDrawSpec();
+            public BorderDrawSpec DrawLeft = new BorderDrawSpec();
 
             // padding
             public float? Padding; public float? PaddingTop, PaddingRight, PaddingBottom, PaddingLeft;
@@ -555,6 +598,7 @@ namespace PdfBuilder.Writer
                 e.LineHeight = resolvedStyle.LineHeight;
             e.HorizontalAlign = resolvedStyle.HorizontalAlign;
             e.VerticalAlign = resolvedStyle.VerticalAlign;
+            e.FlowDirection = resolvedStyle.FlowDirection;
             if (!e.BackgroundColor.HasValue && resolvedStyle.BackgroundColor.HasValue)
                 e.BackgroundColor = resolvedStyle.BackgroundColor;
             e.Runs = ResolveRuns(cell, resolvedStyle);
@@ -614,6 +658,7 @@ namespace PdfBuilder.Writer
             {
                 var row = table.Rows[rowIndex];
                 int colIndex = 0;
+                var rowBand = ResolveRowBand(table, table.RowBandOffset + rowIndex);
 
                 while (colIndex < totalCols && covered.Contains((rowIndex, colIndex))) colIndex++;
 
@@ -627,7 +672,9 @@ namespace PdfBuilder.Writer
                     float cw = 0f;
                     for (int c = 0; c < colSpan; c++) cw += colWidths[colIndex + c];
 
-                    float req = MeasureCellContentHeight(table, cell, cw);
+                    var columnBand = ResolveColumnBand(table, colIndex);
+                    var effective = BuildEffectiveCell(table, row, cell, colIndex, rowBand, columnBand);
+                    float req = MeasureCellContentHeight(table, effective, cw);
 
                     if (rowSpan == 1)
                     {
@@ -659,86 +706,41 @@ namespace PdfBuilder.Writer
             return heights;
         }
 
-        private static float MeasureCellContentHeight(TableElement table, TableCell cell, float cellWidth)
+        private static float MeasureCellContentHeight(TableElement table, Effective cell, float cellWidth)
         {
-            float tablePad = table.CellPadding;
-            float padTop = cell.PaddingTop ?? cell.Padding ?? tablePad;
-            float padBottom = cell.PaddingBottom ?? cell.Padding ?? tablePad;
-            float padLeft = cell.PaddingLeft ?? cell.Padding ?? tablePad;
-            float padRight = cell.PaddingRight ?? cell.Padding ?? tablePad;
+            var pad = GetPadding(cell, table.CellPadding);
+            float usableWidth = Math.Max(0, cellWidth - pad.left - pad.right);
 
-            string font = string.IsNullOrWhiteSpace(cell.Font) ? table.DefaultFont : cell.Font;
-            float size = cell.FontSize > 0 ? cell.FontSize : table.DefaultFontSize;
-            float lineMult = cell.LineHeight ?? PdfDefaults.LineHeightMultiplier;
-            float usable = Math.Max(0, cellWidth - (padLeft + padRight));
-            float lineH = size * lineMult;
+            var wrapMode = cell.ResolvedTextStyle?.Wrap ?? MapWrap(table.OverflowPolicy);
+            if (cell.WordBreak == CellWordBreak.BreakWord && wrapMode == TableModels.TextWrapMode.Wrap)
+                wrapMode = TableModels.TextWrapMode.Hyphenate;
 
-            bool rotated = Math.Abs(cell.RotationDegrees) > 0.01f;
+            float lineMult = cell.LineHeight
+                             ?? cell.ResolvedTextStyle?.LineHeight
+                             ?? PdfDefaults.LineHeightMultiplier;
 
-            if (table.OverflowPolicy == CellOverflowPolicy.Wrap)
+            int? maxLines = cell.MaxLines;
+            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
+                maxLines = 1;
+            else if (wrapMode == TableModels.TextWrapMode.NoWrap && !maxLines.HasValue)
+                maxLines = 1;
+
+            var fragments = TokenizeRuns(cell.Runs);
+            if (fragments.Count == 0)
+                return pad.top + pad.bottom;
+
+            var lines = LayoutFragments(fragments, cell, wrapMode, maxLines, usableWidth, lineMult);
+            if (lines.Count == 0)
+                return pad.top + pad.bottom;
+
+            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped && lines.Count > 0)
             {
-                var lines = PdfLayoutUtils.WrapText(cell.Text ?? string.Empty, font, size, usable);
-                if (cell.WordBreak == CellWordBreak.BreakWord)
-                    lines = ForceBreakLongLines(lines, font, size, usable);
-                if (cell.MaxLines.HasValue && cell.MaxLines.Value > 0 && lines.Count > cell.MaxLines.Value)
-                    lines = lines.Take(cell.MaxLines.Value).ToList();
-
-                float stackH = Math.Max(lineH, lines.Count * lineH);
-
-                if (rotated)
-                {
-                    float maxW = 0f;
-                    foreach (var ln in lines)
-                        maxW = Math.Max(maxW, PdfLayoutUtils.EstimateTextWidth(ln ?? string.Empty, font, size));
-                    float req = RotatedBBoxHeight(maxW, stackH, cell.RotationDegrees);
-                    return req + padTop + padBottom;
-                }
-                return stackH + padTop + padBottom;
+                ApplyEllipsis(lines[0], usableWidth, cell);
+                lines = new List<LineLayout> { lines[0] };
             }
-            else
-            {
-                string line = cell.Text ?? string.Empty;
-                float w = PdfLayoutUtils.EstimateTextWidth(line, font, size);
-                float h = rotated ? RotatedBBoxHeight(w, lineH, cell.RotationDegrees) : lineH;
-                return h + padTop + padBottom;
-            }
-        }
 
-
-        private static List<string> ForceBreakLongLines(IReadOnlyList<string> lines, string font, float size, float maxWidth)
-        {
-            var outLines = new List<string>(lines.Count);
-            foreach (var line in lines)
-            {
-                if (PdfLayoutUtils.EstimateTextWidth(line ?? "", font, size) <= maxWidth)
-                {
-                    outLines.Add(line);
-                    continue;
-                }
-
-                var sbLine = new StringBuilder();
-                foreach (var ch in line ?? string.Empty)
-                {
-                    sbLine.Append(ch);
-                    if (PdfLayoutUtils.EstimateTextWidth(sbLine.ToString(), font, size) > maxWidth)
-                    {
-                        if (sbLine.Length > 1)
-                        {
-                            var flush = sbLine.ToString(0, sbLine.Length - 1);
-                            if (flush.Length > 0) outLines.Add(flush);
-                            sbLine.Clear();
-                            sbLine.Append(ch);
-                        }
-                        else
-                        {
-                            outLines.Add(sbLine.ToString());
-                            sbLine.Clear();
-                        }
-                    }
-                }
-                if (sbLine.Length > 0) outLines.Add(sbLine.ToString());
-            }
-            return outLines;
+            float blockHeight = lines.Sum(l => l.Height);
+            return pad.top + blockHeight + pad.bottom;
         }
 
         private static bool HasCoverageAbove(HashSet<(int row, int col)> covered, int row, int colStart, int colSpan)
@@ -750,115 +752,6 @@ namespace PdfBuilder.Writer
         }
 
         // ---------- Text rendering with overflow, alignment, rotation ----------
-        private static void RenderCellTextLegacy(
-            StringBuilder sb, TableElement table, Effective cell,
-            float x, float yTop, float cellWidth, float cellHeight,
-            (float top, float right, float bottom, float left) pad,
-            string fontFamily, float fontSize, float lineMult,
-            int? maxLines, CellWordBreak wordBreak, float rotationDeg,
-            HorizontalAlign hAlign, VerticalAlign vAlign,
-            int fontId, string? rgbFill)
-        {
-            const float ASCENT_RATIO = 0.70f; // approx for core 14 fonts
-            float usableWidth = Math.Max(0, cellWidth - pad.left - pad.right);
-            float lineH = fontSize * lineMult;
-            float ascent = ASCENT_RATIO * fontSize;
-            bool rotated = Math.Abs(rotationDeg) > 0.01f;
-
-            // Helper: distance (downwards) from TOP of the (possibly rotated) text block to the BASELINE
-            // For ?=0 this reduces to (lineH - ascent), which matches existing unrotated behavior.
-            static float BaselineOffsetFromTop(float textWidth, float lineH, float ascent, float angleDeg)
-            {
-                if (Math.Abs(angleDeg) <= 0.01f) return lineH - ascent;
-                double r = Math.Abs(angleDeg) * Math.PI / 180.0;
-                double cos = Math.Cos(r);
-                double sin = Math.Sin(r);
-                double extraTop = angleDeg > 0 ? textWidth * sin : 0.0; // +? lifts the right edge ? more area above
-                return (float)((lineH - ascent) * cos + extraTop);
-            }
-
-            if (table.OverflowPolicy == CellOverflowPolicy.Wrap)
-            {
-                var lines = PdfLayoutUtils.WrapText(cell.Text ?? string.Empty, fontFamily, fontSize, usableWidth);
-                if (wordBreak == CellWordBreak.BreakWord)
-                    lines = ForceBreakLongLines(lines, fontFamily, fontSize, usableWidth);
-                if (maxLines.HasValue && maxLines.Value > 0 && lines.Count > maxLines.Value)
-                    lines = lines.Take(maxLines.Value).ToList();
-
-                float stackH = Math.Max(lineH, lines.Count * lineH);
-
-                float blockH;
-                float widthForBlock = 0f;
-                if (rotated)
-                {
-                    foreach (var ln in lines)
-                        widthForBlock = Math.Max(widthForBlock, PdfLayoutUtils.EstimateTextWidth(ln ?? string.Empty, fontFamily, fontSize));
-                    blockH = RotatedBBoxHeight(widthForBlock, stackH, rotationDeg);
-                }
-                else
-                {
-                    blockH = stackH;
-                }
-
-                float topOfBlock = GetVerticalAlignedY(vAlign, yTop, cellHeight, blockH, pad.top, pad.bottom);
-
-                // Lay out each line. For rotated blocks we anchor using the same top reference.
-                float lineTop = topOfBlock;
-                foreach (var line in lines)
-                {
-                    float wNow = PdfLayoutUtils.EstimateTextWidth(line ?? string.Empty, fontFamily, fontSize);
-                    float baselineDown = rotated
-                        ? BaselineOffsetFromTop(widthForBlock, lineH, ascent, rotationDeg) // keep consistent with block top
-                        : lineH - ascent;
-
-                    float baselineY = lineTop - baselineDown;
-                    float textX = GetHorizontalAlignedX(hAlign, x, cellWidth, line, fontFamily, fontSize, pad.left, pad.right);
-
-                    DrawTextRun(sb, line, fontId, fontSize, rgbFill, textX, baselineY, rotationDeg);
-                    lineTop -= lineH;
-                }
-            }
-            else
-            {
-                string line = cell.Text ?? string.Empty;
-
-                if (table.OverflowPolicy == CellOverflowPolicy.Ellipsis)
-                {
-                    float width = PdfLayoutUtils.EstimateTextWidth(line, fontFamily, fontSize);
-                    if (width > usableWidth && usableWidth > 0)
-                    {
-                        const string ell = "-";
-                        float ellW = PdfLayoutUtils.EstimateTextWidth(ell, fontFamily, fontSize);
-                        if (ellW < usableWidth)
-                        {
-                            while (line.Length > 0 &&
-                                   PdfLayoutUtils.EstimateTextWidth(line, fontFamily, fontSize) + ellW > usableWidth)
-                                line = line[..^1];
-                            line += ell;
-                        }
-                        else line = string.Empty;
-                    }
-                }
-
-                float widthNow = PdfLayoutUtils.EstimateTextWidth(line, fontFamily, fontSize);
-                float blockH = rotated ? RotatedBBoxHeight(widthNow, lineH, rotationDeg) : lineH;
-
-                float topOfBlock = GetVerticalAlignedY(vAlign, yTop, cellHeight, blockH, pad.top, pad.bottom);
-
-                // Correct baseline position for rotation
-                float baselineDown = rotated
-                    ? BaselineOffsetFromTop(widthNow, lineH, ascent, rotationDeg)
-                    : lineH - ascent;
-
-                float baselineY = topOfBlock - baselineDown;
-                float textX = GetHorizontalAlignedX(hAlign, x, cellWidth, line, fontFamily, fontSize, pad.left, pad.right);
-
-                DrawTextRun(sb, line, fontId, fontSize, rgbFill, textX, baselineY, rotationDeg);
-            }
-        }
-
-
-
         private static TableModels.TextWrapMode MapWrap(CellOverflowPolicy policy)
             => policy switch
             {
@@ -866,6 +759,87 @@ namespace PdfBuilder.Writer
                 CellOverflowPolicy.Clip => TableModels.TextWrapMode.NoWrap,
                 _ => TableModels.TextWrapMode.Wrap
             };
+
+        private static Fragment CreateFragment(ResolvedRun run, string text, bool isWhitespace, bool isLineBreak = false, ShapedLine? shapedOverride = null)
+        {
+            if (isLineBreak)
+            {
+                return new Fragment
+                {
+                    Run = run,
+                    Text = string.Empty,
+                    Width = 0f,
+                    IsWhitespace = false,
+                    IsLineBreak = true,
+                    ShapedLine = null,
+                    Ascent = 0f,
+                    Descent = 0f
+                };
+            }
+
+            if (string.IsNullOrEmpty(text))
+            {
+                return new Fragment
+                {
+                    Run = run,
+                    Text = string.Empty,
+                    Width = 0f,
+                    IsWhitespace = isWhitespace,
+                    IsLineBreak = false,
+                    ShapedLine = null,
+                    Ascent = 0f,
+                    Descent = 0f
+                };
+            }
+
+            var shaped = shapedOverride ?? ShapeFragmentText(run, text);
+            return new Fragment
+            {
+                Run = run,
+                Text = text,
+                Width = shaped.Width,
+                IsWhitespace = isWhitespace,
+                IsLineBreak = false,
+                ShapedLine = shaped,
+                Ascent = shaped.Ascent,
+                Descent = shaped.Descent
+            };
+        }
+
+        private static ShapedLine ShapeFragmentText(ResolvedRun run, string text)
+        {
+            text ??= string.Empty;
+
+            run.ShapeCache ??= new Dictionary<string, ShapedLine>(StringComparer.Ordinal);
+            if (run.ShapeCache.TryGetValue(text, out var cached))
+                return cached;
+
+            string fontFamily = !string.IsNullOrWhiteSpace(run.Style.FontFamily)
+                ? run.Style.FontFamily!
+                : run.BaseFont?.Split('-')[0] ?? "Helvetica";
+            float fontSize = EffectiveRunFontSize(run);
+            float lineHeight = run.Style.LineHeight ?? 1f;
+
+            var request = new TextShapingRequest(
+                text,
+                fontFamily,
+                fontSize,
+                lineHeight,
+                maxWidth: 0f,
+                bold: run.Style.Bold,
+                italic: run.Style.Italic,
+                smallCaps: run.Style.SmallCaps,
+                monospace: false,
+                fallbackFonts: run.FallbackFonts,
+                flowDirection: run.Style.FlowDirection);
+
+            var paragraph = TextShaper.Shared.ShapeParagraph(request);
+            var shapedLine = paragraph.Lines.FirstOrDefault()
+                              ?? new ShapedLine(text, Array.Empty<ShapedRun>(), 0f, fontSize * 0.8f, fontSize * 0.2f, fontSize);
+
+            run.ShapeCache[text] = shapedLine;
+            return shapedLine;
+        }
 
         private static List<Fragment> TokenizeRuns(List<ResolvedRun> runs)
         {
@@ -883,14 +857,7 @@ namespace PdfBuilder.Writer
                     char ch = text[index];
                     if (ch == '\n')
                     {
-                        fragments.Add(new Fragment
-                        {
-                            Run = run,
-                            Text = string.Empty,
-                            Width = 0f,
-                            IsWhitespace = false,
-                            IsLineBreak = true
-                        });
+                        fragments.Add(CreateFragment(run, string.Empty, isWhitespace: false, isLineBreak: true));
                         index++;
                         continue;
                     }
@@ -901,14 +868,7 @@ namespace PdfBuilder.Writer
                         index++;
 
                     string slice = text.Substring(start, index - start);
-                    fragments.Add(new Fragment
-                    {
-                        Run = run,
-                        Text = slice,
-                        Width = MeasureFragmentWidth(run, slice),
-                        IsWhitespace = isWhitespace,
-                        IsLineBreak = false
-                    });
+                    fragments.Add(CreateFragment(run, slice, isWhitespace));
                 }
             }
 
@@ -1027,7 +987,8 @@ namespace PdfBuilder.Writer
 
             const string ellipsis = "...";
             var last = line.Fragments.Last();
-            float ellWidth = MeasureFragmentWidth(last.Run, ellipsis);
+            var ellShape = ShapeFragmentText(last.Run, ellipsis);
+            float ellWidth = ellShape.Width;
             float allowed = Math.Max(0, availableWidth - ellWidth);
 
             int idx = line.Fragments.Count - 1;
@@ -1037,13 +998,7 @@ namespace PdfBuilder.Writer
             if (idx < 0)
             {
                 line.Fragments.Clear();
-                line.Fragments.Add(new Fragment
-                {
-                    Run = last.Run,
-                    Text = ellipsis,
-                    Width = ellWidth,
-                    IsWhitespace = false
-                });
+                line.Fragments.Add(CreateFragment(last.Run, ellipsis, isWhitespace: false, shapedOverride: ellShape));
                 FinalizeLineMetrics(line, cell.LineHeight ?? PdfDefaults.LineHeightMultiplier, cell.FontSize);
                 return;
             }
@@ -1051,11 +1006,25 @@ namespace PdfBuilder.Writer
             var target = line.Fragments[idx];
             string content = target.Text;
 
-            while (content.Length > 0 && MeasureFragmentWidth(target.Run, content) > allowed)
+            while (content.Length > 0 && ShapeFragmentText(target.Run, content).Width > allowed)
                 content = content[..^1];
 
             target.Text = content;
-            target.Width = MeasureFragmentWidth(target.Run, content);
+            if (target.Text.Length > 0)
+            {
+                var targetShape = ShapeFragmentText(target.Run, content);
+                target.Width = targetShape.Width;
+                target.ShapedLine = targetShape;
+                target.Ascent = targetShape.Ascent;
+                target.Descent = targetShape.Descent;
+            }
+            else
+            {
+                target.Width = 0f;
+                target.ShapedLine = null;
+                target.Ascent = 0f;
+                target.Descent = 0f;
+            }
 
             if (target.Text.Length == 0)
                 line.Fragments.RemoveAt(idx);
@@ -1065,13 +1034,7 @@ namespace PdfBuilder.Writer
 
             TrimTrailingWhitespace(line);
 
-            line.Fragments.Add(new Fragment
-            {
-                Run = target.Run,
-                Text = ellipsis,
-                Width = ellWidth,
-                IsWhitespace = false
-            });
+            line.Fragments.Add(CreateFragment(target.Run, ellipsis, isWhitespace: false, shapedOverride: ellShape));
 
             FinalizeLineMetrics(line, cell.LineHeight ?? PdfDefaults.LineHeightMultiplier, cell.FontSize);
         }
@@ -1102,7 +1065,7 @@ namespace PdfBuilder.Writer
             if (run.Strikethrough)
             {
                 float offset = baselineY + size * 0.3f;
-                if (run.DecorationStyle == TableModels.TextDecorationStyle.Double)
+                if (run.DecorationStyle == TextDecorationStyle.Double)
                 {
                     float delta = thickness * 2.0f;
                     DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
@@ -1141,7 +1104,7 @@ namespace PdfBuilder.Writer
             return ((float)rx, (float)ry);
         }
 
-        private static TableModels.BorderStyle BuildDecorationBorderStyle(TableModels.TextDecorationStyle decorationStyle, float thickness, Color color)
+        private static TableModels.BorderStyle BuildDecorationBorderStyle(TextDecorationStyle decorationStyle, float thickness, Color color)
         {
             var border = new TableModels.BorderStyle
             {
@@ -1153,14 +1116,14 @@ namespace PdfBuilder.Writer
 
             switch (decorationStyle)
             {
-                case TableModels.TextDecorationStyle.Dotted:
+                case TextDecorationStyle.Dotted:
                     border.DashPattern = new[] { thickness, thickness };
                     border.LineCap = TableModels.BorderLineCap.Round;
                     break;
-                case TableModels.TextDecorationStyle.Dashed:
+                case TextDecorationStyle.Dashed:
                     border.DashPattern = new[] { thickness * 2.5f, thickness * 1.2f };
                     break;
-                case TableModels.TextDecorationStyle.Double:
+                case TextDecorationStyle.Double:
                     border.Width = thickness * 0.6f;
                     break;
                 default:
@@ -1177,8 +1140,8 @@ namespace PdfBuilder.Writer
             string text = fragment.Text;
             if (string.IsNullOrEmpty(text)) return (null, null, null);
 
-            float hyphenWidth = MeasureFragmentWidth(run, "-");
-            float remaining = availableWidth - hyphenWidth;
+            var hyphenShape = ShapeFragmentText(run, "-");
+            float remaining = availableWidth - hyphenShape.Width;
             if (remaining <= 0) return (null, null, null);
 
             int length = 0;
@@ -1186,7 +1149,7 @@ namespace PdfBuilder.Writer
             while (length < text.Length)
             {
                 length++;
-                width = MeasureFragmentWidth(run, text[..length]);
+                width = ShapeFragmentText(run, text[..length]).Width;
                 if (width > remaining)
                 {
                     length--;
@@ -1199,32 +1162,16 @@ namespace PdfBuilder.Writer
             string head = text[..length];
             string tail = text[length..];
 
-            var first = new Fragment
-            {
-                Run = run,
-                Text = head,
-                Width = MeasureFragmentWidth(run, head),
-                IsWhitespace = false
-            };
+            var firstShape = ShapeFragmentText(run, head);
+            var first = CreateFragment(run, head, isWhitespace: false, shapedOverride: firstShape);
 
-            var hyphen = new Fragment
-            {
-                Run = run,
-                Text = "-",
-                Width = hyphenWidth,
-                IsWhitespace = false
-            };
+            var hyphen = CreateFragment(run, "-", isWhitespace: false, shapedOverride: hyphenShape);
 
             Fragment? remainder = null;
             if (tail.Length > 0)
             {
-                remainder = new Fragment
-                {
-                    Run = run,
-                    Text = tail,
-                    Width = MeasureFragmentWidth(run, tail),
-                    IsWhitespace = false
-                };
+                var tailShape = ShapeFragmentText(run, tail);
+                remainder = CreateFragment(run, tail, isWhitespace: false, shapedOverride: tailShape);
             }
 
             return (first, hyphen, remainder);
@@ -1248,20 +1195,20 @@ namespace PdfBuilder.Writer
             float maxFont = line.Fragments.Count > 0
                 ? line.Fragments.Max(f => EffectiveRunFontSize(f.Run))
                 : (defaultFontSize > 0 ? defaultFontSize : 10f);
-            const float ASCENT_RATIO = 0.8f;
+            float ascent = line.Fragments.Count > 0
+                ? line.Fragments.Max(f => f.Ascent)
+                : maxFont * 0.8f;
+            float descent = line.Fragments.Count > 0
+                ? line.Fragments.Max(f => f.Descent)
+                : maxFont * 0.2f;
+            float natural = ascent + descent;
+            float heightTarget = maxFont * lineMult;
+            float height = Math.Max(natural, heightTarget);
             line.MaxFontSize = maxFont;
-            line.Height = Math.Max(maxFont, maxFont * lineMult);
-            line.BaselineOffset = line.Height - (maxFont * ASCENT_RATIO);
-        }
-
-        private static float MeasureFragmentWidth(ResolvedRun run, string text)
-        {
-            if (string.IsNullOrEmpty(text)) return 0f;
-            string fontFamily = !string.IsNullOrWhiteSpace(run.Style.FontFamily)
-                ? run.Style.FontFamily!
-                : run.BaseFont?.Split('-')[0] ?? "Helvetica";
-            float size = EffectiveRunFontSize(run);
-            return PdfLayoutUtils.EstimateTextWidth(text, fontFamily, size);
+            line.Ascent = ascent;
+            line.Descent = descent;
+            line.Height = height;
+            line.BaselineOffset = height - descent;
         }
 
         private static float EffectiveRunFontSize(ResolvedRun run)
@@ -1281,7 +1228,7 @@ namespace PdfBuilder.Writer
             float cellWidth,
             float cellHeight,
             (float top, float right, float bottom, float left) pad,
-            Dictionary<string, int> fontObjId)
+            PdfRenderContext context)
         {
             if (cell.Runs.Count == 0) return;
 
@@ -1289,9 +1236,11 @@ namespace PdfBuilder.Writer
             var wrapMode = cell.ResolvedTextStyle?.Wrap ?? MapWrap(table.OverflowPolicy);
             if (cell.WordBreak == CellWordBreak.BreakWord && wrapMode == TableModels.TextWrapMode.Wrap)
                 wrapMode = TableModels.TextWrapMode.Hyphenate;
+
             float lineMult = cell.LineHeight
                              ?? cell.ResolvedTextStyle?.LineHeight
                              ?? PdfDefaults.LineHeightMultiplier;
+
             int? maxLines = cell.MaxLines;
             if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
                 maxLines = 1;
@@ -1304,7 +1253,7 @@ namespace PdfBuilder.Writer
             var lines = LayoutFragments(fragments, cell, wrapMode, maxLines, usableWidth, lineMult);
             if (lines.Count == 0) return;
 
-            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped)
+            if (wrapMode == TableModels.TextWrapMode.EllipsisWhenClipped && lines.Count > 0)
             {
                 ApplyEllipsis(lines[0], usableWidth, cell);
                 lines = new List<LineLayout> { lines[0] };
@@ -1320,17 +1269,18 @@ namespace PdfBuilder.Writer
                 pad.bottom);
 
             float currentTop = blockTop;
+            bool isRtl = cell.FlowDirection == FlowDirection.RightToLeft;
             foreach (var line in lines)
             {
                 float lineStartX = ResolveLineStartX(cell.HorizontalAlign, x, cellWidth, pad.left, pad.right, line.Width);
-                float cursorX = lineStartX;
+                float cursorX = isRtl ? lineStartX + line.Width : lineStartX;
                 float baselineY = currentTop - line.BaselineOffset;
 
                 foreach (var fragment in line.Fragments)
                 {
                     if (fragment.Text.Length == 0)
-                    {
-                        cursorX += fragment.Width;
+                {
+                    cursorX += isRtl ? -fragment.Width : fragment.Width;
                         continue;
                     }
 
@@ -1348,71 +1298,76 @@ namespace PdfBuilder.Writer
                         runFontSize *= 0.8f;
                     }
 
-                    float tx = cursorX;
+                    float tx = isRtl ? cursorX - fragment.Width : cursorX;
                     float ty = baselineY + baselineAdjust;
                     float rotation = run.RotationOverride != 0 ? run.RotationOverride : cell.RotationDegrees;
-                    int fontId = ResolveFontId(fontObjId, run.BaseFont);
-                    string? fill = ToRgbFill(run.Color);
 
-                    DrawTextRun(sb, fragment.Text, fontId, runFontSize, fill, tx, ty, rotation);
+                    var shapedLine = fragment.ShapedLine ?? ShapeFragmentText(run, fragment.Text);
+                    if (shapedLine == null || shapedLine.Runs.Count == 0)
+                    {
+                        cursorX += isRtl ? -fragment.Width : fragment.Width;
+                        continue;
+                    }
+
+                    string fill = ToRgbFill(run.Color) ?? "0 0 0 rg";
+                    float runCursor = tx;
+
+                    if (Math.Abs(rotation) > 0.01f)
+                    {
+                        double radians = rotation * Math.PI / 180.0;
+                        double cos = Math.Cos(radians);
+                        double sin = Math.Sin(radians);
+
+                        foreach (var shapedRun in shapedLine.Runs)
+                        {
+                            if (shapedRun.Glyphs.Count == 0)
+                            {
+                                runCursor += shapedRun.Width;
+                                continue;
+                            }
+
+                            var encoded = GlyphRunEncoder.Encode(shapedRun, context);
+                            sb.Append("q ");
+                            sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(runCursor)} {N(ty)} cm ");
+                            sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} 0 0 cm ");
+                            sb.Append("BT ");
+                            sb.Append($"{encoded.FontResourceName} {N(shapedRun.FontSize)} Tf ");
+                            sb.Append(fill);
+                            sb.Append(' ');
+                            sb.Append($"{encoded.TjCommand} ET\n");
+                            sb.Append("Q\n");
+                            runCursor += shapedRun.Width;
+                        }
+                    }
+                    else
+                    {
+                        foreach (var shapedRun in shapedLine.Runs)
+                        {
+                            if (shapedRun.Glyphs.Count == 0)
+                            {
+                                runCursor += shapedRun.Width;
+                                continue;
+                            }
+
+                            var encoded = GlyphRunEncoder.Encode(shapedRun, context);
+                            sb.Append("BT ");
+                            sb.Append($"{encoded.FontResourceName} {N(shapedRun.FontSize)} Tf ");
+                            sb.Append(fill);
+                            sb.Append(' ');
+                            sb.Append($"{N(runCursor)} {N(ty)} Td ");
+                            sb.Append($"{encoded.TjCommand} ET\n");
+                            runCursor += shapedRun.Width;
+                        }
+                    }
 
                     if (run.Underline || run.Strikethrough)
                         DrawTextDecorations(sb, run, fragment.Width, tx, ty, rotation);
 
-                    cursorX += fragment.Width;
+                    cursorX += isRtl ? -fragment.Width : fragment.Width;
                 }
 
                 currentTop -= line.Height;
             }
-        }
-
-
-
-        private static void DrawTextRun(StringBuilder sb, string text, int fontId, float size, string? rgbFill,
-                                        float tx, float ty, float rotateDeg)
-        {
-            if (Math.Abs(rotateDeg) > 0.01f)
-            {
-                double a = Math.Cos(rotateDeg * Math.PI / 180.0);
-                double b = Math.Sin(rotateDeg * Math.PI / 180.0);
-                double c = -b;
-                double d = a;
-
-                sb.Append("q ");                                  // save
-                sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(tx)} {N(ty)} cm "); // translate
-                sb.Append($"{N(a)} {N(b)} {N(c)} {N(d)} 0 0 cm ");             // rotate
-
-                sb.Append("BT ");
-                sb.Append($"/F{fontId} {N(size)} Tf ");
-                if (rgbFill != null) sb.Append(rgbFill + " ");
-                sb.Append($"{N(0)} {N(0)} Td ");
-                sb.Append($"{PdfEnc.WinAnsiHex(text)} Tj ET\n");
-
-                sb.Append("Q\n");
-            }
-            else
-            {
-                sb.Append("BT ");
-                sb.Append($"/F{fontId} {N(size)} Tf ");
-                if (rgbFill != null) sb.Append(rgbFill + " ");
-                sb.Append($"{N(tx)} {N(ty)} Td ");
-                sb.Append($"{PdfEnc.WinAnsiHex(text)} Tj ET\n");
-            }
-        }
-        // Distance from top of the rotated bbox down to the text baseline.
-        // Assumes we rotate around the baseline origin (0,0) at the left edge.
-        private static float TopToBaselineDistance(float lineWidth, float lineHeight, float ascent, float angleDeg)
-        {
-            double r = angleDeg * Math.PI / 180.0;
-            double s = Math.Sin(r);
-            double c = Math.Cos(r);
-
-            // For small |angle| (< 90-), topmost point is:
-            //  - positive ?: top-right corner -> adds w*sin above the ascent*cos
-            //  - negative ?: top-left corner  -> no w*sin term
-            double extraTop = s > 0 ? lineWidth * s : 0.0;
-
-            return (float)(ascent * c + extraTop);
         }
 
         // ---------- Geometry & drawing ----------
@@ -1657,17 +1612,6 @@ namespace PdfBuilder.Writer
             return true;
         }
 
-        private static string EscapeParens(string s) => s.Replace(@"\", @"\\").Replace("(", @"\(").Replace(")", @"\)");
-
-        private static string Utf16Hex(string s)
-        {
-            var raw = Encoding.BigEndianUnicode.GetBytes(s);
-            var withBom = new byte[raw.Length + 2];
-            withBom[0] = 0xFE; withBom[1] = 0xFF;
-            Buffer.BlockCopy(raw, 0, withBom, 2, raw.Length);
-            return $"<{BitConverter.ToString(withBom).Replace("-", "")}>";
-        }
-
         // ---------- color & fonts ----------
         private static string? ToRgbFill(Color? c)
         {
@@ -1702,14 +1646,6 @@ namespace PdfBuilder.Writer
             return MapFontVariant("Helvetica", bold, italic);
         }
 
-        private static int ResolveFontId(Dictionary<string, int> fontObjId, string name)
-        {
-            if (fontObjId.TryGetValue(name, out var id)) return id;
-            // soft fallback to Helvetica if requested variant not embedded
-            var fallback = fontObjId.ContainsKey("Helvetica") ? "Helvetica" : fontObjId.Keys.First();
-            return fontObjId[fallback];
-        }
-
         // Does the row above actually draw a bottom on the span [colStart..colStart+colSpan-1]?
         private static bool PreviousRowDrawsBottom(TableElement table, int rowIndex, int colStart, int colSpan)
         {
@@ -1741,155 +1677,6 @@ namespace PdfBuilder.Writer
             }
             return false;
         }
-        private static float[] AutoSizeColumnWidths(TableElement table, int totalCols, float tableWidth)
-        {
-            // Allow partial fixed widths: any >0 in ColumnWidths are respected; others auto.
-            var fixedW = new float[totalCols];
-            var isFixed = new bool[totalCols];
-            if (table.ColumnWidths != null)
-            {
-                int n = Math.Min(totalCols, table.ColumnWidths.Count);
-                for (int i = 0; i < n; i++)
-                {
-                    if (table.ColumnWidths[i] > 0f)
-                    {
-                        isFixed[i] = true;
-                        fixedW[i] = table.ColumnWidths[i];
-                    }
-                }
-            }
-
-            float fixedSum = fixedW.Sum();
-            float avail = Math.Max(1f, tableWidth - fixedSum);
-
-            // Minimum and "desired" widths for auto columns
-            var minW = Enumerable.Repeat(40f, totalCols).ToArray();  // floor so borders/text don-t collapse
-            var wantW = Enumerable.Repeat(40f, totalCols).ToArray();
-
-            float padDefault = Math.Max(0f, table.CellPadding);
-
-            void Consider(int col, TableCell c, string text)
-            {
-                if (isFixed[col]) return;
-
-                float padL = c.PaddingLeft ?? c.Padding ?? padDefault;
-                float padR = c.PaddingRight ?? c.Padding ?? padDefault;
-                string font = string.IsNullOrWhiteSpace(c.Font) ? table.DefaultFont : c.Font;
-                float size = c.FontSize > 0 ? c.FontSize : table.DefaultFontSize;
-
-                float head = PdfLayoutUtils.EstimateTextWidth(text ?? "", font, size) + padL + padR;
-                if (head > minW[col]) minW[col] = head;
-
-                // Numeric-ish columns should be compact; text columns can flex.
-                bool numericish = c.HorizontalAlign == HorizontalAlign.Right || IsNumericLike(c.Text);
-                float want;
-                if (numericish)
-                {
-                    // keep reasonable for 3-6 digits, parentheses/%, etc.
-                    want = Math.Clamp(head, 40f, 90f);
-                }
-                else
-                {
-                    // Encourage wrapping: base "want" on the longer of header or longest word,
-                    // but cap so one verbose cell (Description) doesn-t steal the table.
-                    string longestWord = LongestWord(c.Text);
-                    float lw = PdfLayoutUtils.EstimateTextWidth(longestWord, font, size) + padL + padR;
-                    float cap = tableWidth * 0.55f;
-                    want = Math.Min(Math.Max(minW[col], Math.Max(head, lw)), cap);
-                }
-                if (want > wantW[col]) wantW[col] = want;
-            }
-
-            // Consider headers (consecutive IsHeader rows from the top)
-            int headerCount = CountLeadingHeaders(table);
-            for (int r = 0; r < Math.Min(headerCount, table.Rows.Count); r++)
-            {
-                int cpos = 0;
-                foreach (var c in table.Rows[r].Cells)
-                {
-                    int span = Math.Max(1, c.ColSpan);
-                    if (span == 1) Consider(cpos, c, c.Text ?? "");
-                    cpos += span;
-                }
-            }
-
-            // Consider body cells (only single-span cells contribute; multi-span are ignored for sizing)
-            for (int r = headerCount; r < table.Rows.Count; r++)
-            {
-                int cpos = 0;
-                foreach (var c in table.Rows[r].Cells)
-                {
-                    int span = Math.Max(1, c.ColSpan);
-                    if (span == 1) Consider(cpos, c, c.Text ?? "");
-                    cpos += span;
-                }
-            }
-
-            // Allocate widths for auto columns between min and desired, inside the available space.
-            float sumMin = 0f, sumWant = 0f;
-            var auto = new List<int>();
-            for (int i = 0; i < totalCols; i++)
-            {
-                if (isFixed[i]) continue;
-                minW[i] = Math.Min(minW[i], avail);
-                wantW[i] = Math.Max(minW[i], wantW[i]);
-                sumMin += minW[i];
-                sumWant += wantW[i];
-                auto.Add(i);
-            }
-
-            var result = fixedW.ToArray(); // start with fixed
-
-            if (auto.Count == 0)
-                return result;
-
-            if (sumMin > avail)
-            {
-                // Not enough room: scale the minima proportionally
-                float scale = avail / sumMin;
-                foreach (int i in auto) result[i] = Math.Max(24f, minW[i] * scale);
-            }
-            else if (sumWant <= avail)
-            {
-                foreach (int i in auto) result[i] = wantW[i];
-            }
-            else
-            {
-                // Distribute the extra beyond minima toward the desired widths
-                float extra = avail - sumMin;
-                float denom = Math.Max(1e-6f, sumWant - sumMin);
-                foreach (int i in auto)
-                    result[i] = minW[i] + extra * ((wantW[i] - minW[i]) / denom);
-            }
-
-            // Nudge last auto column so total matches tableWidth exactly (avoids 1px gaps from rounding)
-            float diff = tableWidth - result.Sum();
-            if (Math.Abs(diff) > 0.01f)
-            {
-                int idx = auto.Last();
-                result[idx] += diff;
-            }
-
-            return result;
-        }
-
-        private static bool IsNumericLike(string? s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) return false;
-            foreach (char ch in s)
-                if (!(char.IsDigit(ch) || ch == ' ' || ch == ',' || ch == '.' || ch == '-' || ch == '(' || ch == ')' || ch == '%'))
-                    return false;
-            return true;
-        }
-
-        private static string LongestWord(string? s)
-        {
-            if (string.IsNullOrWhiteSpace(s)) return "";
-            string[] parts = s.Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            string longest = "";
-            foreach (var p in parts) if (p.Length > longest.Length) longest = p;
-            return longest;
-        }
         // Counts consecutive header rows from the top of the table.
         // Header rows are those with row.IsHeader == true.
         private static int CountLeadingHeaders(TableElement table)
@@ -1907,7 +1694,7 @@ namespace PdfBuilder.Writer
 
         // Map a logical column index to the cell that covers it (accounts for ColSpan)
         // Map a logical column index to the cell that covers it (accounts for ColSpan)
-        private static (int cellIdx, TableCell cell) CellCoveringColumn(TableRow row, int colIndex)
+        private static (int cellIdx, TableCell? cell) CellCoveringColumn(TableRow row, int colIndex)
         {
             int cursor = 0;
             for (int i = 0; i < row.Cells.Count; i++)
@@ -1928,7 +1715,7 @@ namespace PdfBuilder.Writer
             int colIndex,
             HashSet<(int row, int col)> covered,
             bool cellTopOn,
-            BorderDrawSpec topSpec,
+            BorderDrawSpec? topSpec,
             out Edge top,
             out Edge aboveBottom)
         {
@@ -2006,7 +1793,7 @@ namespace PdfBuilder.Writer
         // BOTTOM (this cell) vs TOP (row below)
         private static void BuildBottomVsBelowTop(
             TableElement table, int rowIndex, int colIndex, int rowSpan, HashSet<(int row, int col)> covered,
-            bool cellBottomOn, BorderDrawSpec bottomSpec,
+            bool cellBottomOn, BorderDrawSpec? bottomSpec,
             out Edge bottom, out Edge belowTop)
         {
             float bottomWidth = bottomSpec?.Width ?? 0f;
@@ -2083,7 +1870,7 @@ namespace PdfBuilder.Writer
             TableRow row,
             int colIndex,
             bool cellRightOn,
-            BorderDrawSpec rightSpec,
+            BorderDrawSpec? rightSpec,
             out Edge right,
             out Edge neighborLeft)
         {
@@ -2148,7 +1935,7 @@ namespace PdfBuilder.Writer
         // Used when the shared vertical seam is "owned" by the RIGHT cell (this one) drawing its LEFT.
         private static void BuildLeftVsLeftNeighborRight(
             TableRow row, int colIndex,
-            bool cellLeftOn, BorderDrawSpec leftSpec,
+            bool cellLeftOn, BorderDrawSpec? leftSpec,
             out Edge left, out Edge neighborRight)
         {
             float leftWidth = leftSpec?.Width ?? 0f;
@@ -2444,5 +2231,24 @@ namespace PdfBuilder.Writer
             => c.HasValue || (w.HasValue && w.Value > 0f);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using PdfBuilder.Writer.Rendering;
 
 namespace PdfBuilder.Writer
 {
@@ -62,21 +63,36 @@ namespace PdfBuilder.Writer
                 var line = lines[i];
                 float baselineY = baselines[i];
 
+                var justification = TextJustification.Compute(element, line, textBlockWidth, i, lines.Count);
+                float effectiveLineWidth = justification.HasWordSpacing ? textBlockWidth : line.Width;
+
                 float lineX = element.X;
                 if (element.Alignment == TextAlignment.Center)
-                    lineX += (textBlockWidth - line.Width) / 2f;
+                    lineX += (textBlockWidth - effectiveLineWidth) / 2f;
                 else if (element.Alignment == TextAlignment.Right)
-                    lineX += textBlockWidth - line.Width;
+                    lineX += textBlockWidth - effectiveLineWidth;
 
                 float cursorX = lineX;
+                bool isRtl = element.FlowDirection == FlowDirection.RightToLeft;
+                if (isRtl)
+                    cursorX = lineX + effectiveLineWidth;
+
+                float extraPerSpace = justification.HasWordSpacing ? justification.WordSpacing : 0f;
+
                 foreach (var run in line.Runs)
                 {
                     if (run.Glyphs.Count == 0)
                         continue;
 
+                    int spacesInRun = justification.HasWordSpacing ? TextJustification.CountWordSpacingGlyphs(run) : 0;
+                    float runAdvance = run.Width + (extraPerSpace * spacesInRun);
                     var encoded = GlyphRunEncoder.Encode(run, context);
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {textRgb} rg ");
+                    if (justification.HasWordSpacing)
+                        sb.Append($"{N(extraPerSpace)} Tw ");
+                    if (isRtl)
+                        cursorX -= runAdvance;
                     if (Math.Abs(element.Rotation) < 0.0001)
                     {
                         sb.Append($"{N(cursorX)} {N(baselineY)} Td ");
@@ -88,8 +104,12 @@ namespace PdfBuilder.Writer
                         double sin = Math.Sin(rad);
                         sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} {N(cursorX)} {N(baselineY)} Tm ");
                     }
-                    sb.Append($"{encoded.TjCommand} ET\n");
-                    cursorX += run.Width;
+                    sb.Append($"{encoded.TjCommand} ET");
+                    if (justification.HasWordSpacing)
+                        sb.Append(" 0 Tw");
+                    sb.Append("\n");
+                    if (!isRtl)
+                        cursorX += runAdvance;
                 }
 
                 DrawDecorations(sb, element, lineX, line.Width, baselineY);
@@ -101,19 +121,8 @@ namespace PdfBuilder.Writer
             if (element.ShapedLayout != null)
                 return element.ShapedLayout;
 
-            var request = new TextShapingRequest(
-                element.Text ?? string.Empty,
-                element.FontFamily,
-                element.FontSize > 0 ? element.FontSize : 12f,
-                element.LineHeight > 0 ? element.LineHeight : 1.2f,
-                element.MaxWidth ?? 0f,
-                element.Bold,
-                element.Italic,
-                element.SmallCaps,
-                element.Monospace,
-                element.FallbackFonts);
-
-            var shaped = TextShaper.Shared.ShapeParagraph(request);
+            float innerWidth = element.MaxWidth ?? 0f;
+            var shaped = TextElementLayouter.Layout(element, innerWidth);
             element.ShapedLayout = shaped;
             element.ShapedStartLine = 0;
             element.ShapedLineCount = shaped.Lines.Count;
@@ -182,20 +191,45 @@ namespace PdfBuilder.Writer
             float underlineY = baseline - Math.Max(1f, element.FontSize * 0.08f);
             float strikeY = baseline + element.FontSize * 0.30f;
             float overlineY = baseline + element.FontSize * 0.90f;
-            float strokeWidth = Math.Max(0.7f, element.FontSize * 0.05f);
+            float strokeWidth = element.DecorationThickness ?? Math.Max(0.7f, element.FontSize * 0.05f);
+            string decorationColor = !string.IsNullOrWhiteSpace(element.DecorationColor) ? element.DecorationColor! : element.Color;
+            var decorationStyle = element.DecorationStyle;
 
             if (element.Underline)
-                DrawLine(sb, lineX, underlineY, lineX + lineWidth, underlineY, element.Color, strokeWidth);
+                DrawDecoration(sb, lineX, underlineY, lineX + lineWidth, underlineY, decorationColor, strokeWidth, decorationStyle);
             if (element.Strikethrough)
-                DrawLine(sb, lineX, strikeY, lineX + lineWidth, strikeY, element.Color, strokeWidth);
+                DrawDecoration(sb, lineX, strikeY, lineX + lineWidth, strikeY, decorationColor, strokeWidth, decorationStyle);
             if (element.Overline)
-                DrawLine(sb, lineX, overlineY, lineX + lineWidth, overlineY, element.Color, strokeWidth);
+                DrawDecoration(sb, lineX, overlineY, lineX + lineWidth, overlineY, decorationColor, strokeWidth, decorationStyle);
         }
 
-        private static void DrawLine(StringBuilder sb, float x1, float y1, float x2, float y2, string color, float width)
+        private static void DrawDecoration(StringBuilder sb, float x1, float y1, float x2, float y2, string color, float width, TextDecorationStyle style)
         {
+            if (style == TextDecorationStyle.Double)
+            {
+                float offset = Math.Max(width, 0.5f);
+                float halfWidth = width * 0.6f;
+                DrawDecoration(sb, x1, y1 + offset, x2, y2 + offset, color, halfWidth, TextDecorationStyle.Solid);
+                DrawDecoration(sb, x1, y1 - offset, x2, y2 - offset, color, halfWidth, TextDecorationStyle.Solid);
+                return;
+            }
+
             var rgb = TryRgb(color) ?? "0 0 0";
-            sb.Append($"q {rgb} RG {N(width)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
+            sb.Append("q ");
+            sb.Append($"{rgb} RG {N(width)} w ");
+            switch (style)
+            {
+                case TextDecorationStyle.Dotted:
+                    sb.Append($"[{N(width)} {N(width)}] 0 d ");
+                    break;
+                case TextDecorationStyle.Dashed:
+                    sb.Append($"[{N(width * 4f)} {N(width * 2f)}] 0 d ");
+                    break;
+                default:
+                    sb.Append("[] 0 d ");
+                    break;
+            }
+            sb.Append($"{N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
         }
 
         private static string? TryRgb(string color)

@@ -25,6 +25,7 @@ public sealed class RichTextElement : PdfElement
 
     public float? MaxWidth { get; set; }
     public float Rotation { get; set; } = 0f;
+    public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
 
     public RichTextElement(float x, float y) : base(x, y) { }
 

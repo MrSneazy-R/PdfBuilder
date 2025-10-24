@@ -43,16 +43,18 @@ namespace PdfBuilder.Writer
             float left = page.MarginLeft;
             float right = page.Width - page.MarginRight;
 
+            var direction = doc.TextDefaults.FlowDirection;
+
             if (!string.IsNullOrWhiteSpace(head))
             {
                 float headerCenter = page.Height - page.MarginTop + (hf.HeaderHeight * 0.5f);
-                DrawLine(sb, head, hf, context, left, right, headerCenter, hf.HeaderAlign);
+                DrawLine(sb, head, hf, context, left, right, headerCenter, hf.HeaderAlign, direction);
             }
 
             if (!string.IsNullOrWhiteSpace(foot))
             {
                 float footerCenter = page.MarginBottom - (hf.FooterHeight * 0.5f);
-                DrawLine(sb, foot, hf, context, left, right, footerCenter, hf.FooterAlign);
+                DrawLine(sb, foot, hf, context, left, right, footerCenter, hf.FooterAlign, direction);
             }
         }
 
@@ -64,7 +66,8 @@ namespace PdfBuilder.Writer
             float left,
             float right,
             float centerY,
-            TextAlignment align)
+            TextAlignment align,
+            FlowDirection flowDirection)
         {
             var request = new TextShapingRequest(
                 text ?? string.Empty,
@@ -76,7 +79,8 @@ namespace PdfBuilder.Writer
                 italic: false,
                 smallCaps: false,
                 monospace: false,
-                fallbackFonts: null);
+                fallbackFonts: null,
+                flowDirection);
 
             var paragraph = TextShaper.Shared.ShapeParagraph(request);
             if (paragraph == null || paragraph.Lines.Count == 0)
@@ -99,6 +103,9 @@ namespace PdfBuilder.Writer
                 };
 
                 float cursorX = lineX;
+                bool isRtl = flowDirection == FlowDirection.RightToLeft;
+                if (isRtl)
+                    cursorX = lineX + lineWidth;
                 foreach (var run in line.Runs)
                 {
                     if (run.Glyphs.Count == 0)
@@ -107,9 +114,12 @@ namespace PdfBuilder.Writer
                     var encoded = GlyphRunEncoder.Encode(run, context);
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {rgb} rg ");
+                    if (isRtl)
+                        cursorX -= run.Width;
                     sb.Append($"{N(cursorX)} {N(baseline)} Td ");
                     sb.Append($"{encoded.TjCommand} ET\n");
-                    cursorX += run.Width;
+                    if (!isRtl)
+                        cursorX += run.Width;
                 }
 
                 baseline -= line.LineHeight;

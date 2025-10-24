@@ -1,6 +1,7 @@
 ﻿// PdfBuilder/Writer/ChartRenderer.cs
 using PdfBuilder.Elements;
 using PdfBuilder.Encoder;
+using PdfBuilder.Models;
 using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
@@ -1591,7 +1592,8 @@ namespace PdfBuilder.Writer
                 italic: false,
                 smallCaps: false,
                 monospace: false,
-                fallbackFonts: null);
+                fallbackFonts: null,
+                FlowDirection.LeftToRight);
 
             var paragraph = TextShaper.Shared.ShapeParagraph(request);
             var line = paragraph.Lines.FirstOrDefault();

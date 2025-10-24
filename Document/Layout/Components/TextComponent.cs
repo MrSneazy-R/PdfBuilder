@@ -45,22 +45,14 @@ namespace PdfBuilder.Document.Layout.Components
             float maxWidthConstraint = text.MaxWidth ?? availableWidth;
             float textMaxWidth = Math.Max(0f, maxWidthConstraint - paddingLeft - paddingRight);
 
-            var shapingRequest = new TextShapingRequest(
-                textContent,
-                text.FontFamily,
-                text.FontSize,
-                text.LineHeight,
-                textMaxWidth,
-                text.Bold,
-                text.Italic,
-                text.SmallCaps,
-                text.Monospace,
-                text.FallbackFonts);
-
-            var shapedParagraph = TextShaper.Shared.ShapeParagraph(shapingRequest);
+            var shapedParagraph = TextElementLayouter.Layout(text, textMaxWidth);
             var shapedLines = shapedParagraph.Lines;
             if (shapedLines.Count == 0)
                 shapedLines = new List<ShapedLine> { new ShapedLine(string.Empty, Array.Empty<ShapedRun>(), 0f, text.FontSize, 0f, text.FontSize * text.LineHeight) };
+
+            text.ShapedLayout = shapedParagraph;
+            text.ShapedStartLine = 0;
+            text.ShapedLineCount = shapedLines.Count;
 
             float allLinesHeight = SumLineHeights(shapedLines, shapedLines.Count);
             float maxLineWidthAll = shapedLines.Count > 0 ? shapedLines.Max(l => l.Width) : 0f;

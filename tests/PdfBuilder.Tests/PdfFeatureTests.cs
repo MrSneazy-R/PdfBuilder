@@ -1,4 +1,5 @@
 using System;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using FluentAssertions;
@@ -77,16 +78,9 @@ namespace PdfBuilder.Tests
                 });
 
             var pdfBytes = PdfContentHelper.Generate(doc);
-            var stream = PdfContentHelper.ExtractFirstStream(pdfBytes);
             var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
 
-            string CaptionHex(string text)
-            {
-                var bytes = Encoding.GetEncoding(1252).GetBytes(text);
-                return "<" + BitConverter.ToString(bytes).Replace("-", string.Empty) + ">";
-            }
-
-            stream.Should().Contain(CaptionHex("Inventory Table"));
+            blocks.Should().Contain(block => block.Contains("Inventory Table"));
             blocks.Should().Contain("Item");
             blocks.Should().Contain("Qty");
             blocks.Should().Contain("Coffee");
@@ -120,6 +114,94 @@ namespace PdfBuilder.Tests
             pdf.Should().Contain("/Outlines");
             pdf.Should().Contain("Introduction");
             pdf.Should().Contain("/S /URI");
+        }
+
+        [Fact]
+        public void HeaderDsl_RendersCustomLayout()
+        {
+            var doc = new PdfDocument();
+
+            new PdfDocumentBuilder(doc)
+                .Header(content => content.Text("DSL Header"))
+                .Compose(c => c.Page(page => page.Content(col => col.Text("Body content"))));
+
+            var pdfBytes = PdfContentHelper.Generate(doc);
+            var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
+
+            blocks.Should().Contain(block => block.Contains("DSL Header"));
+        }
+
+        [Fact]
+        public void Metadata_WritesInfoDictionary()
+        {
+            var doc = new PdfDocument();
+
+            new PdfDocumentBuilder(doc)
+                .Metadata(meta =>
+                {
+                    meta.Author = "Alice";
+                    meta.Subject = "Test Subject";
+                    meta.Producer = "PdfBuilder-Tests";
+                    meta.CreatedUtc = new DateTime(2025, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+                    meta.ModifiedUtc = meta.CreatedUtc.Value.AddHours(2);
+                })
+                .Compose(c => c.Page(page => page.Content(col => col.Text("Metadata body"))));
+
+            var pdf = Encoding.ASCII.GetString(PdfContentHelper.Generate(doc));
+
+            pdf.Should().Contain("/Author (Alice)");
+            pdf.Should().Contain("/Subject (Test Subject)");
+            pdf.Should().Contain("/Producer (PdfBuilder-Tests)");
+            pdf.Should().Contain("/CreationDate (D:20250102030405Z)");
+            pdf.Should().Contain("/ModDate (D:20250102050405Z)");
+        }
+
+        [Fact]
+        public void OutputOptions_CompressContentStream()
+        {
+            var doc = new PdfDocument();
+
+            new PdfDocumentBuilder(doc)
+                .OutputOptions(opt =>
+                {
+                    opt.CompressContentStreams = true;
+                    opt.ContentCompressionLevel = CompressionLevel.Fastest;
+                })
+                .Compose(c => c.Page(page => page.Content(col => col.Text("Compress me"))));
+
+            var pdf = Encoding.ASCII.GetString(PdfContentHelper.Generate(doc));
+
+            pdf.Should().Contain("/Filter /FlateDecode");
+        }
+
+        [Fact]
+        public void Canvas_RendersRawCommands()
+        {
+            var doc = new PdfDocument();
+
+            new PdfDocumentBuilder(doc)
+                .Compose(c => c.Page(page => page.Content(col =>
+                    col.Canvas(20, 20, canvas => canvas.Raw("0 0 20 20 re S")))));
+
+            var stream = PdfContentHelper.ExtractFirstStream(PdfContentHelper.Generate(doc));
+
+            stream.Should().Contain("0 0 20 20 re");
+        }
+
+        [Fact]
+        public void SizeOperators_RenderNestedContent()
+        {
+            var doc = new PdfDocument();
+
+            new PdfDocumentBuilder(doc)
+                .Compose(c => c.Page(page => page.Content(col =>
+                    col.MinHeight(72, inner => inner.Text("Sized block"))
+                       .Text("Following block"))));
+
+            var blocks = PdfTextExtractor.ExtractTextBlocks(PdfContentHelper.Generate(doc));
+
+            blocks.Should().Contain(block => block.Contains("Sized block"));
+            blocks.Should().Contain(block => block.Contains("Following block"));
         }
     }
 }

@@ -57,7 +57,8 @@ namespace PdfBuilder.Writer
                         FontSize = list.FontSize,
                         LineHeight = list.LineHeight,
                         Alignment = TextAlignment.Left,
-                        MaxWidth = available
+                        MaxWidth = available,
+                        FlowDirection = list.FlowDirection
                     };
                     rt.Runs.AddRange(item.Content);
                     float consumed = RichTextRenderer.Append(sb, rt, pageHeight, context, outLinks);
@@ -99,7 +100,8 @@ namespace PdfBuilder.Writer
                 italic: false,
                 smallCaps: false,
                 monospace: false,
-                fallbackFonts: null);
+                fallbackFonts: null,
+                list.FlowDirection);
 
             var paragraph = TextShaper.Shared.ShapeParagraph(request);
             var line = paragraph.Lines.FirstOrDefault();

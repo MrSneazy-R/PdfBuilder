@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Models;
 
@@ -48,7 +48,7 @@ namespace PdfBuilder.Document
             _builder = builder ?? throw new ArgumentNullException(nameof(builder));
             _document = builder.Document;
             _page = page ?? throw new ArgumentNullException(nameof(page));
-            _pageBuilder = new PdfPageBuilder(_page);
+            _pageBuilder = new PdfPageBuilder(_page, _document);
 
             float defaultMargin = builder.GetDefaultContentMargin();
             if (defaultMargin > 0)
@@ -72,6 +72,13 @@ namespace PdfBuilder.Document
             return this;
         }
 
+        public PageComposer DefaultTextStyle(Action<TextStyleDefaults> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_page.TextDefaults);
+            return this;
+        }
+
         public PageComposer Background(string color)
         {
             _pageBuilder.Background(color);
@@ -90,6 +97,14 @@ namespace PdfBuilder.Document
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             _contentInvoked = true;
             _pageBuilder.Content(column => column.Compose(configure));
+            return this;
+        }
+
+        public PageComposer Content(Action<ContentComposer> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            _contentInvoked = true;
+            _pageBuilder.Content(column => column.ComposeContent(configure));
             return this;
         }
 
@@ -124,6 +139,22 @@ namespace PdfBuilder.Document
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var hf = EnsureHeaderFooter();
             configure(hf);
+            return this;
+        }
+
+        public PageComposer Header(Action<ContentComposer> configure, float? spacing = null)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var hf = EnsureHeaderFooter();
+            hf.HeaderLayout = new HeaderFooterLayoutDefinition(configure) { DefaultSpacing = spacing };
+            return this;
+        }
+
+        public PageComposer Footer(Action<ContentComposer> configure, float? spacing = null)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var hf = EnsureHeaderFooter();
+            hf.FooterLayout = new HeaderFooterLayoutDefinition(configure) { DefaultSpacing = spacing };
             return this;
         }
 
@@ -166,7 +197,9 @@ namespace PdfBuilder.Document
             FirstPageDifferent = source.FirstPageDifferent,
             FirstPageHeaderTemplate = source.FirstPageHeaderTemplate,
             FirstPageFooterTemplate = source.FirstPageFooterTemplate,
-            HideOnLastPage = source.HideOnLastPage
+            HideOnLastPage = source.HideOnLastPage,
+            HeaderLayout = source.HeaderLayout?.Clone(),
+            FooterLayout = source.FooterLayout?.Clone()
         };
 
         private static void ApplyPageNumberTemplate(HeaderFooterSpec spec, PageNumberPlacement placement, string template)
@@ -202,3 +235,4 @@ namespace PdfBuilder.Document
         }
     }
 }
+

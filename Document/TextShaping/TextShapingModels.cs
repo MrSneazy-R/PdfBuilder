@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using SkiaSharp;
+using PdfBuilder.Models;
 
 namespace PdfBuilder.TextShaping
 {
@@ -16,7 +17,11 @@ namespace PdfBuilder.TextShaping
             bool italic,
             bool smallCaps,
             bool monospace,
-            IReadOnlyList<string>? fallbackFonts)
+            IReadOnlyList<string>? fallbackFonts,
+            FlowDirection flowDirection = FlowDirection.LeftToRight,
+            float? letterSpacing = null,
+            float? wordSpacing = null,
+            TextTransform transform = TextTransform.None)
         {
             Text = text ?? string.Empty;
             FontFamily = string.IsNullOrWhiteSpace(fontFamily) ? "Helvetica" : fontFamily;
@@ -28,6 +33,10 @@ namespace PdfBuilder.TextShaping
             SmallCaps = smallCaps;
             Monospace = monospace;
             FallbackFonts = fallbackFonts;
+            FlowDirection = flowDirection;
+            LetterSpacing = letterSpacing;
+            WordSpacing = wordSpacing;
+            Transform = transform;
         }
 
         public string Text { get; }
@@ -40,6 +49,10 @@ namespace PdfBuilder.TextShaping
         public bool SmallCaps { get; }
         public bool Monospace { get; }
         public IReadOnlyList<string>? FallbackFonts { get; }
+        public FlowDirection FlowDirection { get; }
+        public float? LetterSpacing { get; }
+        public float? WordSpacing { get; }
+        public TextTransform Transform { get; }
     }
 
     internal sealed class ShapedParagraph

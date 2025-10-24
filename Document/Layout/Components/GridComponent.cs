@@ -32,7 +32,7 @@ namespace PdfBuilder.Document.Layout.Components
                 var row = new RowComponent { Gap = ColumnGap };
                 for (int c = 0; c < Columns && index < _children.Count; c++, index++)
                 {
-                    row.Add(_children[index]);
+                    row.Add(_children[index], RowComponent.RowWidthSpec.Even());
                 }
                 column.Add(row);
             }

@@ -1,4 +1,4 @@
-using PdfBuilder.Document;
+﻿using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using TableModels = PdfBuilder.Elements.Table;
@@ -18,6 +18,9 @@ namespace PdfBuilder.Writer
                 HeaderFooter = CloneHeaderFooter(doc.HeaderFooter) ?? new HeaderFooterSpec(),
                 Master = CloneMaster(doc.Master) ?? new MasterPageSpec()
             };
+            outDoc.OutputOptions.CopyFrom(doc.OutputOptions);
+            outDoc.Metadata.CopyFrom(doc.Metadata);
+            outDoc.TextDefaults.CopyFrom(doc.TextDefaults);
             foreach (var page in doc.Pages)
             {
                 var splitPages = PaginatePage(page);
@@ -401,7 +404,8 @@ namespace PdfBuilder.Writer
                     Columns = src.Columns.Columns,
                     Gutter = src.Columns.Gutter,
                     Widths = src.Columns.Widths?.ToArray()
-                }
+                },
+                TextDefaults = src.TextDefaults.Clone()
             };
             return p;
         }
@@ -423,7 +427,9 @@ namespace PdfBuilder.Writer
                 FirstPageDifferent = source.FirstPageDifferent,
                 FirstPageHeaderTemplate = source.FirstPageHeaderTemplate,
                 FirstPageFooterTemplate = source.FirstPageFooterTemplate,
-                HideOnLastPage = source.HideOnLastPage
+                HideOnLastPage = source.HideOnLastPage,
+                HeaderLayout = source.HeaderLayout?.Clone(),
+                FooterLayout = source.FooterLayout?.Clone()
             };
         }
 
@@ -624,6 +630,8 @@ namespace PdfBuilder.Writer
 
     }
 }
+
+
 
 
 

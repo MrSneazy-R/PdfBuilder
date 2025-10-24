@@ -37,6 +37,7 @@ namespace PdfBuilder.Writer
             float effectiveWidth = element.MaxWidth ?? layout.MaxLineWidth;
             float baseline = element.Y;
 
+            bool isRtl = element.FlowDirection == FlowDirection.RightToLeft;
             foreach (var line in layout.Lines)
             {
                 float cursorX = element.X;
@@ -44,6 +45,8 @@ namespace PdfBuilder.Writer
                     cursorX += (effectiveWidth - line.Width) / 2f;
                 else if (element.Alignment == TextAlignment.Right)
                     cursorX += effectiveWidth - line.Width;
+                if (isRtl)
+                    cursorX += line.Width;
 
                 foreach (var segment in line.Segments)
                 {
@@ -54,19 +57,20 @@ namespace PdfBuilder.Writer
 
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(segment.ShapedRun.FontSize)} Tf {ColorRgb(segment.Color)} rg ");
-                    sb.Append($"{N(cursorX)} {N(baseline)} Td ");
+                    float runWidth = segment.ShapedRun.Width;
+                    float runStart = isRtl ? cursorX - runWidth : cursorX;
+                    sb.Append($"{N(runStart)} {N(baseline)} Td ");
                     sb.Append($"{encoded.TjCommand} ET\n");
 
-                    float runWidth = segment.ShapedRun.Width;
                     if (segment.Underline || segment.Strikethrough)
                     {
                         float underlineY = baseline - segment.ShapedRun.FontSize * 0.15f;
                         float strikeY = baseline + segment.ShapedRun.FontSize * 0.30f;
                         float strokeWidth = Math.Max(0.7f, segment.ShapedRun.FontSize * 0.05f);
                         if (segment.Underline)
-                            DrawLine(sb, cursorX, underlineY, cursorX + runWidth, underlineY, segment.Color, strokeWidth);
+                            DrawLine(sb, runStart, underlineY, runStart + runWidth, underlineY, segment.Color, strokeWidth);
                         if (segment.Strikethrough)
-                            DrawLine(sb, cursorX, strikeY, cursorX + runWidth, strikeY, segment.Color, strokeWidth);
+                            DrawLine(sb, runStart, strikeY, runStart + runWidth, strikeY, segment.Color, strokeWidth);
                     }
 
                     if (segment.HasLink)
@@ -75,16 +79,16 @@ namespace PdfBuilder.Writer
                         float bottom = baseline - segment.ShapedRun.Descent;
                         outLinks.Add(new LinkRect
                         {
-                            X1 = cursorX,
+                            X1 = runStart,
                             Y1 = bottom,
-                            X2 = cursorX + runWidth,
+                            X2 = runStart + runWidth,
                             Y2 = top,
                             Url = segment.Url,
                             Anchor = segment.Anchor
                         });
                     }
 
-                    cursorX += runWidth;
+                    cursorX += isRtl ? -runWidth : runWidth;
                 }
 
                 baseline -= line.LineHeight;

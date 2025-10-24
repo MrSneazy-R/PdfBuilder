@@ -296,5 +296,123 @@ namespace PdfBuilder.Tests
                 .Select(t => t.Text)
                 .Should().BeEquivalentTo(new[] { "One", "Two", "Three" });
         }
+
+        [Fact]
+        public void DefaultTextStyle_OnDocument_AppliesToAllTextElements()
+        {
+            var document = new PdfDocument();
+            var builder = new PdfDocumentBuilder(document);
+
+            builder.DefaultTextStyle(style =>
+            {
+                style.FontFamily = "Times New Roman";
+                style.FontSize = 18f;
+                style.Color = "#123456";
+                style.FlowDirection = FlowDirection.RightToLeft;
+            });
+
+            builder.Compose(doc =>
+            {
+                doc.Page(page =>
+                {
+                    page.Column(column =>
+                    {
+                        column.Text("Heading").Add();
+                        column.Compose(comp => comp.Text("Body"));
+                    });
+                });
+            });
+
+            document.TextDefaults.FlowDirection.Should().Be(FlowDirection.RightToLeft);
+            document.Pages.Single().TextDefaults.FlowDirection.Should().Be(FlowDirection.RightToLeft);
+
+            var texts = document.Pages.Single().Elements.OfType<TextElement>().ToList();
+            texts.Should().HaveCount(2);
+            texts.Should().AllSatisfy(t =>
+            {
+                t.FontFamily.Should().Be("Times New Roman");
+                t.FontSize.Should().Be(18f);
+                t.Color.Should().Be("#123456");
+                t.FlowDirection.Should().Be(FlowDirection.RightToLeft);
+            });
+        }
+
+        [Fact]
+        public void DefaultTextStyle_OnPage_OverridesDocumentDefaults()
+        {
+            var document = new PdfDocument();
+            var builder = new PdfDocumentBuilder(document);
+
+            builder.DefaultTextStyle(style =>
+            {
+                style.FontFamily = "Helvetica";
+                style.FontSize = 12f;
+            });
+
+            builder.Compose(doc =>
+            {
+                doc.Page(page =>
+                {
+                    page.DefaultTextStyle(style =>
+                    {
+                        style.FontFamily = "Courier";
+                        style.FontSize = 10f;
+                        style.Color = "#FF0000";
+                        style.FlowDirection = FlowDirection.RightToLeft;
+                    });
+
+                    page.Column(column =>
+                    {
+                        column.Text("Page Text").Add();
+                        column.Compose(comp => comp.Text("More Text"));
+                    });
+                });
+            });
+
+            var texts = document.Pages.Single().Elements.OfType<TextElement>().ToList();
+            texts.Should().HaveCount(2);
+            texts.Should().AllSatisfy(t =>
+            {
+                t.FontFamily.Should().Be("Courier");
+                t.FontSize.Should().Be(10f);
+                t.Color.Should().Be("#FF0000");
+                t.FlowDirection.Should().Be(FlowDirection.RightToLeft);
+            });
+        }
+
+        [Fact]
+        public void DefaultTextStyle_OnColumn_AppliesWithinScope()
+        {
+            var document = new PdfDocument();
+            var builder = new PdfDocumentBuilder(document);
+
+            builder.Compose(doc =>
+            {
+                doc.Page(page =>
+                {
+                    page.Column(column =>
+                    {
+                        column.DefaultTextStyle(style =>
+                        {
+                            style.FontFamily = "Calibri";
+                            style.FontSize = 14f;
+                            style.FlowDirection = FlowDirection.RightToLeft;
+                        });
+
+                        column.Text("Column Text").Add();
+                        column.Compose(comp => comp.Text("Nested Text"));
+                    });
+                });
+            });
+
+            var texts = document.Pages.Single().Elements.OfType<TextElement>().ToList();
+            texts.Should().HaveCount(2);
+            texts.Should().AllSatisfy(t =>
+            {
+                t.FontFamily.Should().Be("Calibri");
+                t.FontSize.Should().Be(14f);
+                t.FlowDirection.Should().Be(FlowDirection.RightToLeft);
+            });
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
@@ -20,6 +21,7 @@ namespace PdfBuilder.Document
                 LineHeight = 1.2f,
                 MaxWidth = defaultWidth
             };
+            _col.ApplyTextDefaults(_text);
         }
 
         // --- Font and main style ---
@@ -36,6 +38,12 @@ namespace PdfBuilder.Document
         public TextBuilder Color(string value)        { _text.Color = value; return this; }
         public TextBuilder Opacity(float value)       { _text.Opacity = value; return this; }
         public TextBuilder BackgroundColor(string value) { _text.BackgroundColor = value; return this; }
+        public TextBuilder DecorationColor(string value) { _text.DecorationColor = value; return this; }
+        public TextBuilder DecorationThickness(float value) { _text.DecorationThickness = value; return this; }
+        public TextBuilder DecorationStyle(TextDecorationStyle value) { _text.DecorationStyle = value; return this; }
+        public TextBuilder LetterSpacing(float value)  { _text.LetterSpacing = value; return this; }
+        public TextBuilder WordSpacing(float value)    { _text.WordSpacing = value; return this; }
+        public TextBuilder Transform(TextTransform value) { _text.Transform = value; return this; }
 
         // --- Background box styling ---
         public TextBuilder BackgroundBorderColor(string value)     { _text.BackgroundBorderColor = value; return this; }
@@ -69,10 +77,25 @@ namespace PdfBuilder.Document
         public TextBuilder MaxWidth(float value)       { _text.MaxWidth = value; return this; }
         public TextBuilder LineHeight(float value)     { _text.LineHeight = value; return this; }
         public TextBuilder BaselineOffset(float value) { _text.BaselineOffset = value; return this; }
+        public TextBuilder FlowDirection(FlowDirection direction) { _text.FlowDirection = direction; return this; }
+        public TextBuilder Span(string text, Action<TextSpan>? configure = null)
+        {
+            var span = new TextSpan { Text = text ?? string.Empty };
+            configure?.Invoke(span);
+            _text.Spans.Add(span);
+            return this;
+        }
+
+        public TextBuilder ClearSpans()
+        {
+            _text.Spans.Clear();
+            return this;
+        }
 
         // --- End chain and add to column ---
         public float Add()
         {
+            _text.FlowDirection = _col.CurrentFlowDirection;
             return _col.AddText(_text);
         }
     }

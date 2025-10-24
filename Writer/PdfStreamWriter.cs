@@ -55,12 +55,40 @@ namespace PdfBuilder.Writer
         }
 
         /// <summary>Writes a content stream object with the given data. Creates the dictionary with /Length automatically.</summary>
-        public void WriteInlineStream(byte[] data)
+        public void WriteInlineStream(byte[] data) => WriteStream(data);
+
+        /// <summary>
+        /// Writes a stream with optional additional dictionary entries (e.g. /Filter, /Length1).
+        /// </summary>
+        public void WriteStream(byte[]? data, params (string Key, string Value)[] extraEntries)
         {
             EnsureNotDisposed();
-            if (data == null) data = Array.Empty<byte>();
+            data ??= Array.Empty<byte>();
 
-            WriteLine($"<< /Length {data.Length} >>");
+            var sb = new StringBuilder();
+            sb.Append("<< /Length ");
+            sb.Append(data.Length);
+
+            if (extraEntries != null)
+            {
+                foreach (var (keyRaw, value) in extraEntries)
+                {
+                    if (string.IsNullOrWhiteSpace(keyRaw) || string.IsNullOrWhiteSpace(value))
+                        continue;
+
+                    string key = keyRaw.Trim();
+                    if (!key.StartsWith("/", StringComparison.Ordinal))
+                        key = "/" + key;
+
+                    sb.Append(' ');
+                    sb.Append(key);
+                    sb.Append(' ');
+                    sb.Append(value);
+                }
+            }
+
+            sb.Append(" >>");
+            WriteLine(sb.ToString());
             WriteLine("stream");
             WriteBytes(data);
             WriteRaw("\nendstream\n");

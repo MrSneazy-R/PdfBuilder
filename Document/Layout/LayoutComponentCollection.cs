@@ -1,4 +1,4 @@
-using PdfBuilder.Document;
+﻿using PdfBuilder.Document;
 using PdfBuilder.Document.Layout.Components;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
@@ -19,7 +19,7 @@ namespace PdfBuilder.Document.Layout
 
         internal IReadOnlyList<IMeasurable> Components => _components;
 
-        private IMeasurable BuildComposite(Action<LayoutComponentCollection> configure, string? caller = null)
+        internal IMeasurable BuildComposite(Action<LayoutComponentCollection> configure, string? caller = null)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var childCollection = new LayoutComponentCollection(_owner);
@@ -37,7 +37,7 @@ namespace PdfBuilder.Document.Layout
             return column;
         }
 
-        private IEnumerable<IMeasurable> BuildMany(Action<LayoutComponentCollection> configure, string? caller = null)
+        internal IEnumerable<IMeasurable> BuildMany(Action<LayoutComponentCollection> configure, string? caller = null)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var childCollection = new LayoutComponentCollection(_owner);
@@ -51,6 +51,31 @@ namespace PdfBuilder.Document.Layout
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
             _components.Add(component);
+            return this;
+        }
+
+        public LayoutComponentCollection Component(IMeasurable component) => Add(component);
+
+        public LayoutComponentCollection Component(
+            Func<LayoutMeasureContext, LayoutMeasurement> measure,
+            Action<LayoutDrawContext, LayoutMeasurement> draw)
+        {
+            if (measure == null) throw new ArgumentNullException(nameof(measure));
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            _components.Add(new DelegateComponent(measure, draw));
+            return this;
+        }
+
+        public LayoutComponentCollection ShowOnce(string key, Action<LayoutComponentCollection> configure)
+        {
+            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("ShowOnce key cannot be null or whitespace.", nameof(key));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            if (_owner.TryConsumeShowOnce(key))
+            {
+                configure(this);
+            }
+
             return this;
         }
 
@@ -106,6 +131,8 @@ namespace PdfBuilder.Document.Layout
             {
                 MaxWidth = flow.Width
             };
+            _owner.ApplyTextDefaults(element);
+            element.FlowDirection = _owner.CurrentFlowDirection;
             configure?.Invoke(element);
             _components.Add(new TextComponent(element, _owner.DefaultSpacing));
             return this;
@@ -119,6 +146,7 @@ namespace PdfBuilder.Document.Layout
             {
                 MaxWidth = flow.Width
             };
+            _owner.ApplyListDefaults(element);
             configure(element);
             _components.Add(new ListComponent(element, _owner.DefaultSpacing));
             return this;
@@ -134,13 +162,31 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public LayoutComponentCollection Column(Action<ColumnComponentBuilder> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var builder = new ColumnComponentBuilder(this);
+            configure(builder);
+            _components.Add(builder.Build());
+            return this;
+        }
+
         public LayoutComponentCollection Row(Action<LayoutComponentCollection> configure, float gap = 12f)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var row = new RowComponent { Gap = gap };
             foreach (var child in BuildMany(configure, nameof(Row)))
-                row.Add(child);
+                row.Add(child, RowComponent.RowWidthSpec.Even());
             _components.Add(row);
+            return this;
+        }
+
+        public LayoutComponentCollection Row(Action<RowComponentBuilder> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var builder = new RowComponentBuilder(this);
+            configure(builder);
+            _components.Add(builder.Build());
             return this;
         }
 
@@ -151,6 +197,15 @@ namespace PdfBuilder.Document.Layout
             foreach (var child in BuildMany(configure, nameof(Stack)))
                 stack.Add(child);
             _components.Add(stack);
+            return this;
+        }
+
+        public LayoutComponentCollection Stack(Action<StackComponentBuilder> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var builder = new StackComponentBuilder(this);
+            configure(builder);
+            _components.Add(builder.Build());
             return this;
         }
 
@@ -169,6 +224,15 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public LayoutComponentCollection Grid(Action<GridComponentBuilder> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var builder = new GridComponentBuilder(this);
+            configure(builder);
+            _components.Add(builder.Build());
+            return this;
+        }
+
         public LayoutComponentCollection Padding(float uniform, Action<LayoutComponentCollection> configure) =>
             Padding(uniform, uniform, uniform, uniform, configure);
 
@@ -177,6 +241,12 @@ namespace PdfBuilder.Document.Layout
             var child = BuildComposite(configure, nameof(Padding));
             var component = new PaddingComponent(child, new PaddingValues(left, top, right, bottom));
             _components.Add(component);
+            return this;
+        }
+
+        public LayoutComponentCollection DefaultTextStyle(Action<TextStyleDefaults> configure)
+        {
+            _owner.DefaultTextStyle(configure);
             return this;
         }
 
@@ -304,16 +374,18 @@ namespace PdfBuilder.Document.Layout
             var flow = _owner.GetFlow();
             var rich = new RichTextElement(flow.X, flow.Y)
             {
-                MaxWidth = flow.Width,
-                FontFamily = "Helvetica",
-                FontSize = 11f
+                MaxWidth = flow.Width
             };
+            _owner.ApplyRichTextDefaults(rich);
 
             var run = new RichRun
             {
                 Text = text,
-                LinkUrl = url
+                LinkUrl = url,
+                FontFamily = rich.FontFamily,
+                FontSize = rich.FontSize
             };
+            _owner.ApplyRunDefaults(run);
             configure?.Invoke(run);
             rich.Runs.Add(run);
 
@@ -321,12 +393,119 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public LayoutComponentCollection Size(
+            Action<ContentComposer> configure,
+            float? minWidth = null,
+            float? maxWidth = null,
+            float? width = null,
+            float? minHeight = null,
+            float? maxHeight = null,
+            float? height = null,
+            float? aspectRatio = null,
+            bool fillWidth = false,
+            bool fillHeight = false,
+            bool shrinkWidth = false,
+            bool shrinkHeight = false)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            var child = BuildComposite(inner =>
+            {
+                var composer = new ContentComposer(inner);
+                configure(composer);
+            }, nameof(Size));
+
+            float? ratio = aspectRatio.HasValue && aspectRatio.Value > 0f ? aspectRatio : null;
+            _components.Add(new SizedComponent(child, minWidth, maxWidth, width, minHeight, maxHeight, height, ratio, fillWidth, fillHeight, shrinkWidth, shrinkHeight));
+            return this;
+        }
+
+        public LayoutComponentCollection Extend(Action<ContentComposer> configure) =>
+            Size(configure, fillWidth: true, fillHeight: true);
+
+        public LayoutComponentCollection ExtendHeight(Action<ContentComposer> configure) =>
+            Size(configure, fillHeight: true);
+
+        public LayoutComponentCollection ExtendWidth(Action<ContentComposer> configure) =>
+            Size(configure, fillWidth: true);
+
+        public LayoutComponentCollection Shrink(Action<ContentComposer> configure) =>
+            Size(configure, shrinkWidth: true, shrinkHeight: true);
+
+        public LayoutComponentCollection ShrinkHeight(Action<ContentComposer> configure) =>
+            Size(configure, shrinkHeight: true);
+
+        public LayoutComponentCollection ShrinkWidth(Action<ContentComposer> configure) =>
+            Size(configure, shrinkWidth: true);
+
+        public LayoutComponentCollection MinHeight(float value, Action<ContentComposer> configure)
+            => Size(configure, minHeight: value);
+
+        public LayoutComponentCollection MaxHeight(float value, Action<ContentComposer> configure)
+            => Size(configure, maxHeight: value);
+
+        public LayoutComponentCollection Height(float value, Action<ContentComposer> configure)
+            => Size(configure, height: value);
+
+        public LayoutComponentCollection MinWidth(float value, Action<ContentComposer> configure)
+            => Size(configure, minWidth: value);
+
+        public LayoutComponentCollection MaxWidth(float value, Action<ContentComposer> configure)
+            => Size(configure, maxWidth: value);
+
+        public LayoutComponentCollection Width(float value, Action<ContentComposer> configure)
+            => Size(configure, width: value);
+
+        public LayoutComponentCollection AspectRatio(float ratio, Action<ContentComposer> configure)
+            => Size(configure, aspectRatio: ratio);
+
         public LayoutComponentCollection Relative(Action<RelativeBuilder> configure, float spacing = 0f)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var builder = new RelativeBuilder(this) { Spacing = spacing };
             configure(builder);
             _components.Add(builder.Build());
+            return this;
+        }
+
+        public LayoutComponentCollection Canvas(float width, float height, Action<CanvasBuilder> draw, Action<CanvasElement>? configure = null)
+        {
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            var flow = _owner.GetFlow();
+            var element = new CanvasElement(flow.X, flow.Y, Math.Max(0f, width), Math.Max(0f, height));
+            configure?.Invoke(element);
+            var canvasBuilder = new CanvasBuilder(element);
+            draw(canvasBuilder);
+            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4, Action<BarcodeElement>? configure = null)
+        {
+            if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException("Barcode value cannot be null or whitespace.", nameof(value));
+            var flow = _owner.GetFlow();
+            var element = new BarcodeElement(value, kind, moduleSize, quietZone)
+            {
+                X = flow.X,
+                Y = flow.Y
+            };
+            configure?.Invoke(element);
+            element.X = flow.X;
+            element.Y = flow.Y;
+            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection Svg(float width, float height, Action<SvgElement> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var flow = _owner.GetFlow();
+            var element = new SvgElement(string.Empty, flow.X, flow.Y, Math.Max(0f, width), Math.Max(0f, height));
+            configure(element);
+            element.X = flow.X;
+            element.Y = flow.Y;
+            element.Refresh();
+            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
             return this;
         }
 
@@ -494,6 +673,209 @@ namespace PdfBuilder.Document.Layout
             }
         }
 
+        public sealed class ColumnComponentBuilder
+        {
+            private readonly LayoutComponentCollection _owner;
+            private readonly ColumnComponent _column = new ColumnComponent();
+            private bool _hasItems;
+
+            internal ColumnComponentBuilder(LayoutComponentCollection owner)
+            {
+                _owner = owner;
+            }
+
+            public ColumnComponentBuilder Spacing(float value)
+            {
+                _column.Spacing = Math.Max(0f, value);
+                return this;
+            }
+
+            public ColumnComponentBuilder Item(Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Column.Item");
+                _column.Add(child);
+                _hasItems = true;
+                return this;
+            }
+
+            internal ColumnComponent Build()
+            {
+                if (!_hasItems)
+                    throw new InvalidOperationException("Column requires at least one item.");
+                return _column;
+            }
+        }
+
+        public sealed class RowComponentBuilder
+        {
+            private readonly LayoutComponentCollection _owner;
+            private readonly RowComponent _row = new RowComponent();
+            private bool _hasItems;
+
+            internal RowComponentBuilder(LayoutComponentCollection owner)
+            {
+                _owner = owner;
+            }
+
+            public RowComponentBuilder Gap(float value)
+            {
+                _row.Gap = Math.Max(0f, value);
+                return this;
+            }
+
+            public RowComponentBuilder Item(Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Row.Item");
+                _row.Add(child, RowComponent.RowWidthSpec.Even());
+                _hasItems = true;
+                return this;
+            }
+
+            public RowComponentBuilder Even(Action<ContentComposer> configure)
+            {
+                return Item(configure);
+            }
+
+            public RowComponentBuilder Constant(float width, Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Row.Constant");
+                _row.Add(child, RowComponent.RowWidthSpec.Fixed(Math.Max(0f, width)));
+                _hasItems = true;
+                return this;
+            }
+
+            public RowComponentBuilder Auto(Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Row.Auto");
+                _row.Add(child, RowComponent.RowWidthSpec.Auto());
+                _hasItems = true;
+                return this;
+            }
+
+            public RowComponentBuilder Relative(float weight, Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Row.Relative");
+                float normalized = weight <= 0f ? 1f : weight;
+                _row.Add(child, RowComponent.RowWidthSpec.Relative(normalized));
+                _hasItems = true;
+                return this;
+            }
+
+            internal RowComponent Build()
+            {
+                if (!_hasItems)
+                    throw new InvalidOperationException("Row requires at least one item.");
+                return _row;
+            }
+        }
+
+        public sealed class StackComponentBuilder
+        {
+            private readonly LayoutComponentCollection _owner;
+            private readonly StackComponent _stack = new StackComponent();
+            private bool _hasItems;
+
+            internal StackComponentBuilder(LayoutComponentCollection owner)
+            {
+                _owner = owner;
+            }
+
+            public StackComponentBuilder Item(Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Stack.Item");
+                _stack.Add(child);
+                _hasItems = true;
+                return this;
+            }
+
+            internal StackComponent Build()
+            {
+                if (!_hasItems)
+                    throw new InvalidOperationException("Stack requires at least one item.");
+                return _stack;
+            }
+        }
+
+        public sealed class GridComponentBuilder
+        {
+            private readonly LayoutComponentCollection _owner;
+            private readonly GridComponent _grid = new GridComponent();
+            private bool _hasItems;
+
+            internal GridComponentBuilder(LayoutComponentCollection owner)
+            {
+                _owner = owner;
+            }
+
+            public GridComponentBuilder Columns(int value)
+            {
+                _grid.Columns = Math.Max(1, value);
+                return this;
+            }
+
+            public GridComponentBuilder RowGap(float value)
+            {
+                _grid.RowGap = Math.Max(0f, value);
+                return this;
+            }
+
+            public GridComponentBuilder ColumnGap(float value)
+            {
+                _grid.ColumnGap = Math.Max(0f, value);
+                return this;
+            }
+
+            public GridComponentBuilder Item(Action<ContentComposer> configure)
+            {
+                if (configure == null) throw new ArgumentNullException(nameof(configure));
+                var child = _owner.BuildComposite(collection =>
+                {
+                    var composer = new ContentComposer(collection);
+                    configure(composer);
+                }, "Grid.Item");
+                _grid.Add(child);
+                _hasItems = true;
+                return this;
+            }
+
+            internal GridComponent Build()
+            {
+                if (!_hasItems)
+                    throw new InvalidOperationException("Grid requires at least one item.");
+                return _grid;
+            }
+        }
+
         public sealed class BorderOptions
         {
             public string StrokeColor { get; set; } = "#000000";
@@ -504,5 +886,6 @@ namespace PdfBuilder.Document.Layout
         }
     }
 }
+
 
 

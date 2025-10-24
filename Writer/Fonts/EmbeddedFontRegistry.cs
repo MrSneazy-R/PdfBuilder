@@ -1,8 +1,9 @@
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
-using SkiaSharp;
 
 namespace PdfBuilder.Writer.Fonts
 {
@@ -46,7 +47,6 @@ namespace PdfBuilder.Writer.Fonts
         private readonly Dictionary<uint, EmbeddedGlyph> _glyphs = new();
         private readonly SKTypeface _typeface;
         private readonly string _baseFontName;
-        private ushort _nextCid = 1;
         private byte[]? _fontData;
 
         public EmbeddedFont(string resourceName, SKTypeface typeface)
@@ -70,7 +70,8 @@ namespace PdfBuilder.Writer.Fonts
                 return existing;
             }
 
-            ushort cid = _nextCid++;
+            // CID == GID (PDF will use Identity mapping)
+            ushort cid = (ushort)glyphId;
             float width = MeasureGlyphWidth(glyphId);
             var record = new EmbeddedGlyph(glyphId, cid, unicode, width);
             _glyphs[glyphId] = record;

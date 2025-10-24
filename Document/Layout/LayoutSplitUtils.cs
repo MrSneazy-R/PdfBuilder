@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using PdfBuilder.Elements;
@@ -48,9 +48,16 @@ namespace PdfBuilder.Document.Layout
                 PaddingRight = source.PaddingRight,
                 MaxWidth = source.MaxWidth,
                 LineHeight = source.LineHeight,
+                LetterSpacing = source.LetterSpacing,
+                WordSpacing = source.WordSpacing,
                 Rotation = source.Rotation,
                 Alignment = source.Alignment,
+                FlowDirection = source.FlowDirection,
                 BaselineOffset = source.BaselineOffset,
+                Transform = source.Transform,
+                DecorationColor = source.DecorationColor,
+                DecorationThickness = source.DecorationThickness,
+                DecorationStyle = source.DecorationStyle,
                 KeepWithNext = source.KeepWithNext,
                 AvoidBreakInside = source.AvoidBreakInside,
                 WidowLines = source.WidowLines,
@@ -59,6 +66,13 @@ namespace PdfBuilder.Document.Layout
 
             if (overrideText != null)
                 clone.Text = overrideText;
+
+            if (source.Spans.Count > 0)
+            {
+                clone.Spans.Clear();
+                foreach (var span in source.Spans)
+                    clone.Spans.Add(span.Clone());
+            }
 
             return clone;
         }
@@ -362,9 +376,11 @@ namespace PdfBuilder.Document.Layout
                 Superscript = style.Superscript,
                 Subscript = style.Subscript,
                 Wrap = style.Wrap,
-                FallbackFonts = style.FallbackFonts?.ToList()
+                FallbackFonts = style.FallbackFonts?.ToList(),
+                FlowDirection = style.FlowDirection
             };
         }
     }
 }
+
 

@@ -9,6 +9,15 @@
   <ItemGroup>
     <PackageReference Include="SkiaSharp" Version="2.88.6" />
     <PackageReference Include="SkiaSharp.HarfBuzz" Version="2.88.6" />
+    <PackageReference Include="SkiaSharp.Svg" Version="1.60.0" />
+    <PackageReference Include="HarfBuzzSharp" Version="7.3.0" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>PdfBuilder.Tests</_Parameter1>
+    </AssemblyAttribute>
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +28,8 @@
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
     <None Include="tests\**\*.cs" />
+    <Compile Remove="samples\**\*.cs" />
+    <None Include="samples\**\*.cs" />
   </ItemGroup>
 
 </Project>

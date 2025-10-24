@@ -7,14 +7,16 @@ namespace PdfBuilder.Document
     public class PdfPageBuilder
     {
         private readonly PdfPage _page;
+        private readonly PdfDocument? _document;
         private float _margin;
 
         // When set, ColumnBuilder will be given a factory to create new pages
         private PdfDocument? _autoDoc;
 
-        public PdfPageBuilder(PdfPage page)
+        public PdfPageBuilder(PdfPage page, PdfDocument? document = null)
         {
             _page = page ?? throw new ArgumentNullException(nameof(page));
+            _document = document;
         }
 
         public PdfPageBuilder Margin(float value)
@@ -62,14 +64,15 @@ namespace PdfBuilder.Document
                         MarginTop = _page.MarginTop,
                         MarginBottom = _page.MarginBottom,
                         MarginLeft = _page.MarginLeft,
-                        MarginRight = _page.MarginRight
+                        MarginRight = _page.MarginRight,
+                        TextDefaults = _page.TextDefaults.Clone()
                     };
                     autoDoc!.Pages.Add(p);
                     return p;
                 };
             }
 
-            var column = new ColumnBuilder(_page, _margin, defaultSpacing: 8f, newPage: newPageFactory, layoutOptions: _page.LayoutOptions);
+            var column = new ColumnBuilder(_page, _margin, defaultSpacing: 8f, newPage: newPageFactory, layoutOptions: _page.LayoutOptions, textDefaults: _page.TextDefaults, document: _document ?? _autoDoc);
             columnAction(column);
             return this;
         }
@@ -78,3 +81,7 @@ namespace PdfBuilder.Document
         public PdfPage Build() => _page;
     }
 }
+
+
+
+
