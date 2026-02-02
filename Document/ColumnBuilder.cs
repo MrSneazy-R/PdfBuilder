@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Globalization;
 
 namespace PdfBuilder.Document
 {
@@ -425,6 +426,51 @@ namespace PdfBuilder.Document
 
         // -- Adders invoked by builders (kept + tiny changes) ----------------
 
+        private static string FormatFloat(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+        private InvalidOperationException CreatePlacementException(
+            string reason,
+            IMeasurable? component,
+            FlowColumn column,
+            LayoutMeasurement? measurement,
+            int attempts,
+            int guardLimit)
+        {
+            var details = new List<string>
+            {
+                $"component={component?.GetType().Name ?? "unknown"}",
+                $"page={_pageSequence}",
+                $"columnIndex={column.Index + 1}",
+                $"columns={_columns.Length}",
+                $"columnWidth={FormatFloat(column.Width)}pt",
+                $"availableHeight={FormatFloat(column.Available)}pt",
+                $"cursorY={FormatFloat(column.Y)}pt",
+                $"attempts={attempts}",
+                $"limit={guardLimit}"
+            };
+
+            if (measurement != null)
+            {
+                details.Add($"result={measurement.Result}");
+                if (measurement.IsWrap)
+                {
+                    details.Add($"usedWidth={FormatFloat(measurement.UsedWidth)}pt");
+                }
+                else
+                {
+                    details.Add($"reservedHeight={FormatFloat(measurement.ReservedHeight)}pt");
+                    details.Add($"contentHeight={FormatFloat(measurement.ContentHeight)}pt");
+                    details.Add($"marginTop={FormatFloat(measurement.MarginTop)}pt");
+                    details.Add($"marginBottom={FormatFloat(measurement.MarginBottom)}pt");
+                    if (measurement.Remainder != null)
+                        details.Add("remainder=true");
+                }
+            }
+
+            var hint = "Enable LayoutOptions.Debug.TraceLayout or DrawBoundingBoxes for diagnostics.";
+            return new InvalidOperationException($"{reason} Details: {string.Join(", ", details)}. {hint}");
+        }
+
         internal float AddComponent(IMeasurable component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
@@ -445,17 +491,37 @@ namespace PdfBuilder.Document
 
                 if (measurement.IsWrap)
                 {
+                    var previousColumn = column;
                     NextColumnOrPage();
                     if (++guard > guardLimit)
-                        throw new InvalidOperationException("Component could not be placed due to insufficient space.");
+                    {
+                        int attempts = guard;
+                        throw CreatePlacementException(
+                            $"Component could not be placed because it repeatedly reported a wrap result after {attempts} page/column breaks",
+                            current,
+                            previousColumn,
+                            measurement,
+                            attempts,
+                            guardLimit);
+                    }
                     continue;
                 }
 
                 if (measurement.ReservedHeight > column.Available + 0.1f)
                 {
+                    var previousColumn = column;
                     NextColumnOrPage();
                     if (++guard > guardLimit)
-                        throw new InvalidOperationException("Component measurement unstable across pages/columns.");
+                    {
+                        int attempts = guard;
+                        throw CreatePlacementException(
+                            $"Component measurement remained larger than the available space after {attempts} page/column breaks",
+                            current,
+                            previousColumn,
+                            measurement,
+                            attempts,
+                            guardLimit);
+                    }
                     continue;
                 }
 
@@ -477,7 +543,16 @@ namespace PdfBuilder.Document
                 {
                     NextColumnOrPage();
                     if (++guard > guardLimit)
-                        throw new InvalidOperationException("Component remainder could not be placed after page break.");
+                    {
+                        int attempts = guard;
+                        throw CreatePlacementException(
+                            $"Component remainder could not be placed after {attempts} page/column breaks",
+                            current,
+                            CurrentColumn,
+                            null,
+                            attempts,
+                            guardLimit);
+                    }
                 }
             }
 

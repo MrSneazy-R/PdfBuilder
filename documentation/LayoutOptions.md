@@ -47,6 +47,7 @@ Expected Outcome
 ----------------
 - Layout engine uses the measure/draw pipeline with caching.
 - After rendering, a `layout-profile.json` file appears, listing time spent measuring/drawing each component type. You can analyze slow components and optimize templates accordingly.
+- If a component cannot be placed (for example, after repeated page/column breaks), runtime exceptions now include the component name, page/column coordinates, and measurement data to accelerate debugging.
 
 Environment Shortcuts
 ---------------------

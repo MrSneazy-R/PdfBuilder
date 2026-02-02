@@ -1,5 +1,32 @@
-CanvasBuilder & SvgElement
-==========================
+Images, Canvas & Svg
+====================
+
+Images
+------
+`ContentComposer.Image(byte[] data, float width, float height, Action<ImageElement>?)` or `ColumnBuilder.Image` adds raster artwork (PNG, JPEG, etc.) that participates in flow layout.
+
+API Highlights:
+- Set `width`/`height` to control the rendered size.
+- Use the optional `configure` callback to adjust margins, padding, borders, corner radius, rotation, opacity, hyperlinks, or clipping (`Clip(ImageClipShape)`).
+- All image positioning is handled by the flow; no manual coordinates required unless you use `ColumnBuilder.Image` directly.
+
+Example:
+```csharp
+var signature = File.ReadAllBytes("assets/signature.png");
+
+page.Compose(flow =>
+{
+    flow.Image(signature, width: 140, height: 48, img =>
+    {
+        img.MarginTop(12);
+        img.Hyperlink("https://contoso.example");
+        img.CornerRadius(8);
+    });
+});
+```
+
+Expected Outcome:
+The signature graphic appears inline with the surrounding content, respecting margins set by the callback. Pagination/columns handle the image just like text or tables.
 
 CanvasBuilder
 -------------

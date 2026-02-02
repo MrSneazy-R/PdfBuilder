@@ -23,6 +23,7 @@ Layout Primitives
 - `Border(Action<BorderOptions>?, Action<ContentComposer>)`: draw a border rectangle around content.
 - `Background(string color, Action<ContentComposer>, float opacity)`: paint a solid background before rendering children.
 - `Size(...)`, `MinHeight`, `MaxHeight`, `Height`, `MinWidth`, `MaxWidth`, `Width`, `AspectRatio`, `Extend`, `ExtendHeight`, `ExtendWidth`, `Shrink`, `ShrinkHeight`, `ShrinkWidth`: impose sizing constraints or stretching rules.
+- `Image(byte[] data, float width, float height, Action<ImageElement>?)`: place raster imagery that participates in flow and pagination.
 - `Canvas(float width, float height, Action<CanvasBuilder>, Action<CanvasElement>?)`: custom drawing using PDF path commands.
 - `Barcode(...)`: insert QR, Code128, and other barcode types.
 - `Svg(float width, float height, Action<SvgElement>)`: embed parsed SVG content.
@@ -40,6 +41,10 @@ Example
 ```csharp
 page.Compose(flow =>
 {
+    // Assume logoBytes contains the raw PNG/JPEG data for your logo.
+    flow.Image(logoBytes, 120, 40, img =>
+        img.MarginBottom(12).Hyperlink("https://contoso.example"));
+
     flow.Background("#1F2933", inner =>
     {
         inner.Padding(24, padded =>

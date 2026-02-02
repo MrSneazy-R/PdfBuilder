@@ -293,7 +293,7 @@ namespace PdfBuilder.Document.Layout
                 deco.Background(ctx =>
                 {
                     var rect = ctx.Rect;
-                    var element = new DebugRectangleElement(rect.X, rect.Bottom, rect.Width, rect.Height)
+                    var element = new SolidRectElement(rect.X, rect.Bottom, rect.Width, rect.Height)
                     {
                         StrokeColor = options.StrokeColor,
                         StrokeWidth = options.StrokeWidth,
@@ -317,10 +317,11 @@ namespace PdfBuilder.Document.Layout
                 deco.Background(ctx =>
                 {
                     var rect = ctx.Rect;
-                    var element = new DebugRectangleElement(rect.X, rect.Bottom, rect.Width, rect.Height)
+                    var element = new SolidRectElement(rect.X, rect.Bottom, rect.Width, rect.Height)
                     {
                         FillColor = color,
                         StrokeWidth = 0f,
+                        StrokeColor = null,
                         Opacity = opacity
                     };
                     ctx.Page.AddElement(element);
@@ -465,6 +466,18 @@ namespace PdfBuilder.Document.Layout
             var builder = new RelativeBuilder(this) { Spacing = spacing };
             configure(builder);
             _components.Add(builder.Build());
+            return this;
+        }
+
+        public LayoutComponentCollection Image(byte[] data, float width, float height, Action<ImageElement>? configure = null)
+        {
+            if (data == null) throw new ArgumentNullException(nameof(data));
+            var flow = _owner.GetFlow();
+            var element = new ImageElement(data, flow.X, flow.Y, Math.Max(0f, width), Math.Max(0f, height));
+            configure?.Invoke(element);
+            element.X = flow.X;
+            element.Y = flow.Y;
+            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
             return this;
         }
 

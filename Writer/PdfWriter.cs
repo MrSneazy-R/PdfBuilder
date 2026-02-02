@@ -443,6 +443,52 @@ namespace PdfBuilder.Writer
             sb.Append($"{rgb} RG {N(line.Thickness)} w {N(line.X)} {N(line.Y)} m {N(x2)} {N(y2)} l S Q\n");
         }
 
+        private static void AppendSolidRect(StringBuilder sb, SolidRectElement rect)
+        {
+            bool hasFill = !string.IsNullOrWhiteSpace(rect.FillColor);
+            bool hasStroke = !string.IsNullOrWhiteSpace(rect.StrokeColor) && rect.StrokeWidth > 0.001f;
+            if (!hasFill && !hasStroke)
+                return;
+
+            float width = Math.Max(0f, rect.Width);
+            float height = Math.Max(0f, rect.Height);
+            if (width <= 0f || height <= 0f)
+                return;
+
+            sb.Append("q ");
+
+            if (hasFill)
+            {
+                string fillRgb = TryRgb(rect.FillColor) ?? "0 0 0";
+                sb.Append($"{fillRgb} rg ");
+            }
+
+            if (hasStroke)
+            {
+                string strokeRgb = TryRgb(rect.StrokeColor) ?? "0 0 0";
+                sb.Append($"{strokeRgb} RG {N(rect.StrokeWidth)} w ");
+                if (rect.DashPattern != null && rect.DashPattern.Length > 0)
+                {
+                    sb.Append("[");
+                    for (int i = 0; i < rect.DashPattern.Length; i++)
+                    {
+                        if (i > 0) sb.Append(' ');
+                        sb.Append(N(rect.DashPattern[i]));
+                    }
+                    sb.Append("] 0 d ");
+                }
+            }
+
+            sb.Append($"{N(rect.X)} {N(rect.Y)} {N(width)} {N(height)} re ");
+            if (hasFill && hasStroke)
+                sb.Append("B ");
+            else if (hasFill)
+                sb.Append("f ");
+            else
+                sb.Append("S ");
+            sb.Append("Q\n");
+        }
+
         private static IEnumerable<PdfElement> EnumerateAllElements(PdfPage page)
         {
             foreach (var element in page.HeaderElements)
@@ -513,6 +559,10 @@ namespace PdfBuilder.Writer
 
                     case LinkRectElement linkRect:
                         annotations.Add(ConvertLinkRect(linkRect));
+                        break;
+
+                    case SolidRectElement solidRect:
+                        AppendSolidRect(sb, solidRect);
                         break;
                 }
             }

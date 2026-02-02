@@ -57,13 +57,13 @@ namespace PdfBuilder.Document
 
             if (isHeader)
             {
-                bottom = page.Height - page.MarginTop;
-                top = bottom + height;
+                top = page.Height - page.MarginTop;
+                bottom = top - height;
             }
             else
             {
-                top = page.MarginBottom;
-                bottom = top - height;
+                bottom = Math.Max(0f, page.MarginBottom - height);
+                top = bottom + height;
             }
 
             top = Math.Min(page.Height, top);

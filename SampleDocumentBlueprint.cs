@@ -100,6 +100,19 @@ public static class SampleDocumentBlueprint
                             left.Column(col =>
                             {
                                 col.Spacing(4);
+                                if (data.Branding.LogoImage is { Length: > 0 } logoBytes)
+                                {
+                                    float logoHeight = Math.Max(16f, data.Branding.LogoHeight ?? 28f);
+                                    float logoWidth = Math.Max(logoHeight, data.Branding.LogoWidth ?? (logoHeight * 3f));
+                                    col.Item(inner =>
+                                        inner.Image(logoBytes, logoWidth, logoHeight, img =>
+                                        {
+                                            img.MarginBottom = 6f;
+                                            img.MaxWidth = logoWidth;
+                                            img.MaxHeight = logoHeight;
+                                        }));
+                                }
+
                                 if (!string.IsNullOrWhiteSpace(data.Branding.CompanyName))
                                 {
                                     col.Item(item => item.Text(data.Branding.CompanyName!, text =>
@@ -392,6 +405,9 @@ public static class SampleDocumentBlueprint
         public string? DarkColor { get; init; }
         public string? Terms { get; init; }
         public string? FontFamily { get; init; }
+        public byte[]? LogoImage { get; init; }
+        public float? LogoWidth { get; init; }
+        public float? LogoHeight { get; init; }
     }
 
     public sealed record CustomerInfo
