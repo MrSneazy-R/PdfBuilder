@@ -39,6 +39,25 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        /// <summary>Forces the next composed component onto a new page.</summary>
+        internal ContentComposer PageBreak()
+        {
+            _collection.PageBreak();
+            return this;
+        }
+
+        internal ContentComposer EnsureSpace(float minimumHeight, Action<ContentComposer> configure)
+        {
+            _collection.EnsureSpace(minimumHeight, inner => configure(new ContentComposer(inner)));
+            return this;
+        }
+
+        internal ContentComposer KeepTogether(Action<ContentComposer> configure)
+        {
+            _collection.KeepTogether(inner => configure(new ContentComposer(inner)));
+            return this;
+        }
+
         public ContentComposer Text(string content, Action<TextElement>? configure = null)
         {
             _collection.Text(content, configure);

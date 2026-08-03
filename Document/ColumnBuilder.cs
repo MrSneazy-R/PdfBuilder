@@ -485,6 +485,11 @@ namespace PdfBuilder.Document
 
             while (current != null)
             {
+                if (current is PageBreakComponent)
+                {
+                    PageBreak();
+                    return totalHeight;
+                }
                 var column = CurrentColumn;
                 var measureContext = new LayoutMeasureContext(_page, column, _layoutOptions);
                 var measurement = MeasureWithCache(current, measureContext);

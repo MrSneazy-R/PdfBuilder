@@ -85,6 +85,7 @@ namespace PdfBuilder.Writer
             var resources = new PdfResourceManager(outputOptions);
             var imageResourceMap = PreRegisterImages(laidOut, resources, writer);
             PreRegisterWatermarks(laidOut, resources, writer);
+            PreRegisterSolidRectOpacity(laidOut, resources, writer);
             string xobjRes = resources.BuildXObjectResources();
             string gsRes = resources.BuildExtGStateResources();
 
@@ -341,6 +342,17 @@ namespace PdfBuilder.Writer
             }
         }
 
+        private static void PreRegisterSolidRectOpacity(
+            PdfDocument doc,
+            PdfResourceManager resources,
+            PdfStreamWriter writer)
+        {
+            foreach (var rectangle in doc.Pages.SelectMany(EnumerateAllElements).OfType<SolidRectElement>())
+                rectangle.ExtGStateResourceName = rectangle.Opacity < 0.999f
+                    ? resources.EnsureWatermarkExtGState(rectangle.Opacity, writer)
+                    : null;
+        }
+
         private static IEnumerable<WatermarkSpec> EnumerateWatermarks(PdfDocument doc)
         {
             if (doc.Master?.Watermark != null)
@@ -456,6 +468,8 @@ namespace PdfBuilder.Writer
                 return;
 
             sb.Append("q ");
+            if (!string.IsNullOrWhiteSpace(rect.ExtGStateResourceName))
+                sb.Append($"{rect.ExtGStateResourceName} gs ");
 
             if (hasFill)
             {
@@ -479,7 +493,18 @@ namespace PdfBuilder.Writer
                 }
             }
 
-            sb.Append($"{N(rect.X)} {N(rect.Y)} {N(width)} {N(height)} re ");
+            if (rect.CornerRadius > 0.001f)
+            {
+                float radius = Math.Min(rect.CornerRadius, Math.Min(width, height) / 2f);
+                float curve = radius * 0.55228475f;
+                sb.Append($"{N(rect.X + radius)} {N(rect.Y)} m ");
+                sb.Append($"{N(rect.X + width - radius)} {N(rect.Y)} l {N(rect.X + width - radius + curve)} {N(rect.Y)} {N(rect.X + width)} {N(rect.Y + radius - curve)} {N(rect.X + width)} {N(rect.Y + radius)} c ");
+                sb.Append($"{N(rect.X + width)} {N(rect.Y + height - radius)} l {N(rect.X + width)} {N(rect.Y + height - radius + curve)} {N(rect.X + width - radius + curve)} {N(rect.Y + height)} {N(rect.X + width - radius)} {N(rect.Y + height)} c ");
+                sb.Append($"{N(rect.X + radius)} {N(rect.Y + height)} l {N(rect.X + radius - curve)} {N(rect.Y + height)} {N(rect.X)} {N(rect.Y + height - radius + curve)} {N(rect.X)} {N(rect.Y + height - radius)} c ");
+                sb.Append($"{N(rect.X)} {N(rect.Y + radius)} l {N(rect.X)} {N(rect.Y + radius - curve)} {N(rect.X + radius - curve)} {N(rect.Y)} {N(rect.X + radius)} {N(rect.Y)} c h ");
+            }
+            else
+                sb.Append($"{N(rect.X)} {N(rect.Y)} {N(width)} {N(height)} re ");
             if (hasFill && hasStroke)
                 sb.Append("B ");
             else if (hasFill)

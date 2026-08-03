@@ -34,12 +34,84 @@ public interface IPageDescriptor
 /// <summary>Represents a container that can receive canonical content.</summary>
 public interface IContainer
 {
+    /// <summary>Applies uniform inner padding in points.</summary>
+    IContainer Padding(float value);
+    /// <summary>Applies per-side inner padding in points.</summary>
+    IContainer Padding(float left, float top, float right, float bottom);
+    /// <summary>Applies uniform outer margin in points.</summary>
+    IContainer Margin(float value);
+    /// <summary>Applies per-side outer margin in points.</summary>
+    IContainer Margin(float left, float top, float right, float bottom);
+    /// <summary>Paints a background behind this container.</summary>
+    IContainer Background(string color);
+    /// <summary>Draws a border around this container.</summary>
+    IContainer Border(float width = 1f, string color = "#000000");
+    /// <summary>Draws a border on the left side of this container.</summary>
+    IContainer BorderLeft(float width = 1f, string color = "#000000");
+    /// <summary>Draws a border on the top side of this container.</summary>
+    IContainer BorderTop(float width = 1f, string color = "#000000");
+    /// <summary>Draws a border on the right side of this container.</summary>
+    IContainer BorderRight(float width = 1f, string color = "#000000");
+    /// <summary>Draws a border on the bottom side of this container.</summary>
+    IContainer BorderBottom(float width = 1f, string color = "#000000");
+    /// <summary>Rounds the decoration corners by the supplied radius in points.</summary>
+    IContainer CornerRadius(float value);
+    /// <summary>Sets the opacity of this container's decoration.</summary>
+    IContainer Opacity(float value);
+    /// <summary>Aligns this container to the left.</summary>
+    IContainer AlignLeft();
+    /// <summary>Aligns this container horizontally in the centre.</summary>
+    IContainer AlignCenter();
+    /// <summary>Aligns this container to the right.</summary>
+    IContainer AlignRight();
+    /// <summary>Aligns this container to the top.</summary>
+    IContainer AlignTop();
+    /// <summary>Aligns this container vertically in the middle.</summary>
+    IContainer AlignMiddle();
+    /// <summary>Aligns this container to the bottom.</summary>
+    IContainer AlignBottom();
+    /// <summary>Sets an exact width in points.</summary>
+    IContainer Width(float value);
+    /// <summary>Sets an exact height in points.</summary>
+    IContainer Height(float value);
+    /// <summary>Sets a minimum width in points.</summary>
+    IContainer MinWidth(float value);
+    /// <summary>Sets a maximum width in points.</summary>
+    IContainer MaxWidth(float value);
+    /// <summary>Sets a minimum height in points.</summary>
+    IContainer MinHeight(float value);
+    /// <summary>Sets a maximum height in points.</summary>
+    IContainer MaxHeight(float value);
+    /// <summary>Sets the width-to-height aspect ratio.</summary>
+    IContainer AspectRatio(float value);
+    /// <summary>Extends this container to the available width and height.</summary>
+    IContainer Extend();
+    /// <summary>Shrinks this container to the available width and height.</summary>
+    IContainer Shrink();
+    /// <summary>Moves this container to the next page when less than the specified height is available.</summary>
+    IContainer EnsureSpace(float minimumHeight);
+    /// <summary>Keeps the container on one page when it can fit on a page.</summary>
+    IContainer KeepTogether();
+    /// <summary>Keeps this container with the next layout item when practical.</summary>
+    IContainer KeepWithNext();
+    /// <summary>Includes this container only when <paramref name="condition"/> is true.</summary>
+    IContainer ShowIf(bool condition);
+    /// <summary>Forces subsequent content onto a new page.</summary>
+    IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
     /// <summary>Adds a vertical column.</summary>
     void Column(Action<IColumnDescriptor> configure);
     /// <summary>Adds a horizontal row.</summary>
     void Row(Action<IRowDescriptor> configure);
+    /// <summary>Adds a grid.</summary>
+    void Grid(Action<IGridDescriptor> configure);
+    /// <summary>Adds stacked content layers.</summary>
+    void Stack(Action<IStackDescriptor> configure);
+    /// <summary>Adds background, content, and foreground layers.</summary>
+    void Layer(Action<ILayerDescriptor> configure);
+    /// <summary>Repeats content a fixed number of times.</summary>
+    void Repeat(int count, Action<int, IContainer> configure);
 }
 
 /// <summary>Describes a vertical column.</summary>
@@ -58,6 +130,52 @@ public interface IRowDescriptor
     IContainer ConstantItem(float width);
     /// <summary>Adds a proportional-width item.</summary>
     IContainer RelativeItem(float weight = 1f);
+    /// <summary>Adds an item sized by the row layout.</summary>
+    IContainer AutoItem();
+}
+
+/// <summary>Describes a grid layout.</summary>
+public interface IGridDescriptor
+{
+    /// <summary>Sets the number of columns.</summary>
+    void Columns(int value);
+    /// <summary>Sets the gap between grid rows in points.</summary>
+    void RowSpacing(float value);
+    /// <summary>Sets the gap between grid columns in points.</summary>
+    void ColumnSpacing(float value);
+    /// <summary>Adds a grid item.</summary>
+    IContainer Item();
+}
+
+/// <summary>Describes a stack layout.</summary>
+public interface IStackDescriptor
+{
+    /// <summary>Adds a stack item.</summary>
+    IContainer Item();
+}
+
+/// <summary>Describes explicit background, content, and foreground layers.</summary>
+public interface ILayerDescriptor
+{
+    /// <summary>Configures the background layer.</summary>
+    IContainer Background();
+    /// <summary>Configures the content layer.</summary>
+    IContainer Content();
+    /// <summary>Configures the foreground layer.</summary>
+    IContainer Foreground();
+}
+
+/// <summary>Provides explicit unit conversion helpers for layout values.</summary>
+public static class Units
+{
+    /// <summary>Returns a value expressed in PDF points.</summary>
+    public static float Points(float value) => value;
+    /// <summary>Converts millimetres to PDF points.</summary>
+    public static float Millimeters(float value) => value * 72f / 25.4f;
+    /// <summary>Converts centimetres to PDF points.</summary>
+    public static float Centimeters(float value) => Millimeters(value * 10f);
+    /// <summary>Converts inches to PDF points.</summary>
+    public static float Inches(float value) => value * 72f;
 }
 
 /// <summary>Configures reusable text style settings.</summary>
@@ -182,6 +300,57 @@ public partial class PdfDocument
     private sealed class CanonicalContainer : IContainer
     {
         private readonly List<Action<Layout.ContentComposer>> _content = new();
+        private float? _paddingLeft, _paddingTop, _paddingRight, _paddingBottom;
+        private float? _marginLeft, _marginTop, _marginRight, _marginBottom;
+        private string? _background;
+        private readonly BorderValues _border = new();
+        private float _cornerRadius;
+        private float _opacity = 1f;
+        private Layout.Components.LayoutHorizontalAlignment _horizontal = Layout.Components.LayoutHorizontalAlignment.Left;
+        private Layout.Components.LayoutVerticalAlignment _vertical = Layout.Components.LayoutVerticalAlignment.Top;
+        private float? _width, _height, _minWidth, _maxWidth, _minHeight, _maxHeight, _aspectRatio, _ensureSpace;
+        private bool _extend, _shrink, _keepTogether, _keepWithNext, _visible = true;
+
+        public IContainer Padding(float value) => Padding(value, value, value, value);
+        public IContainer Padding(float left, float top, float right, float bottom)
+        {
+            ValidateNonNegative(left, nameof(left)); ValidateNonNegative(top, nameof(top)); ValidateNonNegative(right, nameof(right)); ValidateNonNegative(bottom, nameof(bottom));
+            _paddingLeft = left; _paddingTop = top; _paddingRight = right; _paddingBottom = bottom; return this;
+        }
+        public IContainer Margin(float value) => Margin(value, value, value, value);
+        public IContainer Margin(float left, float top, float right, float bottom)
+        {
+            ValidateNonNegative(left, nameof(left)); ValidateNonNegative(top, nameof(top)); ValidateNonNegative(right, nameof(right)); ValidateNonNegative(bottom, nameof(bottom));
+            _marginLeft = left; _marginTop = top; _marginRight = right; _marginBottom = bottom; return this;
+        }
+        public IContainer Background(string color) { _background = ValidateColor(color); return this; }
+        public IContainer Border(float width = 1f, string color = "#000000") { _border.SetAll(width, color); return this; }
+        public IContainer BorderLeft(float width = 1f, string color = "#000000") { _border.Left = BorderValues.Create(width, color); return this; }
+        public IContainer BorderTop(float width = 1f, string color = "#000000") { _border.Top = BorderValues.Create(width, color); return this; }
+        public IContainer BorderRight(float width = 1f, string color = "#000000") { _border.Right = BorderValues.Create(width, color); return this; }
+        public IContainer BorderBottom(float width = 1f, string color = "#000000") { _border.Bottom = BorderValues.Create(width, color); return this; }
+        public IContainer CornerRadius(float value) { ValidateNonNegative(value, nameof(value)); _cornerRadius = value; return this; }
+        public IContainer Opacity(float value) { if (value < 0f || value > 1f || float.IsNaN(value)) throw new ArgumentOutOfRangeException(nameof(value)); _opacity = value; return this; }
+        public IContainer AlignLeft() { _horizontal = Layout.Components.LayoutHorizontalAlignment.Left; return this; }
+        public IContainer AlignCenter() { _horizontal = Layout.Components.LayoutHorizontalAlignment.Center; return this; }
+        public IContainer AlignRight() { _horizontal = Layout.Components.LayoutHorizontalAlignment.Right; return this; }
+        public IContainer AlignTop() { _vertical = Layout.Components.LayoutVerticalAlignment.Top; return this; }
+        public IContainer AlignMiddle() { _vertical = Layout.Components.LayoutVerticalAlignment.Middle; return this; }
+        public IContainer AlignBottom() { _vertical = Layout.Components.LayoutVerticalAlignment.Bottom; return this; }
+        public IContainer Width(float value) { _width = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer Height(float value) { _height = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer MinWidth(float value) { _minWidth = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer MaxWidth(float value) { _maxWidth = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer MinHeight(float value) { _minHeight = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer MaxHeight(float value) { _maxHeight = ValidateDimension(value, nameof(value)); return this; }
+        public IContainer AspectRatio(float value) { if (value <= 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value)); _aspectRatio = value; return this; }
+        public IContainer Extend() { _extend = true; return this; }
+        public IContainer Shrink() { _shrink = true; return this; }
+        public IContainer EnsureSpace(float minimumHeight) { _ensureSpace = ValidateDimension(minimumHeight, nameof(minimumHeight)); return this; }
+        public IContainer KeepTogether() { _keepTogether = true; return this; }
+        public IContainer KeepWithNext() { _keepWithNext = true; return this; }
+        public IContainer ShowIf(bool condition) { _visible &= condition; return this; }
+        public IContainer PageBreak() { _content.Add(composer => composer.PageBreak()); return this; }
         public ITextDescriptor Text(string text)
         {
             var descriptor = new CanonicalTextStyle();
@@ -200,7 +369,66 @@ public partial class PdfDocument
             var row = new CanonicalRowDescriptor(); configure(row);
             _content.Add(composer => composer.Row(builder => row.Compose(builder)));
         }
-        public void Compose(Layout.ContentComposer composer) { foreach (var action in _content) action(composer); }
+        public void Grid(Action<IGridDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var grid = new CanonicalGridDescriptor(); configure(grid);
+            _content.Add(composer => composer.Grid(builder => grid.Compose(builder)));
+        }
+        public void Stack(Action<IStackDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var stack = new CanonicalStackDescriptor(); configure(stack);
+            _content.Add(composer => composer.Stack(builder => stack.Compose(builder)));
+        }
+        public void Layer(Action<ILayerDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var layer = new CanonicalLayerDescriptor(); configure(layer);
+            _content.Add(composer => composer.Layer(builder => layer.Compose(builder)));
+        }
+        public void Repeat(int count, Action<int, IContainer> configure)
+        {
+            if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(); configure(index, item); _content.Add(item.Compose); }
+        }
+        public void Compose(Layout.ContentComposer composer)
+        {
+            if (!_visible) { composer.Component(new Layout.Components.EmptyComponent()); return; }
+            ValidateConstraints();
+            Action<Layout.ContentComposer> content = ComposeCore;
+            if (_paddingLeft.HasValue) { var next = content; content = inner => inner.Padding(_paddingLeft.Value, _paddingTop!.Value, _paddingRight!.Value, _paddingBottom!.Value, next); }
+            if (_background != null || _border.HasAny) { var next = content; content = inner => inner.Decorate(decoration => ConfigureDecoration(decoration), next); }
+            if (_marginLeft.HasValue) { var next = content; content = inner => inner.Padding(_marginLeft.Value, _marginTop!.Value, _marginRight!.Value, _marginBottom!.Value, next); }
+            if (_width.HasValue || _height.HasValue || _minWidth.HasValue || _maxWidth.HasValue || _minHeight.HasValue || _maxHeight.HasValue || _aspectRatio.HasValue || _extend || _shrink)
+            { var next = content; content = inner => inner.Size(next, _minWidth, _maxWidth, _width, _minHeight, _maxHeight, _height, _aspectRatio, _extend, _extend, _shrink, _shrink); }
+            if (_horizontal != Layout.Components.LayoutHorizontalAlignment.Left || _vertical != Layout.Components.LayoutVerticalAlignment.Top)
+            { var next = content; content = inner => inner.Align(_horizontal, _vertical, next, _ensureSpace); }
+            else if (_ensureSpace.HasValue) { var next = content; content = inner => inner.EnsureSpace(_ensureSpace.Value, next); }
+            if (_keepTogether || _keepWithNext) { var next = content; content = inner => inner.KeepTogether(next); }
+            content(composer);
+        }
+        private void ComposeCore(Layout.ContentComposer composer) { foreach (var action in _content) action(composer); }
+        private void ConfigureDecoration(Layout.LayoutComponentCollection.DecorationBuilder decoration)
+        {
+            decoration.Background(context =>
+            {
+                var rect = context.Rect;
+                if (_background != null) context.Page.AddElement(new SolidRectElement(rect.X, rect.Bottom, rect.Width, rect.Height) { FillColor = _background, Opacity = _opacity, CornerRadius = _cornerRadius });
+            });
+            decoration.Foreground(context => _border.Add(context, _cornerRadius, _opacity));
+        }
+        private void ValidateConstraints()
+        {
+            if (_minWidth.HasValue && _maxWidth.HasValue && _minWidth > _maxWidth) throw new InvalidOperationException("Minimum width cannot exceed maximum width.");
+            if (_minHeight.HasValue && _maxHeight.HasValue && _minHeight > _maxHeight) throw new InvalidOperationException("Minimum height cannot exceed maximum height.");
+            if (_width.HasValue && ((_minWidth.HasValue && _width < _minWidth) || (_maxWidth.HasValue && _width > _maxWidth))) throw new InvalidOperationException("Width conflicts with its minimum or maximum constraint.");
+            if (_height.HasValue && ((_minHeight.HasValue && _height < _minHeight) || (_maxHeight.HasValue && _height > _maxHeight))) throw new InvalidOperationException("Height conflicts with its minimum or maximum constraint.");
+        }
+        private static float ValidateDimension(float value, string name) { ValidateNonNegative(value, name); return value; }
+        private static void ValidateNonNegative(float value, string name) { if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(name); }
+        private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
     }
 
     private sealed class CanonicalColumnDescriptor : IColumnDescriptor
@@ -221,6 +449,7 @@ public partial class PdfDocument
         private readonly List<(RowItemKind kind, float value, CanonicalContainer container)> _items = new();
         public IContainer ConstantItem(float width) => Add(RowItemKind.Constant, width);
         public IContainer RelativeItem(float weight = 1f) => Add(RowItemKind.Relative, weight);
+        public IContainer AutoItem() => Add(RowItemKind.Auto, 0f);
         private IContainer Add(RowItemKind kind, float value)
         {
             if (value < 0 || (kind == RowItemKind.Relative && value == 0)) throw new ArgumentOutOfRangeException(nameof(value));
@@ -233,9 +462,97 @@ public partial class PdfDocument
                 {
                     case RowItemKind.Constant: builder.Constant(item.value, item.container.Compose); break;
                     case RowItemKind.Relative: builder.Relative(item.value, item.container.Compose); break;
+                    case RowItemKind.Auto: builder.Auto(item.container.Compose); break;
                 }
         }
-        private enum RowItemKind { Constant, Relative }
+        private enum RowItemKind { Constant, Relative, Auto }
+    }
+
+    private sealed class CanonicalGridDescriptor : IGridDescriptor
+    {
+        private readonly List<CanonicalContainer> _items = new();
+        private int _columns = 1;
+        private float _rowGap = 8f, _columnGap = 8f;
+        public void Columns(int value) { if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value)); _columns = value; }
+        public void RowSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _rowGap = value; }
+        public void ColumnSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _columnGap = value; }
+        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public void Compose(Layout.LayoutComponentCollection.GridComponentBuilder builder)
+        {
+            builder.Columns(_columns).RowGap(_rowGap).ColumnGap(_columnGap);
+            foreach (var item in _items) builder.Item(item.Compose);
+        }
+    }
+
+    private sealed class CanonicalStackDescriptor : IStackDescriptor
+    {
+        private readonly List<CanonicalContainer> _items = new();
+        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public void Compose(Layout.LayoutComponentCollection.StackComponentBuilder builder) { foreach (var item in _items) builder.Item(item.Compose); }
+    }
+
+    private sealed class CanonicalLayerDescriptor : ILayerDescriptor
+    {
+        private readonly CanonicalContainer _background = new();
+        private readonly CanonicalContainer _content = new();
+        private readonly CanonicalContainer _foreground = new();
+        private bool _hasBackground, _hasContent, _hasForeground;
+        public IContainer Background() { _hasBackground = true; return _background; }
+        public IContainer Content() { _hasContent = true; return _content; }
+        public IContainer Foreground() { _hasForeground = true; return _foreground; }
+        public void Compose(Layout.LayoutComponentCollection.LayerBuilder builder)
+        {
+            if (!_hasBackground && !_hasContent && !_hasForeground) throw new InvalidOperationException("Layer requires at least one child.");
+            if (_hasBackground) builder.Background(collection => _background.Compose(new Layout.ContentComposer(collection)));
+            if (_hasContent) builder.Content(collection => _content.Compose(new Layout.ContentComposer(collection)));
+            if (_hasForeground) builder.Foreground(collection => _foreground.Compose(new Layout.ContentComposer(collection)));
+        }
+    }
+
+    private sealed class BorderValues
+    {
+        internal BorderSide? Left { get; set; }
+        internal BorderSide? Top { get; set; }
+        internal BorderSide? Right { get; set; }
+        internal BorderSide? Bottom { get; set; }
+        internal bool HasAny => Left.HasValue || Top.HasValue || Right.HasValue || Bottom.HasValue;
+        internal static BorderSide Create(float width, string color)
+        {
+            if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
+            if (string.IsNullOrWhiteSpace(color)) throw new ArgumentException("A border color is required.", nameof(color));
+            return new BorderSide(width, color);
+        }
+        internal void SetAll(float width, string color) { var side = Create(width, color); Left = Top = Right = Bottom = side; }
+        internal void Add(Layout.DecorationDrawContext context, float cornerRadius, float opacity)
+        {
+            var rect = context.Rect;
+            if (HasUniformBorder(out var uniform))
+            {
+                context.Page.AddElement(new SolidRectElement(rect.X, rect.Bottom, rect.Width, rect.Height) { StrokeColor = uniform.Color, StrokeWidth = uniform.Width, Opacity = opacity, CornerRadius = cornerRadius });
+                return;
+            }
+            AddSide(context, Left, rect.X, rect.Bottom, rect.Height, true, opacity);
+            AddSide(context, Right, rect.X + rect.Width, rect.Bottom, rect.Height, true, opacity);
+            AddSide(context, Top, rect.X, rect.Bottom + rect.Height, rect.Width, false, opacity);
+            AddSide(context, Bottom, rect.X, rect.Bottom, rect.Width, false, opacity);
+        }
+        private bool HasUniformBorder(out BorderSide side)
+        {
+            side = default;
+            if (!Left.HasValue || !Top.HasValue || !Right.HasValue || !Bottom.HasValue) return false;
+            if (Left.Value != Top.Value || Left.Value != Right.Value || Left.Value != Bottom.Value) return false;
+            side = Left.Value; return true;
+        }
+        private static void AddSide(Layout.DecorationDrawContext context, BorderSide? side, float x, float y, float length, bool vertical, float opacity)
+        {
+            if (!side.HasValue || side.Value.Width <= 0f) return;
+            float width = vertical ? side.Value.Width : length;
+            float height = vertical ? length : side.Value.Width;
+            if (vertical && x > context.Rect.X) x -= side.Value.Width;
+            if (!vertical && y > context.Rect.Bottom) y -= side.Value.Width;
+            context.Page.AddElement(new SolidRectElement(x, y, width, height) { FillColor = side.Value.Color, Opacity = opacity });
+        }
+        internal readonly record struct BorderSide(float Width, string Color);
     }
 
     private sealed class CanonicalTextStyle : ITextDescriptor
