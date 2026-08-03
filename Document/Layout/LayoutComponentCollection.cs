@@ -79,6 +79,25 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal LayoutComponentCollection PageBreak()
+        {
+            _components.Add(new PageBreakComponent());
+            return this;
+        }
+
+        internal LayoutComponentCollection EnsureSpace(float minimumHeight, Action<LayoutComponentCollection> configure)
+        {
+            if (minimumHeight < 0f || float.IsNaN(minimumHeight) || float.IsInfinity(minimumHeight)) throw new ArgumentOutOfRangeException(nameof(minimumHeight));
+            _components.Add(new EnsureSpaceComponent(BuildComposite(configure, nameof(EnsureSpace)), minimumHeight));
+            return this;
+        }
+
+        internal LayoutComponentCollection KeepTogether(Action<LayoutComponentCollection> configure)
+        {
+            _components.Add(new KeepTogetherComponent(BuildComposite(configure, nameof(KeepTogether))));
+            return this;
+        }
+
         public LayoutComponentCollection When(bool condition, Action<LayoutComponentCollection> whenTrue, Action<LayoutComponentCollection>? whenFalse = null)
         {
             if (whenTrue == null && whenFalse == null)

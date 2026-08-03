@@ -252,12 +252,57 @@ PdfBuilder.Document.IColumnDescriptor
 PdfBuilder.Document.IColumnDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IColumnDescriptor.Spacing(float value) -> void
 PdfBuilder.Document.IContainer
+PdfBuilder.Document.IContainer.AlignBottom() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AlignCenter() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AlignLeft() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AlignMiddle() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AlignRight() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AlignTop() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.AspectRatio(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Background(string! color) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Border(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.BorderBottom(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.BorderRight(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.BorderTop(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Column(System.Action<PdfBuilder.Document.IColumnDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.CornerRadius(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.EnsureSpace(float minimumHeight) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Extend() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Grid(System.Action<PdfBuilder.Document.IGridDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.Height(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.KeepTogether() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Layer(System.Action<PdfBuilder.Document.ILayerDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.Margin(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Margin(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.MaxHeight(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.MaxWidth(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.MinHeight(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.MinWidth(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Opacity(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Padding(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.PageBreak() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.Document.IContainer!>! configure) -> void
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Page(System.Action<PdfBuilder.Document.IPageDescriptor!>! configure) -> void
+PdfBuilder.Document.IGridDescriptor
+PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
+PdfBuilder.Document.IGridDescriptor.ColumnSpacing(float value) -> void
+PdfBuilder.Document.IGridDescriptor.Item() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IGridDescriptor.RowSpacing(float value) -> void
+PdfBuilder.Document.ILayerDescriptor
+PdfBuilder.Document.ILayerDescriptor.Background() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ILayerDescriptor.Content() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ILayerDescriptor.Foreground() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ImageBuilder
 PdfBuilder.Document.ImageBuilder.Add() -> float
 PdfBuilder.Document.ImageBuilder.Border(string! color, float width) -> PdfBuilder.Document.ImageBuilder!
@@ -305,8 +350,11 @@ PdfBuilder.Document.IPageDescriptor.Margin(float value) -> void
 PdfBuilder.Document.IPageDescriptor.Orientation(PdfBuilder.Document.PageOrientation orientation) -> void
 PdfBuilder.Document.IPageDescriptor.Size(PdfBuilder.Document.PageSize size) -> void
 PdfBuilder.Document.IRowDescriptor
+PdfBuilder.Document.IRowDescriptor.AutoItem() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.ConstantItem(float width) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.RelativeItem(float weight = 1) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IStackDescriptor
+PdfBuilder.Document.IStackDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ITextDescriptor
 PdfBuilder.Document.ITextStyleDescriptor
 PdfBuilder.Document.ITextStyleDescriptor.Bold() -> PdfBuilder.Document.ITextStyleDescriptor!
@@ -933,6 +981,7 @@ PdfBuilder.Document.TextBuilder.TextBuilder(PdfBuilder.Document.ColumnBuilder! c
 PdfBuilder.Document.TextBuilder.Transform(PdfBuilder.Models.TextTransform value) -> PdfBuilder.Document.TextBuilder!
 PdfBuilder.Document.TextBuilder.Underline() -> PdfBuilder.Document.TextBuilder!
 PdfBuilder.Document.TextBuilder.WordSpacing(float value) -> PdfBuilder.Document.TextBuilder!
+PdfBuilder.Document.Units
 PdfBuilder.Document.VerticalAlign
 PdfBuilder.Document.VerticalAlign.Bottom = 2 -> PdfBuilder.Document.VerticalAlign
 PdfBuilder.Document.VerticalAlign.Middle = 1 -> PdfBuilder.Document.VerticalAlign
@@ -1658,6 +1707,8 @@ PdfBuilder.Elements.ScatterSeries.UsesCategoryX.set -> void
 PdfBuilder.Elements.ScatterSeries.YAxisIndex.get -> int
 PdfBuilder.Elements.ScatterSeries.YAxisIndex.set -> void
 PdfBuilder.Elements.SolidRectElement
+PdfBuilder.Elements.SolidRectElement.CornerRadius.get -> float
+PdfBuilder.Elements.SolidRectElement.CornerRadius.set -> void
 PdfBuilder.Elements.SolidRectElement.DashPattern.get -> float[]?
 PdfBuilder.Elements.SolidRectElement.DashPattern.set -> void
 PdfBuilder.Elements.SolidRectElement.FillColor.get -> string?
@@ -2635,6 +2686,10 @@ static PdfBuilder.Document.PdfLayoutUtils.MeasureText(string! text, string! font
 static PdfBuilder.Document.PdfLayoutUtils.MeasureWrappedHeight(System.Collections.Generic.List<string!>! lines, string! fontFamily, float fontSize, float maxWidth) -> float
 static PdfBuilder.Document.PdfLayoutUtils.WrapText(string! text, float maxWidth, float fontSize) -> System.Collections.Generic.List<string!>!
 static PdfBuilder.Document.PdfLayoutUtils.WrapText(string! text, string! fontFamily, float fontSize, float maxWidth) -> System.Collections.Generic.List<string!>!
+static PdfBuilder.Document.Units.Centimeters(float value) -> float
+static PdfBuilder.Document.Units.Inches(float value) -> float
+static PdfBuilder.Document.Units.Millimeters(float value) -> float
+static PdfBuilder.Document.Units.Points(float value) -> float
 static PdfBuilder.Elements.Axis.Category() -> PdfBuilder.Elements.Axis!
 static PdfBuilder.Elements.Axis.Numeric() -> PdfBuilder.Elements.Axis!
 static PdfBuilder.Elements.Table.TableColumn.Auto(float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
