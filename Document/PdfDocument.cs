@@ -9,7 +9,7 @@ namespace PdfBuilder.Document
     /// Internal representation of a PDF document.
     /// Use PdfDocumentBuilder for fluent API creation.
     /// </summary>
-    public class PdfDocument
+    public partial class PdfDocument
     {
         public List<PdfPage> Pages { get; } = new();
 
