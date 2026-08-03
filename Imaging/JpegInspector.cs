@@ -1,4 +1,4 @@
-﻿// --- Imaging/JpegInspector.cs (enhanced: Adobe APP14 + ICC profile) ---
+// --- Imaging/JpegInspector.cs (enhanced: Adobe APP14 + ICC profile) ---
 using System;
 using System.Collections.Generic;
 using System.IO;

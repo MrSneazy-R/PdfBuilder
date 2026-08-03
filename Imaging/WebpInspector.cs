@@ -1,4 +1,4 @@
-﻿// --- Imaging/WebpInspector.cs ---
+// --- Imaging/WebpInspector.cs ---
 using System;
 using System.Buffers.Binary;
 using System.IO;

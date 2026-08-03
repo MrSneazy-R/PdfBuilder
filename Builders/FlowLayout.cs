@@ -61,7 +61,7 @@ namespace PdfBuilder.Document
             if (!CanFit(clamped))
                 throw new FlowOverflowException(this, clamped);
 
-           
+
             float top = _cursorY;
             _cursorY = Math.Max(_bottomY, _cursorY - clamped);
             return new FlowRect(X, top, Width, clamped);

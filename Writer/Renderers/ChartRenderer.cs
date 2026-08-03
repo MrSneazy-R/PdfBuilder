@@ -1,14 +1,14 @@
-﻿// PdfBuilder/Writer/ChartRenderer.cs
-using PdfBuilder.Elements;
-using PdfBuilder.Encoder;
-using PdfBuilder.Models;
-using PdfBuilder.TextShaping;
+// PdfBuilder/Writer/ChartRenderer.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
+using PdfBuilder.Elements;
+using PdfBuilder.Encoder;
+using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 using static PdfBuilder.Elements.ChartElement;
 
 namespace PdfBuilder.Writer
@@ -54,7 +54,7 @@ namespace PdfBuilder.Writer
 
             sb.Append("q\n");
 
-           
+
 
 
             sb.Append("0 J 0 j\n");
@@ -1185,7 +1185,7 @@ namespace PdfBuilder.Writer
                 var pts = ls.Points;
                 if (pts.Count == 0) continue;
 
-               
+
 
                 // Stroke
                 var m2 = MapLinePoints(pts, ls.UsesCategoryX, catCount, plotW, XBandLeft, XBandWidth, XtoPxNumeric, v => YtoPx(v, ls.YAxisIndex));
@@ -1427,7 +1427,7 @@ namespace PdfBuilder.Writer
             {
                 DrawText(sb, context, T.font, T.size, T.color, T.x, T.y, T.text);
             }
-         
+
             // ===== Legend (simple swatches per series) =====
             if (c.Series.Count > 0 && c.LegendPosition != LegendPos.None && c.ShowLegend)
             {
@@ -1876,50 +1876,50 @@ namespace PdfBuilder.Writer
                     if (stroke.HasValue) StrokeRect(sb, cx - r, cy - r, size, size, stroke.Value, strokeW);
                     break;
                 case MarkerShape.Triangle:
-                {
-                    var p1 = (cx, cy - r);
-                    var p2 = (cx + r, cy + r);
-                    var p3 = (cx - r, cy + r);
-                    sb.Append($"{ToRgbFill(fill)} {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l h f\n");
-                    if (stroke.HasValue)
                     {
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l h S\n");
+                        var p1 = (cx, cy - r);
+                        var p2 = (cx + r, cy + r);
+                        var p3 = (cx - r, cy + r);
+                        sb.Append($"{ToRgbFill(fill)} {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l h f\n");
+                        if (stroke.HasValue)
+                        {
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l h S\n");
+                        }
                     }
-                }
-                break;
+                    break;
                 case MarkerShape.Diamond:
-                {
-                    var p1 = (cx, cy - r);
-                    var p2 = (cx + r, cy);
-                    var p3 = (cx, cy + r);
-                    var p4 = (cx - r, cy);
-                    sb.Append($"{ToRgbFill(fill)} {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l {N(p4.Item1)} {N(p4.Item2)} l h f\n");
-                    if (stroke.HasValue)
                     {
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l {N(p4.Item1)} {N(p4.Item2)} l h S\n");
+                        var p1 = (cx, cy - r);
+                        var p2 = (cx + r, cy);
+                        var p3 = (cx, cy + r);
+                        var p4 = (cx - r, cy);
+                        sb.Append($"{ToRgbFill(fill)} {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l {N(p4.Item1)} {N(p4.Item2)} l h f\n");
+                        if (stroke.HasValue)
+                        {
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(p1.Item1)} {N(p1.Item2)} m {N(p2.Item1)} {N(p2.Item2)} l {N(p3.Item1)} {N(p3.Item2)} l {N(p4.Item1)} {N(p4.Item2)} l h S\n");
+                        }
                     }
-                }
-                break;
+                    break;
                 case MarkerShape.Cross:
-                {
-                    float d = r;
-                    if (stroke.HasValue)
                     {
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy - d)} m {N(cx + d)} {N(cy + d)} l S\n");
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy + d)} m {N(cx + d)} {N(cy - d)} l S\n");
+                        float d = r;
+                        if (stroke.HasValue)
+                        {
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy - d)} m {N(cx + d)} {N(cy + d)} l S\n");
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy + d)} m {N(cx + d)} {N(cy - d)} l S\n");
+                        }
                     }
-                }
-                break;
+                    break;
                 case MarkerShape.Plus:
-                {
-                    float d = r;
-                    if (stroke.HasValue)
                     {
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy)} m {N(cx + d)} {N(cy)} l S\n");
-                        sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx)} {N(cy - d)} m {N(cx)} {N(cy + d)} l S\n");
+                        float d = r;
+                        if (stroke.HasValue)
+                        {
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx - d)} {N(cy)} m {N(cx + d)} {N(cy)} l S\n");
+                            sb.Append($"{ToRgbStroke(stroke.Value)} {N(strokeW)} w {N(cx)} {N(cy - d)} m {N(cx)} {N(cy + d)} l S\n");
+                        }
                     }
-                }
-                break;
+                    break;
             }
         }
     }

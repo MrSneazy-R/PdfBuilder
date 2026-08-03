@@ -1,0 +1,49 @@
+name: Bug report
+description: Report an unexpected PdfBuilder behavior.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for helping improve PdfBuilder. Do not attach sensitive PDFs or business data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Include the actual behavior and the expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Provide a small, sanitized code sample and any relevant PDF metadata.
+      render: csharp
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PdfBuilder version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, architecture, .NET SDK/runtime, and relevant native dependencies.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Layout and pagination
+        - Text or fonts
+        - Images
+        - Tables
+        - PDF writer
+        - Packaging or build
+        - Other

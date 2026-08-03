@@ -1,7 +1,7 @@
-﻿// --- ImageElement.cs ---
+// --- ImageElement.cs ---
+using System;
 using PdfBuilder.Document;
 using PdfBuilder.Models;
-using System;
 
 namespace PdfBuilder.Elements
 {
@@ -47,7 +47,7 @@ namespace PdfBuilder.Elements
         public float? BorderWidth { get; set; }
         public float? CornerRadius { get; set; }      // For rounded/circle/ellipse
         public ImageClipShape ClipShape { get; set; } = ImageClipShape.None;
-       
+
         public EllipseOrientation EllipseOrientation { get; set; } = EllipseOrientation.Horizontal;
 
         // Optional: shrink the minor axis (1 = inscribed ellipse; <1 makes it "more oval")

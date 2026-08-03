@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using PdfBuilder.Fonts;
+using PdfBuilder.Models;
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
-using PdfBuilder.Models;
-using PdfBuilder.Fonts;
 
 namespace PdfBuilder.TextShaping
 {

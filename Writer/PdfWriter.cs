@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -530,20 +530,20 @@ namespace PdfBuilder.Writer
                         break;
 
                     case RichTextElement richText:
-                    {
-                        var linkRects = new List<RichTextRenderer.LinkRect>();
-                        _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
-                        annotations.AddRange(ConvertLinkRects(linkRects));
-                        break;
-                    }
+                        {
+                            var linkRects = new List<RichTextRenderer.LinkRect>();
+                            _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
+                            annotations.AddRange(ConvertLinkRects(linkRects));
+                            break;
+                        }
 
                     case ListElement list:
-                    {
-                        var linkRects = new List<RichTextRenderer.LinkRect>();
-                        ListRenderer.Append(sb, list, page.Height, context, linkRects);
-                        annotations.AddRange(ConvertLinkRects(linkRects));
-                        break;
-                    }
+                        {
+                            var linkRects = new List<RichTextRenderer.LinkRect>();
+                            ListRenderer.Append(sb, list, page.Height, context, linkRects);
+                            annotations.AddRange(ConvertLinkRects(linkRects));
+                            break;
+                        }
 
                     case ChartElement chart:
                         ChartRenderer.Append(sb, chart, context);

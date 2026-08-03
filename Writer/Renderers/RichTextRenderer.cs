@@ -1,13 +1,13 @@
-using PdfBuilder.Document;
-using PdfBuilder.Document.TextShaping;
-using PdfBuilder.Elements;
-using PdfBuilder.Models;
-using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using PdfBuilder.Document;
+using PdfBuilder.Document.TextShaping;
+using PdfBuilder.Elements;
+using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 
 namespace PdfBuilder.Writer
 {

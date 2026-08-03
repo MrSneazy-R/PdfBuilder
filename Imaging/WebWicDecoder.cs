@@ -15,7 +15,7 @@ namespace PdfBuilder.Writer.Imaging
     {
         // CLSID_WICImagingFactory (v1 and v2). We'll try v2 then fallback to v1.  :contentReference[oaicite:4]{index=4}
         private static readonly Guid CLSID_WICImagingFactory2 = new("317d06e8-5f24-433d-bdf7-79ce68d8abc2");
-        private static readonly Guid CLSID_WICImagingFactory  = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
+        private static readonly Guid CLSID_WICImagingFactory = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
 
         // GUID_WICPixelFormat32bppBGRA  :contentReference[oaicite:5]{index=5}
         private static readonly Guid GUID_WICPixelFormat32bppBGRA = new("6fddc324-4e03-4bfe-b185-3d77768dc90f");

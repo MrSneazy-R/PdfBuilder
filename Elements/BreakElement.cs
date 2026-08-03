@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
 
 public sealed class ColumnBreakElement : PdfElement
 {

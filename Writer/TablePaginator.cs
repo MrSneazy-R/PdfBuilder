@@ -1,10 +1,10 @@
-﻿using PdfBuilder.Document;
-using PdfBuilder.Elements;
-using PdfBuilder.Models;
-using TableModels = PdfBuilder.Elements.Table;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PdfBuilder.Document;
+using PdfBuilder.Elements;
+using PdfBuilder.Models;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Writer
 {

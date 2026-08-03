@@ -1,11 +1,11 @@
-﻿using PdfBuilder.Document;
-using PdfBuilder.Elements;
-using PdfBuilder.Encoder;
-using PdfBuilder.Models;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using PdfBuilder.Document;
+using PdfBuilder.Elements;
+using PdfBuilder.Encoder;
+using PdfBuilder.Models;
 
 namespace PdfBuilder.Writer
 {

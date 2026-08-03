@@ -1,9 +1,9 @@
 // PdfBuilder/Elements/ChartElement.cs
-using PdfBuilder.Document;
-using PdfBuilder.Elements;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using PdfBuilder.Document;
+using PdfBuilder.Elements;
 using static PdfBuilder.Elements.ChartElement;
 
 namespace PdfBuilder.Elements
@@ -105,7 +105,7 @@ namespace PdfBuilder.Elements
         public string Name { get; set; } = string.Empty;
         public Color Stroke { get; set; } = Color.Black;
         public float StrokeWidth { get; set; } = 1f;
-        public List<System.Drawing.PointF> Points { get;set; } = new ();
+        public List<System.Drawing.PointF> Points { get; set; } = new();
         public bool UsesCategoryX { get; set; } = true;
 
         // NEW: customizations
@@ -137,35 +137,35 @@ namespace PdfBuilder.Elements
             p => p.Y.ToString("0.##");
     }
 
-public sealed class BarSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public Color Fill { get; set; } = Color.FromArgb(230, 230, 255);
-    public float StrokeWidth { get; set; } = 0.5f;
-    public List<(int categoryIndex, float value)> Bars { get; } = new();
-    public float GapRatio { get; set; } = 0.15f; // 0..0.9
-    public string? StackKey { get; set; } = null;
+    public sealed class BarSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public Color Fill { get; set; } = Color.FromArgb(230, 230, 255);
+        public float StrokeWidth { get; set; } = 0.5f;
+        public List<(int categoryIndex, float value)> Bars { get; } = new();
+        public float GapRatio { get; set; } = 0.15f; // 0..0.9
+        public string? StackKey { get; set; } = null;
 
-    // NEW: customizations
-    public float CornerRadius { get; set; } = 0f;
-    public List<Color> BarFills { get; } = new();
-    public Color? AlternateFill { get; set; }
+        // NEW: customizations
+        public float CornerRadius { get; set; } = 0f;
+        public List<Color> BarFills { get; } = new();
+        public Color? AlternateFill { get; set; }
 
-    // NEW: orientation & normalized 100%
-    public bool Horizontal { get; set; } = false;
-    public bool NormalizeTo100 { get; set; } = false;
+        // NEW: orientation & normalized 100%
+        public bool Horizontal { get; set; } = false;
+        public bool NormalizeTo100 { get; set; } = false;
 
-    public int YAxisIndex { get; set; } = 0;
+        public int YAxisIndex { get; set; } = 0;
 
-    // Data labels
-    public bool ShowValueLabels { get; set; } = false;
-    public BarValueLabelPos ValueLabelPosition { get; set; } = BarValueLabelPos.OutsideEnd;
-    public string ValueLabelFont { get; set; } = "Helvetica";
-    public float ValueLabelSize { get; set; } = 8f;
-    public Color ValueLabelColor { get; set; } = Color.Black;
-    public float LabelPadding { get; set; } = 2f;
-    public Func<float, string> ValueFormatter { get; set; } = v => v.ToString("0.##");
+        // Data labels
+        public bool ShowValueLabels { get; set; } = false;
+        public BarValueLabelPos ValueLabelPosition { get; set; } = BarValueLabelPos.OutsideEnd;
+        public string ValueLabelFont { get; set; } = "Helvetica";
+        public float ValueLabelSize { get; set; } = 8f;
+        public Color ValueLabelColor { get; set; } = Color.Black;
+        public float LabelPadding { get; set; } = 2f;
+        public Func<float, string> ValueFormatter { get; set; } = v => v.ToString("0.##");
 
     }
 
@@ -173,440 +173,440 @@ public sealed class BarSeries : IChartSeries, ICartesianSeries
     // NEW: Pie / Donut Series
     // -----------------------------
     public sealed class PieSeries : IChartSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.White;
-    public float StrokeWidth { get; set; } = 0.5f;
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.White;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-    /// <summary>Collection of slices. If Fill is null, the chart's Palette is used by index.</summary>
-    public List<PieSlice> Slices { get; } = new();
+        /// <summary>Collection of slices. If Fill is null, the chart's Palette is used by index.</summary>
+        public List<PieSlice> Slices { get; } = new();
 
-    /// <summary>Start angle in degrees. Default -90 places the first slice at 12 o'clock.</summary>
-    public float StartAngleDeg { get; set; } = -90f;
+        /// <summary>Start angle in degrees. Default -90 places the first slice at 12 o'clock.</summary>
+        public float StartAngleDeg { get; set; } = -90f;
 
-    /// <summary>Clockwise drawing if true, counterclockwise if false.</summary>
-    public bool Clockwise { get; set; } = true;
+        /// <summary>Clockwise drawing if true, counterclockwise if false.</summary>
+        public bool Clockwise { get; set; } = true;
 
-    /// <summary>0 => full pie. e.g. 0.6 => donut with inner radius at 60% of outer.</summary>
-    public float DonutInnerRatio { get; set; } = 0f;
+        /// <summary>0 => full pie. e.g. 0.6 => donut with inner radius at 60% of outer.</summary>
+        public float DonutInnerRatio { get; set; } = 0f;
 
-    // Labels
-    public bool ShowLabels { get; set; } = true;
-    public bool LabelOutside { get; set; } = true;
-    public bool LabelLeaderLines { get; set; } = false;
-    public float LabelOffset { get; set; } = 6f;             // radial gap from outer radius
-    public float LabelPadding { get; set; } = 3f;            // horizontal gap from leader end to text
-    public float LeaderLineWidth { get; set; } = 0.5f;
-    public Color LeaderLineColor { get; set; } = Color.Black;
-    public bool   LabelSmartAlign { get; set; } = true;       // auto left/right placement
-    public string LabelFont { get; set; } = "Helvetica";
-    public float LabelFontSize { get; set; } = 9f;
-    public Color LabelColor { get; set; } = Color.Black;
+        // Labels
+        public bool ShowLabels { get; set; } = true;
+        public bool LabelOutside { get; set; } = true;
+        public bool LabelLeaderLines { get; set; } = false;
+        public float LabelOffset { get; set; } = 6f;             // radial gap from outer radius
+        public float LabelPadding { get; set; } = 3f;            // horizontal gap from leader end to text
+        public float LeaderLineWidth { get; set; } = 0.5f;
+        public Color LeaderLineColor { get; set; } = Color.Black;
+        public bool LabelSmartAlign { get; set; } = true;       // auto left/right placement
+        public string LabelFont { get; set; } = "Helvetica";
+        public float LabelFontSize { get; set; } = 9f;
+        public Color LabelColor { get; set; } = Color.Black;
 
-    /// <summary>Format a label for a slice. Default: slice.Label (percent appended if AppendPercentages).</summary>
-    public Func<PieSlice, string> LabelFormatter { get; set; } = s => s.Label;
+        /// <summary>Format a label for a slice. Default: slice.Label (percent appended if AppendPercentages).</summary>
+        public Func<PieSlice, string> LabelFormatter { get; set; } = s => s.Label;
 
-    /// <summary>If true, percentages are appended automatically (based on total).</summary>
-    public bool AppendPercentages { get; set; } = true;
-}
-
-public sealed class PieSlice
-{
-    public string Label { get; set; } = "";
-    public float Value { get; set; } = 0f;
-    public Color? Fill { get; set; } = null;
-
-    /// <summary>Explode offset as a fraction of radius (e.g., 0.08 = 8% of radius).</summary>
-    public float ExplodeRatio { get; set; } = 0f;
-
-    /// <summary>Optional override for the data label text.</summary>
-    public string? CustomLabel { get; set; }
-
-    public string? LabelFontOverride { get; set; }          // e.g., "Helvetica-Bold"
-    public float? LabelSizeOverride { get; set; }
-    public Color? LabelColorOverride { get; set; }
-    public float? LabelOffsetOverride { get; set; }
-    public float? LabelPaddingOverride { get; set; }
-    public bool? LabelLeaderLinesOverride { get; set; }
+        /// <summary>If true, percentages are appended automatically (based on total).</summary>
+        public bool AppendPercentages { get; set; } = true;
     }
 
-// -----------------------------
-// NEW: Scatter Series
-// -----------------------------
-public sealed class ScatterSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
+    public sealed class PieSlice
+    {
+        public string Label { get; set; } = "";
+        public float Value { get; set; } = 0f;
+        public Color? Fill { get; set; } = null;
 
-    /// <summary>Cartesian points. If UsesCategoryX = true, X = category index.</summary>
-    public List<System.Drawing.PointF> Points { get; } = new();
+        /// <summary>Explode offset as a fraction of radius (e.g., 0.08 = 8% of radius).</summary>
+        public float ExplodeRatio { get; set; } = 0f;
 
-    public bool UsesCategoryX { get; set; } = false;
+        /// <summary>Optional override for the data label text.</summary>
+        public string? CustomLabel { get; set; }
 
-    public MarkerShape Marker { get; set; } = MarkerShape.Circle;
-    public float MarkerSize { get; set; } = 4f; // diameter in points
-    public Color? Fill { get; set; } = Color.FromArgb(220, 220, 220);
-    public bool Outline { get; set; } = true;
-
-    public int YAxisIndex { get; set; } = 0;
-}
-
-public enum MarkerShape
-{
-    Circle,
-    Square,
-    Triangle,
-    Diamond,
-    Cross,
-    Plus
-}
-
-// -----------------------------
-// NEW: Bubble Series (size-mapped scatter)
-// -----------------------------
-public sealed class BubbleSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
-
-    public List<BubblePoint> Points { get; } = new();
-
-    /// <summary>Maps data Size to a rendered radius in points.</summary>
-    public float MinRadius { get; set; } = 3f;
-    public float MaxRadius { get; set; } = 12f;
-
-    /// <summary>If true, X is treated as category index.</summary>
-    public bool UsesCategoryX { get; set; } = false;
-
-    /// <summary>Optional: clamp size domain. If null, domain is inferred from data.</summary>
-    public float? SizeDomainMin { get; set; }
-    public float? SizeDomainMax { get; set; }
-
-    public int YAxisIndex { get; set; } = 0;
-    // Labels on bubbles
-    public bool ShowLabels { get; set; } = false;
-    public string LabelFont { get; set; } = "Helvetica";
-    public float LabelSize { get; set; } = 9f;
-    public Color LabelColor { get; set; } = Color.Black;
-    public float LabelOffset { get; set; } = 6f;
-    public Func<BubblePoint, string> LabelFormatter { get; set; }
-        = p => string.IsNullOrWhiteSpace(p.Category) ? $"{p.Size:0}" : p.Category;
-
-    // Soft shadow to make bubbles pop
-    public bool ShowShadow { get; set; } = true;
-    public float ShadowDx { get; set; } = 1.4f;
-    public float ShadowDy { get; set; } = -1.1f;
-    public float ShadowScale { get; set; } = 1.05f;
-    public Color ShadowColor { get; set; } = Color.FromArgb(210, 210, 210);
-
-    // Optional: legend lists each bubble instead of one series swatch
-    public bool LegendPerPoint { get; set; } = false;
+        public string? LabelFontOverride { get; set; }          // e.g., "Helvetica-Bold"
+        public float? LabelSizeOverride { get; set; }
+        public Color? LabelColorOverride { get; set; }
+        public float? LabelOffsetOverride { get; set; }
+        public float? LabelPaddingOverride { get; set; }
+        public bool? LabelLeaderLinesOverride { get; set; }
     }
 
-public sealed class BubblePoint
-{
-    public float X { get; set; }
-    public float Y { get; set; }
-    /// <summary>Data size (will be scaled to radius).</summary>
-    public float Size { get; set; }
+    // -----------------------------
+    // NEW: Scatter Series
+    // -----------------------------
+    public sealed class ScatterSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-    public Color? Fill { get; set; } = null;
-    public string? Category { get; set; } = null; // optional semantic label
-}
+        /// <summary>Cartesian points. If UsesCategoryX = true, X = category index.</summary>
+        public List<System.Drawing.PointF> Points { get; } = new();
 
-// -----------------------------
-// NEW: Waterfall (Bridge) Series
-// -----------------------------
-public sealed class WaterfallSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
+        public bool UsesCategoryX { get; set; } = false;
 
-    public Color PositiveFill { get; set; } = Color.FromArgb(180, 220, 180);
-    public Color NegativeFill { get; set; } = Color.FromArgb(230, 170, 170);
-    public Color TotalFill { get; set; } = Color.FromArgb(180, 180, 220);
+        public MarkerShape Marker { get; set; } = MarkerShape.Circle;
+        public float MarkerSize { get; set; } = 4f; // diameter in points
+        public Color? Fill { get; set; } = Color.FromArgb(220, 220, 220);
+        public bool Outline { get; set; } = true;
 
-    /// <summary>Each step contributes delta to cumulative baseline. If isTotal, show as total bar.</summary>
-    public List<(int categoryIndex, float delta, bool isTotal)> Steps { get; } = new();
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-    public float GapRatio { get; set; } = 0.15f;
-    public float CornerRadius { get; set; } = 0f;
+    public enum MarkerShape
+    {
+        Circle,
+        Square,
+        Triangle,
+        Diamond,
+        Cross,
+        Plus
+    }
 
-    public int YAxisIndex { get; set; } = 0;
-}
+    // -----------------------------
+    // NEW: Bubble Series (size-mapped scatter)
+    // -----------------------------
+    public sealed class BubbleSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-// -----------------------------
-// NEW: Histogram Series
-// -----------------------------
-public sealed class HistogramSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
-    public Color Fill { get; set; } = Color.FromArgb(220, 220, 250);
+        public List<BubblePoint> Points { get; } = new();
 
-    /// <summary>Raw samples (if provided, renderer bins them using BinCount or BinWidth).</summary>
-    public List<float> Samples { get; } = new();
+        /// <summary>Maps data Size to a rendered radius in points.</summary>
+        public float MinRadius { get; set; } = 3f;
+        public float MaxRadius { get; set; } = 12f;
 
-    /// <summary>Or, pre-binned counts.</summary>
-    public List<(float binStart, float binEnd, int count)> Bins { get; } = new();
+        /// <summary>If true, X is treated as category index.</summary>
+        public bool UsesCategoryX { get; set; } = false;
 
-    public int? BinCount { get; set; } = null;
-    public float? BinWidth { get; set; } = null;
+        /// <summary>Optional: clamp size domain. If null, domain is inferred from data.</summary>
+        public float? SizeDomainMin { get; set; }
+        public float? SizeDomainMax { get; set; }
 
-    public int YAxisIndex { get; set; } = 0;
+        public int YAxisIndex { get; set; } = 0;
+        // Labels on bubbles
+        public bool ShowLabels { get; set; } = false;
+        public string LabelFont { get; set; } = "Helvetica";
+        public float LabelSize { get; set; } = 9f;
+        public Color LabelColor { get; set; } = Color.Black;
+        public float LabelOffset { get; set; } = 6f;
+        public Func<BubblePoint, string> LabelFormatter { get; set; }
+            = p => string.IsNullOrWhiteSpace(p.Category) ? $"{p.Size:0}" : p.Category;
 
-    // gaps + labels
-    public float BarGapRatio { get; set; } = 0.15f;          // 0..0.9 (fraction of each bin reserved as gap)
-    public bool ShowLabels { get; set; } = false;
-    public string LabelFont { get; set; } = "Helvetica";
-    public float LabelSize { get; set; } = 8f;
-    public Color LabelColor { get; set; } = Color.Black;
-    public float LabelOffset { get; set; } = 2f;            // px above the bar
-    public Func<int, string> LabelFormatter { get; set; } = (n => n.ToString());
-}
+        // Soft shadow to make bubbles pop
+        public bool ShowShadow { get; set; } = true;
+        public float ShadowDx { get; set; } = 1.4f;
+        public float ShadowDy { get; set; } = -1.1f;
+        public float ShadowScale { get; set; } = 1.05f;
+        public Color ShadowColor { get; set; } = Color.FromArgb(210, 210, 210);
 
-// -----------------------------
-// NEW: Box & Whisker (BoxPlot) Series
-// -----------------------------
-public sealed class BoxPlotSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.7f;
-    public Color Fill { get; set; } = Color.FromArgb(235, 235, 255);
+        // Optional: legend lists each bubble instead of one series swatch
+        public bool LegendPerPoint { get; set; } = false;
+    }
 
-    /// <summary>Raw values per category (renderer computes stats if Stats not supplied).</summary>
-    public List<(int categoryIndex, float[] values)> Groups { get; } = new();
+    public sealed class BubblePoint
+    {
+        public float X { get; set; }
+        public float Y { get; set; }
+        /// <summary>Data size (will be scaled to radius).</summary>
+        public float Size { get; set; }
 
-    /// <summary>Precomputed stats (if given, preferred over Groups).</summary>
-    public List<(int categoryIndex, float q1, float median, float q3, float whiskerLow, float whiskerHigh, List<float> outliers)> Stats { get; } = new();
+        public Color? Fill { get; set; } = null;
+        public string? Category { get; set; } = null; // optional semantic label
+    }
 
-    public float BoxWidthRatio { get; set; } = 0.7f;
+    // -----------------------------
+    // NEW: Waterfall (Bridge) Series
+    // -----------------------------
+    public sealed class WaterfallSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        public Color PositiveFill { get; set; } = Color.FromArgb(180, 220, 180);
+        public Color NegativeFill { get; set; } = Color.FromArgb(230, 170, 170);
+        public Color TotalFill { get; set; } = Color.FromArgb(180, 180, 220);
 
-// -----------------------------
-// NEW: Heatmap Series
-// -----------------------------
-public sealed class HeatmapSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Transparent;
-    public float StrokeWidth { get; set; } = 0f;
+        /// <summary>Each step contributes delta to cumulative baseline. If isTotal, show as total bar.</summary>
+        public List<(int categoryIndex, float delta, bool isTotal)> Steps { get; } = new();
 
-    public int Rows { get; set; }
-    public int Cols { get; set; }
-    public float[,] Values { get; set; } = new float[0, 0];
+        public float GapRatio { get; set; } = 0.15f;
+        public float CornerRadius { get; set; } = 0f;
 
-    public float? Min { get; set; }
-    public float? Max { get; set; }
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-    /// <summary>Map value→color; if null, renderer uses a default gradient.</summary>
-    public Func<float, Color>? ColorScale { get; set; } = null;
+    // -----------------------------
+    // NEW: Histogram Series
+    // -----------------------------
+    public sealed class HistogramSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
+        public Color Fill { get; set; } = Color.FromArgb(220, 220, 250);
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        /// <summary>Raw samples (if provided, renderer bins them using BinCount or BinWidth).</summary>
+        public List<float> Samples { get; } = new();
 
-// -----------------------------
-// NEW: Radar / Spider Series
-// -----------------------------
-public sealed class RadarSeries : IChartSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.8f;
-    public Color? Fill { get; set; } = null;
+        /// <summary>Or, pre-binned counts.</summary>
+        public List<(float binStart, float binEnd, int count)> Bins { get; } = new();
 
-    /// <summary>Values by category index.</summary>
-    public List<(int categoryIndex, float value)> Points { get; } = new();
+        public int? BinCount { get; set; } = null;
+        public float? BinWidth { get; set; } = null;
 
-    /// <summary>Optional scaling; if null, renderer infers.</summary>
-    public float? Min { get; set; }
-    public float? Max { get; set; }
+        public int YAxisIndex { get; set; } = 0;
 
-    public bool CloseShape { get; set; } = true;
-    public bool ShowMarkers { get; set; } = false;
-    public float MarkerSize { get; set; } = 3f;
-    public Color? MarkerFill { get; set; } = null;
-}
+        // gaps + labels
+        public float BarGapRatio { get; set; } = 0.15f;          // 0..0.9 (fraction of each bin reserved as gap)
+        public bool ShowLabels { get; set; } = false;
+        public string LabelFont { get; set; } = "Helvetica";
+        public float LabelSize { get; set; } = 8f;
+        public Color LabelColor { get; set; } = Color.Black;
+        public float LabelOffset { get; set; } = 2f;            // px above the bar
+        public Func<int, string> LabelFormatter { get; set; } = (n => n.ToString());
+    }
 
-// -----------------------------
-// NEW: Funnel Series
-// -----------------------------
-public sealed class FunnelSeries : IChartSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
+    // -----------------------------
+    // NEW: Box & Whisker (BoxPlot) Series
+    // -----------------------------
+    public sealed class BoxPlotSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.7f;
+        public Color Fill { get; set; } = Color.FromArgb(235, 235, 255);
 
-    public List<FunnelStage> Stages { get; } = new();
-    public bool Tapered { get; set; } = true;
-    public float Gap { get; set; } = 4f; // gap between stages (pt)
+        /// <summary>Raw values per category (renderer computes stats if Stats not supplied).</summary>
+        public List<(int categoryIndex, float[] values)> Groups { get; } = new();
 
-    public string LabelFont { get; set; } = "Helvetica";
-    public float LabelFontSize { get; set; } = 9f;
-    public Color LabelColor { get; set; } = Color.Black;
-}
+        /// <summary>Precomputed stats (if given, preferred over Groups).</summary>
+        public List<(int categoryIndex, float q1, float median, float q3, float whiskerLow, float whiskerHigh, List<float> outliers)> Stats { get; } = new();
 
-public sealed class FunnelStage
-{
-    public string Stage { get; set; } = "";
-    public float Value { get; set; }
-    public Color? Fill { get; set; } = null;
-}
+        public float BoxWidthRatio { get; set; } = 0.7f;
 
-// -----------------------------
-// NEW: Candlestick / OHLC Series
-// -----------------------------
-public sealed class CandleSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.7f;
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-    public Color UpFill { get; set; } = Color.FromArgb(190, 235, 190);
-    public Color DownFill { get; set; } = Color.FromArgb(240, 190, 190);
-    public Color WickStroke { get; set; } = Color.Black;
-    public float CandleWidthRatio { get; set; } = 0.7f;
+    // -----------------------------
+    // NEW: Heatmap Series
+    // -----------------------------
+    public sealed class HeatmapSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Transparent;
+        public float StrokeWidth { get; set; } = 0f;
 
-    public bool UsesCategoryX { get; set; } = true; // or numeric time
+        public int Rows { get; set; }
+        public int Cols { get; set; }
+        public float[,] Values { get; set; } = new float[0, 0];
 
-    public List<(int xIndex, float open, float high, float low, float close)> Candles { get; } = new();
+        public float? Min { get; set; }
+        public float? Max { get; set; }
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        /// <summary>Map value→color; if null, renderer uses a default gradient.</summary>
+        public Func<float, Color>? ColorScale { get; set; } = null;
 
-// -----------------------------
-// NEW: Bullet (KPI) Series
-// -----------------------------
-public sealed class BulletSeries : IChartSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-    public float Value { get; set; }
-    public float Target { get; set; }
-    public List<(float start, float end, Color fill)> QualitativeRanges { get; } = new(); // e.g., poor/avg/good
+    // -----------------------------
+    // NEW: Radar / Spider Series
+    // -----------------------------
+    public sealed class RadarSeries : IChartSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.8f;
+        public Color? Fill { get; set; } = null;
 
-    public bool Horizontal { get; set; } = true;
-    public Color ValueFill { get; set; } = Color.FromArgb(90, 140, 220);
-    public Color TargetStroke { get; set; } = Color.Black;
-    public float TargetStrokeWidth { get; set; } = 1f;
-}
+        /// <summary>Values by category index.</summary>
+        public List<(int categoryIndex, float value)> Points { get; } = new();
 
-// -----------------------------
-// NEW: Pareto Series (convenience: bars + cumulative line)
-// -----------------------------
-public sealed class ParetoSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black; // cumulative line
-    public float StrokeWidth { get; set; } = 1f;
+        /// <summary>Optional scaling; if null, renderer infers.</summary>
+        public float? Min { get; set; }
+        public float? Max { get; set; }
 
-    public Color BarFill { get; set; } = Color.FromArgb(230, 230, 255);
-    public float BarGapRatio { get; set; } = 0.15f;
-    public bool SortDescending { get; set; } = true;
+        public bool CloseShape { get; set; } = true;
+        public bool ShowMarkers { get; set; } = false;
+        public float MarkerSize { get; set; } = 3f;
+        public Color? MarkerFill { get; set; } = null;
+    }
 
-    public List<(int categoryIndex, float value)> Items { get; } = new();
+    // -----------------------------
+    // NEW: Funnel Series
+    // -----------------------------
+    public sealed class FunnelSeries : IChartSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-    public Color CumulativeStroke { get; set; } = Color.FromArgb(200, 80, 80);
-    public float CumulativeStrokeWidth { get; set; } = 1f;
+        public List<FunnelStage> Stages { get; } = new();
+        public bool Tapered { get; set; } = true;
+        public float Gap { get; set; } = 4f; // gap between stages (pt)
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        public string LabelFont { get; set; } = "Helvetica";
+        public float LabelFontSize { get; set; } = 9f;
+        public Color LabelColor { get; set; } = Color.Black;
+    }
 
-// -----------------------------
-// NEW: Range/Band Area Series (min-max ribbon)
-// -----------------------------
-public sealed class RangeAreaSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Empty;
-    public float StrokeWidth { get; set; } = 0f;
+    public sealed class FunnelStage
+    {
+        public string Stage { get; set; } = "";
+        public float Value { get; set; }
+        public Color? Fill { get; set; } = null;
+    }
 
-    public bool UsesCategoryX { get; set; } = true;
+    // -----------------------------
+    // NEW: Candlestick / OHLC Series
+    // -----------------------------
+    public sealed class CandleSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.7f;
 
-    /// <summary>Each point defines low/high. Use CategoryIndex when UsesCategoryX, otherwise X.</summary>
-    public List<RangePoint> Points { get; } = new();
+        public Color UpFill { get; set; } = Color.FromArgb(190, 235, 190);
+        public Color DownFill { get; set; } = Color.FromArgb(240, 190, 190);
+        public Color WickStroke { get; set; } = Color.Black;
+        public float CandleWidthRatio { get; set; } = 0.7f;
 
-    public Color Fill { get; set; } = Color.FromArgb(120, 160, 220, 120);
+        public bool UsesCategoryX { get; set; } = true; // or numeric time
 
-    public int YAxisIndex { get; set; } = 0;
-    public bool Smooth { get; set; } = false;
-    public float SmoothTension { get; set; } = 0.45f;
+        public List<(int xIndex, float open, float high, float low, float close)> Candles { get; } = new();
 
-}
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-public sealed class RangePoint
-{
-    public int CategoryIndex { get; set; } = -1; // when UsesCategoryX
-    public float X { get; set; } = 0f;           // when numeric X
-    public float Low { get; set; }
-    public float High { get; set; }
-}
+    // -----------------------------
+    // NEW: Bullet (KPI) Series
+    // -----------------------------
+    public sealed class BulletSeries : IChartSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
 
-// -----------------------------
-// NEW: Error Bars (overlay)
-// -----------------------------
-public sealed class ErrorBarSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.8f;
+        public float Value { get; set; }
+        public float Target { get; set; }
+        public List<(float start, float end, Color fill)> QualitativeRanges { get; } = new(); // e.g., poor/avg/good
 
-    public bool UsesCategoryX { get; set; } = true;
+        public bool Horizontal { get; set; } = true;
+        public Color ValueFill { get; set; } = Color.FromArgb(90, 140, 220);
+        public Color TargetStroke { get; set; } = Color.Black;
+        public float TargetStrokeWidth { get; set; } = 1f;
+    }
 
-    /// <summary>Points with +/- errors. If Symmetric, Error is used for both sides.</summary>
-    public List<ErrorBarPoint> Points { get; } = new();
+    // -----------------------------
+    // NEW: Pareto Series (convenience: bars + cumulative line)
+    // -----------------------------
+    public sealed class ParetoSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black; // cumulative line
+        public float StrokeWidth { get; set; } = 1f;
 
-    public bool Symmetric { get; set; } = true;
-    public float CapWidth { get; set; } = 6f;
+        public Color BarFill { get; set; } = Color.FromArgb(230, 230, 255);
+        public float BarGapRatio { get; set; } = 0.15f;
+        public bool SortDescending { get; set; } = true;
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        public List<(int categoryIndex, float value)> Items { get; } = new();
 
-public sealed class ErrorBarPoint
-{
-    public int CategoryIndex { get; set; } = -1; // when UsesCategoryX
-    public float X { get; set; } = 0f;           // when numeric X
-    public float Y { get; set; }
-    public float Error { get; set; } = 0f;       // used if Symmetric
-    public float ErrorMinus { get; set; } = 0f;  // used if !Symmetric
-    public float ErrorPlus { get; set; } = 0f;   // used if !Symmetric
-}
+        public Color CumulativeStroke { get; set; } = Color.FromArgb(200, 80, 80);
+        public float CumulativeStrokeWidth { get; set; } = 1f;
 
-// -----------------------------
-// NEW: Gantt Series (horizontal task bars)
-// -----------------------------
-public sealed class GanttSeries : IChartSeries, ICartesianSeries
-{
-    public string Name { get; set; } = string.Empty;
-    public Color Stroke { get; set; } = Color.Black;
-    public float StrokeWidth { get; set; } = 0.5f;
+        public int YAxisIndex { get; set; } = 0;
+    }
 
-    /// <summary>Tasks are drawn as horizontal bars from StartX to EndX on row CategoryIndex.</summary>
-    public List<GanttTask> Tasks { get; } = new();
+    // -----------------------------
+    // NEW: Range/Band Area Series (min-max ribbon)
+    // -----------------------------
+    public sealed class RangeAreaSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Empty;
+        public float StrokeWidth { get; set; } = 0f;
 
-    public float RowGap { get; set; } = 2f;       // vertical spacing between rows (pt)
-    public float BarHeightRatio { get; set; } = 0.6f; // fraction of row height
+        public bool UsesCategoryX { get; set; } = true;
 
-    public int YAxisIndex { get; set; } = 0;
-}
+        /// <summary>Each point defines low/high. Use CategoryIndex when UsesCategoryX, otherwise X.</summary>
+        public List<RangePoint> Points { get; } = new();
 
-public sealed class GanttTask
-{
-    public int CategoryIndex { get; set; } // Y row index (use XAxis categories for time)
-    public float StartX { get; set; }      // numeric or category index depending on X axis
-    public float EndX { get; set; }
-    public string Label { get; set; } = "";
-    public Color? Fill { get; set; } = null;
-    public Color? Stroke { get; set; } = null;
-}
+        public Color Fill { get; set; } = Color.FromArgb(120, 160, 220, 120);
+
+        public int YAxisIndex { get; set; } = 0;
+        public bool Smooth { get; set; } = false;
+        public float SmoothTension { get; set; } = 0.45f;
+
+    }
+
+    public sealed class RangePoint
+    {
+        public int CategoryIndex { get; set; } = -1; // when UsesCategoryX
+        public float X { get; set; } = 0f;           // when numeric X
+        public float Low { get; set; }
+        public float High { get; set; }
+    }
+
+    // -----------------------------
+    // NEW: Error Bars (overlay)
+    // -----------------------------
+    public sealed class ErrorBarSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.8f;
+
+        public bool UsesCategoryX { get; set; } = true;
+
+        /// <summary>Points with +/- errors. If Symmetric, Error is used for both sides.</summary>
+        public List<ErrorBarPoint> Points { get; } = new();
+
+        public bool Symmetric { get; set; } = true;
+        public float CapWidth { get; set; } = 6f;
+
+        public int YAxisIndex { get; set; } = 0;
+    }
+
+    public sealed class ErrorBarPoint
+    {
+        public int CategoryIndex { get; set; } = -1; // when UsesCategoryX
+        public float X { get; set; } = 0f;           // when numeric X
+        public float Y { get; set; }
+        public float Error { get; set; } = 0f;       // used if Symmetric
+        public float ErrorMinus { get; set; } = 0f;  // used if !Symmetric
+        public float ErrorPlus { get; set; } = 0f;   // used if !Symmetric
+    }
+
+    // -----------------------------
+    // NEW: Gantt Series (horizontal task bars)
+    // -----------------------------
+    public sealed class GanttSeries : IChartSeries, ICartesianSeries
+    {
+        public string Name { get; set; } = string.Empty;
+        public Color Stroke { get; set; } = Color.Black;
+        public float StrokeWidth { get; set; } = 0.5f;
+
+        /// <summary>Tasks are drawn as horizontal bars from StartX to EndX on row CategoryIndex.</summary>
+        public List<GanttTask> Tasks { get; } = new();
+
+        public float RowGap { get; set; } = 2f;       // vertical spacing between rows (pt)
+        public float BarHeightRatio { get; set; } = 0.6f; // fraction of row height
+
+        public int YAxisIndex { get; set; } = 0;
+    }
+
+    public sealed class GanttTask
+    {
+        public int CategoryIndex { get; set; } // Y row index (use XAxis categories for time)
+        public float StartX { get; set; }      // numeric or category index depending on X axis
+        public float EndX { get; set; }
+        public string Label { get; set; } = "";
+        public Color? Fill { get; set; } = null;
+        public Color? Stroke { get; set; } = null;
+    }
 }
 

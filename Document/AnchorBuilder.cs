@@ -1,4 +1,4 @@
-﻿namespace PdfBuilder.Document
+namespace PdfBuilder.Document
 {
     public sealed class AnchorBuilder
     {

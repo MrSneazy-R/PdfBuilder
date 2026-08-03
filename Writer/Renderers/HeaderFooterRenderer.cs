@@ -1,9 +1,9 @@
-using PdfBuilder.Models;
-using PdfBuilder.TextShaping;
 using System;
 using System.Drawing;
 using System.Globalization;
 using System.Text;
+using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 
 namespace PdfBuilder.Writer
 {

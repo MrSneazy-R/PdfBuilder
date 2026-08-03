@@ -1,4 +1,4 @@
-﻿using PdfBuilder.Document;
+using PdfBuilder.Document;
 using PdfBuilder.Models;
 
 namespace PdfBuilder.Elements

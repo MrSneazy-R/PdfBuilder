@@ -1,4 +1,3 @@
-﻿using TableModels = PdfBuilder.Elements.Table;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -9,6 +8,7 @@ using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.TextShaping;
 using PdfBuilder.Writer;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Document.Layout
 {

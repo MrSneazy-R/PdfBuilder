@@ -1,8 +1,8 @@
-﻿// --- ImageRenderer.cs ---
-using PdfBuilder.Elements;
+// --- ImageRenderer.cs ---
 using System;
 using System.Globalization;
 using System.Text;
+using PdfBuilder.Elements;
 
 namespace PdfBuilder.Writer
 {
@@ -129,22 +129,22 @@ namespace PdfBuilder.Writer
             switch (img.ClipShape)
             {
                 case ImageClipShape.Circle:
-                {
-                    float rx = Math.Min(w, h) / 2f;
-                    AppendEllipsePath(sb, w / 2f, h / 2f, rx, rx);
-                    return true;
-                }
+                    {
+                        float rx = Math.Min(w, h) / 2f;
+                        AppendEllipsePath(sb, w / 2f, h / 2f, rx, rx);
+                        return true;
+                    }
                 case ImageClipShape.Ellipse:
-                {
-                    var (rx, ry) = GetEllipseRadii(img, w, h);
-                    AppendEllipsePath(sb, w / 2f, h / 2f, rx, ry);
-                    return true;
-                }
+                    {
+                        var (rx, ry) = GetEllipseRadii(img, w, h);
+                        AppendEllipsePath(sb, w / 2f, h / 2f, rx, ry);
+                        return true;
+                    }
                 case ImageClipShape.RoundedRect:
-                {
-                    AppendRoundedRectPath(sb, 0, 0, w, h, r);
-                    return true;
-                }
+                    {
+                        AppendRoundedRectPath(sb, 0, 0, w, h, r);
+                        return true;
+                    }
                 default:
                     // If no explicit clip shape but a corner radius is provided, clip as rounded rect.
                     if (r > 0.01f)
@@ -250,22 +250,22 @@ namespace PdfBuilder.Writer
             switch (img.ClipShape)
             {
                 case ImageClipShape.Circle:
-                {
-                    float r0 = Math.Min(w, h) / 2f;
-                    AppendEllipsePath(sb, w / 2f, h / 2f, r0, r0);
-                    return;
-                }
+                    {
+                        float r0 = Math.Min(w, h) / 2f;
+                        AppendEllipsePath(sb, w / 2f, h / 2f, r0, r0);
+                        return;
+                    }
                 case ImageClipShape.Ellipse:
-                {
-                    var (rxS, ryS) = GetEllipseRadii(img, w, h);
-                    AppendEllipsePath(sb, w / 2f, h / 2f, rxS, ryS);
-                    return;
-                }
+                    {
+                        var (rxS, ryS) = GetEllipseRadii(img, w, h);
+                        AppendEllipsePath(sb, w / 2f, h / 2f, rxS, ryS);
+                        return;
+                    }
                 case ImageClipShape.RoundedRect:
-                {
-                    AppendRoundedRectPath(sb, 0, 0, w, h, r);
-                    return;
-                }
+                    {
+                        AppendRoundedRectPath(sb, 0, 0, w, h, r);
+                        return;
+                    }
                 default:
                     // For shadows, if no explicit clip, we still draw a rect (rounded if CornerRadius > 0)
                     AppendRoundedRectPath(sb, 0, 0, w, h, r);

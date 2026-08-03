@@ -1,12 +1,12 @@
-﻿// --- PdfResourceManager.cs ---
+// --- PdfResourceManager.cs ---
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Linq;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Imaging;

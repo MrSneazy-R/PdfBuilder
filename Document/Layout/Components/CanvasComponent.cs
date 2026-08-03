@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using PdfBuilder.Elements;
 
 namespace PdfBuilder.Document.Layout.Components

@@ -1,5 +1,5 @@
-﻿using PdfBuilder.Document;
 using System.Collections.Generic;
+using PdfBuilder.Document;
 
 public class CanvasElement : PdfElement
 {
