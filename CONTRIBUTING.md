@@ -4,7 +4,7 @@ PdfBuilder is currently pre-release. Contributions should be small, focused, and
 
 ## Prerequisites
 
-- .NET 9 SDK and runtime
+- The .NET 10 SDK selected by `global.json`
 - Windows for the full image feature set; WebP decoding uses Windows Imaging Component (WIC)
 
 ## Local validation

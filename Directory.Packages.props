@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.HarfBuzz" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.Svg" Version="1.60.0" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Win32" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.macOS" Version="2.88.9" />
+    <PackageVersion Include="HarfBuzzSharp" Version="7.3.0.3" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Linux" Version="7.3.0.3" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.Win32" Version="7.3.0.3" />
+    <PackageVersion Include="HarfBuzzSharp.NativeAssets.macOS" Version="7.3.0.3" />
+    <PackageVersion Include="ZXing.Net" Version="0.16.11" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="FluentAssertions" Version="8.8.0" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.12" />
+  </ItemGroup>
+</Project>

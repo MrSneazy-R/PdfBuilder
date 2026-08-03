@@ -31,7 +31,7 @@ namespace PdfBuilder.Tests
 
             var output = sb.ToString();
             Regex.IsMatch(output, @"\b(?!0(?:\.0*)?)\d+(\.\d+)?\sTw\b").Should().BeTrue("a positive word spacing value should be set for justification");
-            Regex.Matches(output, @"0\sTw\b").Count.Should().BeGreaterOrEqualTo(1);
+            Regex.Matches(output, @"0\sTw\b").Count.Should().BeGreaterThanOrEqualTo(1);
         }
     }
 }

@@ -4,6 +4,10 @@
 
 PdfBuilder is a .NET library for generating invoices, statements, operational documents, and management reports. It uses its own PDF writer, layout engine, and rendering architecture.
 
+## Prerequisites
+
+Build and run PdfBuilder with the stable .NET 10 SDK pinned in [global.json](global.json). Native SkiaSharp and HarfBuzz assets are restored through NuGet for Windows, Ubuntu, and macOS; no native binaries are committed to this repository.
+
 ## Install
 
 ```powershell

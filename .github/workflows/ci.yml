@@ -14,123 +14,98 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  windows:
-    name: Windows build, test, and package
-    runs-on: windows-latest
+  build-and-test:
+    name: ${{ matrix.name }} build and test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+          - name: Ubuntu
+            os: ubuntu-latest
+          - name: macOS
+            os: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
-      - name: Restore
-        run: dotnet restore PdfBuilder.sln
+          dotnet-version: 10.0.x
+      - name: Install PDF validation tools and multilingual fonts
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes fontconfig fonts-noto-core poppler-utils qpdf
+          fc-cache --force
+          fc-match :lang=ar
+      - name: Restore maintained projects
+        run: |
+          dotnet restore PdfBuilder.sln
+          dotnet restore tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj
+          dotnet restore tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj
+          dotnet restore samples/HBSubsetProbe/HBSubsetProbe.csproj
+          dotnet restore samples/SimpleRenderCheck/SimpleRenderCheck.csproj
+          dotnet restore samples/TablePerfSample/TablePerfSample.csproj
       - name: Verify formatting
-        run: dotnet format PdfBuilder.sln --verify-no-changes --no-restore
+        run: |
+          dotnet format PdfBuilder.sln --verify-no-changes --no-restore
+          dotnet format tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj --verify-no-changes --no-restore
+          dotnet format tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj --verify-no-changes --no-restore
       - name: Build Debug
         run: dotnet build PdfBuilder.sln -c Debug --no-restore
       - name: Build Release (report warnings)
         run: dotnet build PdfBuilder.sln -c Release --no-restore
-      - name: Test
+      - name: Build maintained samples
+        run: |
+          dotnet build samples/HBSubsetProbe/HBSubsetProbe.csproj -c Release --no-restore
+          dotnet build samples/SimpleRenderCheck/SimpleRenderCheck.csproj -c Release --no-restore
+          dotnet build samples/TablePerfSample/TablePerfSample.csproj -c Release --no-restore
+      - name: Run unit tests
         run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
-      - name: Pack
-        run: dotnet pack PdfBuilder.csproj -c Release --no-restore -o ./artifacts
-      - name: Package consumer smoke test
-        shell: pwsh
-        run: ./eng/Invoke-PackageSmokeTest.ps1 -PackageDirectory ./artifacts
-      - name: Upload test results
+      - name: Run independent PDF validation
+        if: runner.os == 'Linux'
+        env:
+          PDFBUILDER_VISUAL_FAILURE_DIRECTORY: ${{ github.workspace }}/ValidationFailures
+        run: dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore --logger "trx;LogFileName=pdf-validation.trx" --results-directory TestResults
+      - name: Upload test and visual-regression artefacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-test-results
-          path: TestResults/**/*.trx
+          name: ${{ matrix.name }}-test-results
+          path: |
+            TestResults/**/*.trx
+            ValidationFailures/**/*.png
           if-no-files-found: warn
+
+  package-smoke:
+    name: ${{ matrix.name }} package consumer smoke test
+    needs: build-and-test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+          - name: Ubuntu
+            os: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore and pack
+        run: |
+          dotnet restore PdfBuilder.sln
+          dotnet pack PdfBuilder.csproj -c Release --no-restore -o ./artifacts
+      - name: Package consumer smoke test
+        shell: pwsh
+        run: ./eng/Invoke-PackageSmokeTest.ps1 -PackageDirectory ./artifacts
       - name: Upload packages
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: packages
+          name: ${{ matrix.name }}-packages
           path: artifacts/*.nupkg
           if-no-files-found: error
-
-  ubuntu-native-runtime-diagnostics:
-    name: Ubuntu native runtime diagnostics
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-      - name: Restore and build
-        run: |
-          dotnet restore PdfBuilder.sln
-          dotnet build PdfBuilder.sln -c Release --no-restore
-      - name: Run tests and classify native-runtime failures
-        shell: bash
-        run: |
-          set +e
-          dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=ubuntu-tests.trx" --results-directory TestResults 2>&1 | tee ubuntu-test.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -eq 0 ]; then
-            exit 0
-          fi
-          if grep -Eiq 'DllNotFoundException|libHarfBuzzSharp|libSkiaSharp|PlatformNotSupportedException' ubuntu-test.log; then
-            echo "::warning::Ubuntu test failure is a native-runtime diagnostic. See documentation/engineering/BASELINE.md."
-            exit 0
-          fi
-          exit "$status"
-      - name: Upload Ubuntu diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ubuntu-native-runtime-diagnostics
-          path: |
-            TestResults/**/*.trx
-            ubuntu-test.log
-          if-no-files-found: warn
-
-  ubuntu-pdf-validation-native-runtime-diagnostic:
-    name: Ubuntu independent PDF validation native-runtime diagnostic
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 9.0.x
-      - name: Install independent PDF tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes qpdf poppler-utils
-      - name: Restore validation tests
-        run: dotnet restore tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj
-      - name: Verify validation-test formatting
-        run: dotnet format tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj --verify-no-changes --no-restore
-      - name: Run independent validation
-        env:
-          PDFBUILDER_VISUAL_FAILURE_DIRECTORY: ${{ github.workspace }}/ValidationFailures
-        shell: bash
-        run: |
-          set +e
-          dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore --logger "trx;LogFileName=pdf-validation.trx" --results-directory TestResults 2>&1 | tee pdf-validation.log
-          status=${PIPESTATUS[0]}
-          set -e
-          if [ "$status" -eq 0 ]; then
-            exit 0
-          fi
-          if grep -Eiq 'DllNotFoundException.*libSkiaSharp|Unable to load shared library .libSkiaSharp' pdf-validation.log; then
-            echo "::warning::Independent PDF validation could not execute because the current net9 baseline does not restore libSkiaSharp on Ubuntu. PR 03 owns native runtime dependency alignment."
-            exit 0
-          fi
-          exit "$status"
-      - name: Upload independent validation artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ubuntu-pdf-validation-artifacts
-          path: |
-            TestResults/**/*.trx
-            ValidationFailures/**/*.png
-            pdf-validation.log
-          if-no-files-found: warn

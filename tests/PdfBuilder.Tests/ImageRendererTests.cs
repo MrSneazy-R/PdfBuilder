@@ -1,15 +1,15 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
-using PdfBuilder.Writer;
-using Xunit;
 using PdfBuilder.Models;
+using PdfBuilder.Writer;
 using PdfBuilder.Writer.Imaging;
-using System.IO.Compression;
+using Xunit;
 
 namespace PdfBuilder.Tests
 {
@@ -128,7 +128,7 @@ namespace PdfBuilder.Tests
 
             var marker = Encoding.ASCII.GetBytes("stream\n");
             int streamOffset = pdfBytes.AsSpan().IndexOf(marker);
-            streamOffset.Should().BeGreaterOrEqualTo(0, "the stream marker should be present in the PDF object");
+            streamOffset.Should().BeGreaterThanOrEqualTo(0, "the stream marker should be present in the PDF object");
 
             int dataOffset = streamOffset + marker.Length;
             pdfBytes.Length.Should().BeGreaterThan(dataOffset + 2, "compressed data should contain at least two bytes");

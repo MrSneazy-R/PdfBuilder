@@ -244,7 +244,10 @@ namespace PdfBuilder.Document.Layout
                 SmallCaps = cell.SmallCaps,
                 Underline = cell.Underline,
                 Strikethrough = cell.Strikethrough,
-                Color = ToHex(cell.TextColor)
+                Color = ToHex(cell.TextColor),
+                FallbackFonts = cell.TextStyle?.FallbackFonts == null
+                    ? null
+                    : new List<string>(cell.TextStyle.FallbackFonts)
             };
         }
 
@@ -264,7 +267,8 @@ namespace PdfBuilder.Document.Layout
                 SmallCaps = style.SmallCaps || cell.SmallCaps,
                 Underline = style.Underline || cell.Underline,
                 Strikethrough = style.Strikethrough || cell.Strikethrough,
-                Color = ToHex(style.TextColor)
+                Color = ToHex(style.TextColor),
+                FallbackFonts = inline.FallbackFonts ?? style.FallbackFonts ?? cell.TextStyle?.FallbackFonts
             };
         }
 

@@ -373,6 +373,7 @@ namespace PdfBuilder.TextShaping
             if (result?.Codepoints != null && result.Points != null && result.Clusters != null)
             {
                 var clusterRanges = BuildClusterRanges(result.Clusters, segment.Text);
+                var emittedClusters = new HashSet<int>();
                 using var font = new SKFont(segment.Typeface, segment.FontSize);
                 var glyphCodes = result.Codepoints;
                 var glyphWidths = glyphCodes.Length > 0 ? new float[glyphCodes.Length] : Array.Empty<float>();
@@ -392,6 +393,13 @@ namespace PdfBuilder.TextShaping
                     string unicode = clusterRanges.TryGetValue(cluster, out var range)
                         ? segment.Text.Substring(range.start, Math.Max(0, range.end - range.start))
                         : segment.Text;
+
+                    // Multiple glyphs can belong to one source cluster (for example,
+                    // a Hebrew base character plus combining marks). Only one CID may
+                    // carry the cluster's Unicode text in /ToUnicode; otherwise text
+                    // extraction repeats the source characters for every glyph.
+                    if (!emittedClusters.Add(cluster))
+                        unicode = string.Empty;
 
                     float designAdvance = glyphWidths.Length > i ? glyphWidths[i] : 0f;
                     float nextX = i + 1 < result.Points.Length ? result.Points[i + 1].X : result.Width;
@@ -619,11 +627,11 @@ namespace PdfBuilder.TextShaping
             }
 
             var matched = _fontManager.MatchCharacter(request.FontFamily, style, Array.Empty<string>(), rune.Value);
-            if (matched != null)
+            if (matched != null && matched.ContainsGlyphs(runeString))
                 return matched;
 
             matched = _fontManager.MatchCharacter(null, style, Array.Empty<string>(), rune.Value);
-            return matched ?? SKTypeface.Default;
+            return matched != null && matched.ContainsGlyphs(runeString) ? matched : SKTypeface.Default;
         }
 
         private readonly struct TextSegment
