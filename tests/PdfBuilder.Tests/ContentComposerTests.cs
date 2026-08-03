@@ -1,10 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Fonts;
-using System;
-using System.Collections.Generic;
-using System.IO;
 using Xunit;
 
 namespace PdfBuilder.Tests

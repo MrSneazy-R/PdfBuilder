@@ -44,10 +44,11 @@ namespace PdfBuilder.Writer.Fonts
 
     internal sealed class EmbeddedFont
     {
-        private readonly Dictionary<uint, EmbeddedGlyph> _glyphs = new();
+        private readonly Dictionary<GlyphKey, EmbeddedGlyph> _glyphs = new();
         private readonly SKTypeface _typeface;
         private readonly string _baseFontName;
         private byte[]? _fontData;
+        private int _nextCid = 1;
 
         public EmbeddedFont(string resourceName, SKTypeface typeface)
         {
@@ -59,22 +60,23 @@ namespace PdfBuilder.Writer.Fonts
         public string ResourceName { get; }
         public string BaseFontName => _baseFontName;
         public SKTypeface Typeface => _typeface;
-        public IReadOnlyDictionary<uint, EmbeddedGlyph> Glyphs => _glyphs;
+        public IReadOnlyCollection<EmbeddedGlyph> Glyphs => _glyphs.Values;
 
         public EmbeddedGlyph RegisterGlyph(uint glyphId, string unicode)
         {
-            if (_glyphs.TryGetValue(glyphId, out var existing))
-            {
-                if (string.IsNullOrEmpty(existing.Unicode) && !string.IsNullOrEmpty(unicode))
-                    existing.Unicode = unicode;
+            var key = new GlyphKey(glyphId, unicode ?? string.Empty);
+            if (_glyphs.TryGetValue(key, out var existing))
                 return existing;
-            }
 
-            // CID == GID (PDF will use Identity mapping)
-            ushort cid = (ushort)glyphId;
+            if (_nextCid > ushort.MaxValue)
+                throw new InvalidOperationException("A single embedded font cannot contain more than 65,535 glyph-to-Unicode mappings.");
+
+            // A glyph may represent different Unicode text in separate HarfBuzz clusters.
+            // Assign a CID per glyph/text mapping so /ToUnicode remains lossless.
+            ushort cid = (ushort)_nextCid++;
             float width = MeasureGlyphWidth(glyphId);
-            var record = new EmbeddedGlyph(glyphId, cid, unicode, width);
-            _glyphs[glyphId] = record;
+            var record = new EmbeddedGlyph(glyphId, cid, key.Unicode, width);
+            _glyphs[key] = record;
             return record;
         }
 
@@ -122,6 +124,8 @@ namespace PdfBuilder.Writer.Fonts
         }
     }
 
+    internal readonly record struct GlyphKey(uint GlyphId, string Unicode);
+
     internal sealed class EmbeddedGlyph
     {
         public EmbeddedGlyph(uint glyphId, ushort cid, string unicode, float width)
@@ -134,7 +138,7 @@ namespace PdfBuilder.Writer.Fonts
 
         public uint GlyphId { get; }
         public ushort Cid { get; }
-        public string Unicode { get; set; }
+        public string Unicode { get; }
         public float Width { get; }
     }
 

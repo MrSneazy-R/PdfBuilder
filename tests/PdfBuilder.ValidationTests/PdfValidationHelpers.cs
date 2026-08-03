@@ -35,7 +35,7 @@ internal static class PdfValidationHelpers
         return Directory.GetFiles(directory, "page-*.png").OrderBy(path => path, StringComparer.Ordinal).ToArray();
     }
 
-    public static void CompareImages(string approvedPath, string actualPath, string failureDirectory)
+    public static void CompareImages(string approvedPath, string actualPath, string failureDirectory, double changedRatioTolerance = 0.002d)
     {
         using var approved = Image.Load<Rgba32>(approvedPath);
         using var actual = Image.Load<Rgba32>(actualPath);
@@ -58,13 +58,13 @@ internal static class PdfValidationHelpers
             }
 
         var changedRatio = (double)changed / (approved.Width * approved.Height);
-        if (changedRatio > 0.002d)
+        if (changedRatio > changedRatioTolerance)
         {
             Directory.CreateDirectory(failureDirectory);
             File.Copy(actualPath, Path.Combine(failureDirectory, Path.GetFileName(actualPath)), overwrite: true);
             difference.SaveAsPng(Path.Combine(failureDirectory, Path.GetFileNameWithoutExtension(actualPath) + ".diff.png"));
         }
 
-        changedRatio.Should().BeLessThanOrEqualTo(0.002d, "visual comparison permits anti-aliasing variance only: 18 channel values across at most 0.2% of pixels");
+        changedRatio.Should().BeLessThanOrEqualTo(changedRatioTolerance, $"visual comparison permits anti-aliasing variance only: 18 channel values across at most {changedRatioTolerance:P1} of pixels");
     }
 }

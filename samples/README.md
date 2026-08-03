@@ -8,4 +8,4 @@ Generates multi-script table scenarios and reports average generation time and f
 dotnet run --project samples/TablePerfSample/TablePerfSample.csproj -c Release
 ```
 
-Outputs are written to `samples/TablePerfSample/bin/<config>/net9.0/output/`.
+Outputs are written to `samples/TablePerfSample/bin/<config>/net10.0/output/`.

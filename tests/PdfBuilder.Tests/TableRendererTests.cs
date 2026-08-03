@@ -9,8 +9,8 @@ using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using TableModels = PdfBuilder.Elements.Table;
 using Xunit;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Tests
 {

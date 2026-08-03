@@ -7,6 +7,11 @@ namespace PdfBuilder.Tests
 {
     internal static class PdfTextExtractor
     {
+        static PdfTextExtractor()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
+
         public static List<string> ExtractTextBlocks(byte[] pdfBytes)
         {
             if (pdfBytes == null) throw new ArgumentNullException(nameof(pdfBytes));

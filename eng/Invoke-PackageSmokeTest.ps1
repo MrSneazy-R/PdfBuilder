@@ -30,7 +30,7 @@ New-Item -ItemType Directory -Path $consumerDirectory | Out-Null
 
 try {
     Push-Location $consumerDirectory
-    dotnet new console --framework net9.0 --no-restore | Out-Host
+    dotnet new console --framework net10.0 --no-restore | Out-Host
     dotnet add package PdfBuilder --version $version --source $packageSource | Out-Host
 
     @'

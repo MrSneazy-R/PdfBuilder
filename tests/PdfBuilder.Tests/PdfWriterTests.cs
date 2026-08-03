@@ -45,5 +45,21 @@ namespace PdfBuilder.Tests
             previews[0].ImageData[2].Should().Be(0x4E); // 'N'
             previews[0].ImageData[3].Should().Be(0x47); // 'G'
         }
+
+        [Fact]
+        public void GeneratePreviewImages_RepeatedNativeResourceUse_RemainsStable()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            page.AddElement(new TextElement("Native resource disposal smoke test", 72, 720) { MaxWidth = 260f });
+            var previewGenerator = new PdfPreviewGenerator();
+
+            for (var iteration = 0; iteration < 10; iteration++)
+            {
+                var previews = previewGenerator.Generate(document, dpi: 72);
+                previews.Should().ContainSingle();
+                previews[0].ImageData.Should().NotBeNullOrEmpty();
+            }
+        }
     }
 }
