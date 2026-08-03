@@ -89,3 +89,48 @@ jobs:
             TestResults/**/*.trx
             ubuntu-test.log
           if-no-files-found: warn
+
+  ubuntu-pdf-validation-native-runtime-diagnostic:
+    name: Ubuntu independent PDF validation native-runtime diagnostic
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Install independent PDF tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes qpdf poppler-utils
+      - name: Restore validation tests
+        run: dotnet restore tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj
+      - name: Verify validation-test formatting
+        run: dotnet format tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj --verify-no-changes --no-restore
+      - name: Run independent validation
+        env:
+          PDFBUILDER_VISUAL_FAILURE_DIRECTORY: ${{ github.workspace }}/ValidationFailures
+        shell: bash
+        run: |
+          set +e
+          dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore --logger "trx;LogFileName=pdf-validation.trx" --results-directory TestResults 2>&1 | tee pdf-validation.log
+          status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          if grep -Eiq 'DllNotFoundException.*libSkiaSharp|Unable to load shared library .libSkiaSharp' pdf-validation.log; then
+            echo "::warning::Independent PDF validation could not execute because the current net9 baseline does not restore libSkiaSharp on Ubuntu. PR 03 owns native runtime dependency alignment."
+            exit 0
+          fi
+          exit "$status"
+      - name: Upload independent validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-pdf-validation-artifacts
+          path: |
+            TestResults/**/*.trx
+            ValidationFailures/**/*.png
+            pdf-validation.log
+          if-no-files-found: warn

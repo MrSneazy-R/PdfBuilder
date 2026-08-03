@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 
 namespace PdfBuilder.Writer
 {
@@ -10,48 +9,39 @@ namespace PdfBuilder.Writer
             public string Title = "";
             public int Level = 1;
             public int PageObjId;
-            public float X, Y; // destination XY (PDF coords)
+            public float X, Y;
         }
 
         internal static int WriteOutlinesTree(PdfStreamWriter w, List<OutlineEntry> items, int catalogId)
         {
             if (items.Count == 0) return 0;
 
-            // simple flat list honoring Level for Count; collapsed by default
-            var nodeIds = new List<int>(items.Count);
-            foreach (var it in items)
-            {
-                int id = w.BeginObject();
-                string titleEsc = it.Title.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
-                w.WriteLine("<<");
-                w.WriteLine($"/Title ({titleEsc})");
-                w.WriteLine($"/Parent {{PARENT}} 0 R");    // patch later
-                w.WriteLine($"/Dest [{it.PageObjId} 0 R /XYZ {it.X:0.###} {it.Y:0.###} null]");
-                w.WriteLine(">>");
-                w.EndObject();
-                nodeIds.Add(id);
-            }
-
-            // Link Prev/Next, First/Last and Count
+            // Write the outline root first so every child can reference a valid parent object.
+            // PdfStreamWriter assigns sequential object ids, allowing the child range to be
+            // determined before those objects are emitted.
             int topId = w.BeginObject();
+            int firstNodeId = topId + 1;
+            int lastNodeId = topId + items.Count;
             w.WriteLine("<< /Type /Outlines");
-            w.WriteLine($"/First {nodeIds[0]} 0 R /Last {nodeIds[^1]} 0 R /Count {items.Count}");
+            w.WriteLine($"/First {firstNodeId} 0 R /Last {lastNodeId} 0 R /Count {items.Count}");
             w.WriteLine(">>");
             w.EndObject();
 
-            // Patch parents and next/prev
-            for (int i = 0; i < nodeIds.Count; i++)
+            for (int index = 0; index < items.Count; index++)
             {
-                int id = nodeIds[i];
-                int prev = i > 0 ? nodeIds[i - 1] : 0;
-                int next = i < nodeIds.Count - 1 ? nodeIds[i + 1] : 0;
-
-                // reopen and rewrite with Prev/Next/Parent
-                // (PdfStreamWriter doesn’t support in-place patch; so we’ll accept minimalist outlines)
-                // In practice, viewers don't require Prev/Next; Parent is optional if Catalog.Outlines points to top.
+                var item = items[index];
+                int id = w.BeginObject();
+                string titleEsc = item.Title.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+                w.WriteLine("<<");
+                w.WriteLine($"/Title ({titleEsc})");
+                w.WriteLine($"/Parent {topId} 0 R");
+                if (index > 0) w.WriteLine($"/Prev {id - 1} 0 R");
+                if (index < items.Count - 1) w.WriteLine($"/Next {id + 1} 0 R");
+                w.WriteLine($"/Dest [{item.PageObjId} 0 R /XYZ {item.X:0.###} {item.Y:0.###} null]");
+                w.WriteLine(">>");
+                w.EndObject();
             }
 
-            // You must reference outlines from Catalog; caller will do it when writing Catalog.
             return topId;
         }
     }
