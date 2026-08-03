@@ -30,27 +30,40 @@ New-Item -ItemType Directory -Path $consumerDirectory | Out-Null
 
 try {
     Push-Location $consumerDirectory
+    $env:NUGET_PACKAGES = Join-Path $consumerDirectory '.nuget-packages'
+    $nugetConfig = Join-Path $consumerDirectory 'NuGet.Config'
+    @"
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <clear />
+    <add key="local" value="$packageSource" />
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+  </packageSources>
+</configuration>
+"@ | Set-Content -LiteralPath $nugetConfig -Encoding utf8
     dotnet new console --framework net10.0 --no-restore | Out-Host
-    dotnet add package PdfBuilder --version $version --source $packageSource | Out-Host
+    dotnet add package PdfBuilder --version $version --source $packageSource --no-restore | Out-Host
+    dotnet restore --configfile $nugetConfig | Out-Host
 
     @'
 using PdfBuilder.Document;
-using PdfBuilder.Elements;
-using PdfBuilder.Writer;
 
-var document = new PdfDocument();
-var page = document.AddPage();
-page.Elements.Add(new TextElement
+var document = PdfDocument.Create(descriptor =>
 {
-    X = page.MarginLeft,
-    Y = page.Height - page.MarginTop - 24,
-    Text = "PdfBuilder package smoke test",
-    FontFamily = "Helvetica",
-    FontSize = 12
+    descriptor.Page(page =>
+    {
+        page.Size(PageSizes.A4);
+        page.Margin(40);
+        page.Content().Column(column =>
+        {
+            column.Item().Text("PdfBuilder package smoke test").FontSize(12);
+        });
+    });
 });
 
 var outputPath = Path.Combine(AppContext.BaseDirectory, "package-smoke.pdf");
-new PdfWriter().Save(document, outputPath);
+document.Save(outputPath);
 
 if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
 {
