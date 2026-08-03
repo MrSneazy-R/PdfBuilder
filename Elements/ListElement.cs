@@ -1,6 +1,6 @@
-﻿using PdfBuilder.Document;
-using PdfBuilder.Models;
 using System.Collections.Generic;
+using PdfBuilder.Document;
+using PdfBuilder.Models;
 
 public sealed class ListElement : PdfElement
 {

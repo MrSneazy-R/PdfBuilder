@@ -1,7 +1,7 @@
 // --- ImageBuilder.cs ---
+using System;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using System;
 
 namespace PdfBuilder.Document
 {
@@ -106,7 +106,7 @@ namespace PdfBuilder.Document
         public ImageBuilder Clip(ImageClipShape shape, EllipseOrientation orientation)
         { _img.ClipShape = shape; _img.EllipseOrientation = orientation; return this; }
 
-        // Convenience for ellipse + optional squash (0.1–1.0)
+        // Convenience for ellipse + optional squash (0.1â€“1.0)
         public ImageBuilder ClipEllipse(EllipseOrientation orientation, float squash = 1f)
         { _img.ClipShape = ImageClipShape.Ellipse; _img.EllipseOrientation = orientation; _img.EllipseSquash = Math.Max(0.01f, squash); return this; }
         // Add to the column and finish

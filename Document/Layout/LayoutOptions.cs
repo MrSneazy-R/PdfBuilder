@@ -1,4 +1,4 @@
-﻿namespace PdfBuilder.Document.Layout
+namespace PdfBuilder.Document.Layout
 {
     public sealed class LayoutDebugOptions
     {

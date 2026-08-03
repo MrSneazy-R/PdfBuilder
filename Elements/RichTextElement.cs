@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using PdfBuilder.Document;
 using PdfBuilder.Document.TextShaping;
 using PdfBuilder.Models;
-using System.Collections.Generic;
 
 public sealed class RichTextElement : PdfElement
 {

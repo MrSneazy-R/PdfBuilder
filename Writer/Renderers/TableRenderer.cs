@@ -1,15 +1,15 @@
-﻿using PdfBuilder.Document.Layout;
-using PdfBuilder.Document;
-using PdfBuilder.Elements;
-using PdfBuilder.Models;
-using TableModels = PdfBuilder.Elements.Table;
-using PdfBuilder.TextShaping;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
+using PdfBuilder.Elements;
+using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Writer
 {
@@ -1279,8 +1279,8 @@ namespace PdfBuilder.Writer
                 foreach (var fragment in line.Fragments)
                 {
                     if (fragment.Text.Length == 0)
-                {
-                    cursorX += isRtl ? -fragment.Width : fragment.Width;
+                    {
+                        cursorX += isRtl ? -fragment.Width : fragment.Width;
                         continue;
                     }
 

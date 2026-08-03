@@ -1,10 +1,10 @@
-﻿using PdfBuilder.Document.Layout;
-using PdfBuilder.Fonts;
-using PdfBuilder.Models;
-using PdfBuilder.Writer.Fonts;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using PdfBuilder.Document.Layout;
+using PdfBuilder.Fonts;
+using PdfBuilder.Models;
+using PdfBuilder.Writer.Fonts;
 
 namespace PdfBuilder.Document
 {

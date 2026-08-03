@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using SkiaSharp;
 using PdfBuilder.Models;
+using SkiaSharp;
 
 namespace PdfBuilder.TextShaping
 {

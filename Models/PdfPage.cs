@@ -1,7 +1,7 @@
+using System.Collections.Generic;
 using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
-using System.Collections.Generic;
 
 namespace PdfBuilder.Models
 {

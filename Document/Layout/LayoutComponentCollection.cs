@@ -1,9 +1,9 @@
-﻿using PdfBuilder.Document;
+using System;
+using System.Collections.Generic;
+using PdfBuilder.Document;
 using PdfBuilder.Document.Layout.Components;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using System;
-using System.Collections.Generic;
 
 namespace PdfBuilder.Document.Layout
 {

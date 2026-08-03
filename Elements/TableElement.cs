@@ -1,11 +1,11 @@
-﻿using PdfBuilder.Document;
-using PdfBuilder.Document.TextShaping;
-using TableModels = PdfBuilder.Elements.Table;
-using PdfBuilder.Models;
-using PdfBuilder.Writer;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using PdfBuilder.Document;
+using PdfBuilder.Document.TextShaping;
+using PdfBuilder.Models;
+using PdfBuilder.Writer;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Elements
 {

@@ -1,7 +1,7 @@
-﻿using PdfBuilder.Document;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Elements.Table;
 using PdfBuilder.Models;

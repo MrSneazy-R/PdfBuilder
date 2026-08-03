@@ -1,4 +1,4 @@
-﻿namespace PdfBuilder.Models
+namespace PdfBuilder.Models
 {
     public sealed class ColumnLayoutSpec
     {

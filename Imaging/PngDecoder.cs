@@ -1,4 +1,4 @@
-﻿// --- Imaging/PngDecoder.cs (FULL PNG: 1/2/4/8/16-bit, CT 0/2/3/4/6, Adam7) ---
+// --- Imaging/PngDecoder.cs (FULL PNG: 1/2/4/8/16-bit, CT 0/2/3/4/6, Adam7) ---
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;

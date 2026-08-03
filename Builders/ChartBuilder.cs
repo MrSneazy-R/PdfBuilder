@@ -1,6 +1,6 @@
-using PdfBuilder.Elements;
 using System;
 using System.Drawing;
+using PdfBuilder.Elements;
 using static PdfBuilder.Elements.ChartElement;
 
 namespace PdfBuilder.Document

@@ -1,4 +1,4 @@
-﻿namespace PdfBuilder.Document
+namespace PdfBuilder.Document
 {
     /// <summary>
     /// Abstract base class for all drawable PDF elements.

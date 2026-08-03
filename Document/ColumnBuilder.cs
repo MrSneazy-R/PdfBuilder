@@ -1,15 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Document.Layout.Components;
 using PdfBuilder.Elements;
 using PdfBuilder.Elements.Table;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Globalization;
 
 namespace PdfBuilder.Document
 {
@@ -219,7 +219,7 @@ namespace PdfBuilder.Document
             float need = marginTop + Math.Max(0f, contentHeight) + marginBottom;
             int guard = 0;
 
-       
+
             while (true)
             {
                 var current = CurrentColumn;
