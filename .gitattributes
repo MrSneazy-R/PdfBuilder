@@ -61,3 +61,10 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# The repository format policy is CRLF. Explicit checkout rules keep the
+# independently formatted validation project consistent on Linux CI.
+/Writer/OutlineWriter.cs text eol=crlf
+/tests/PdfBuilder.ValidationTests/*.cs text eol=crlf
+/tests/PdfBuilder.ValidationTests/*.csproj text eol=crlf
+/tests/PdfBuilder.ValidationTests/*.json text eol=crlf

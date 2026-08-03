@@ -1,0 +1,11 @@
+[
+  { "name": "basic-text", "coverage": "Basic text", "pageCount": 1, "textMarkers": [ "Baseline text fixture" ], "visual": true },
+  { "name": "text-styles", "coverage": "Bold, italic and coloured text", "pageCount": 1, "textMarkers": [ "Bold text", "Italic text", "Blue text" ], "visual": true },
+  { "name": "simple-table", "coverage": "Simple table", "pageCount": 1, "textMarkers": [ "Item", "Quantity", "Coffee" ], "visual": true },
+  { "name": "multi-page-table", "coverage": "Table content across pages", "pageCount": 2, "textMarkers": [ "Page one item", "Page two item" ], "visual": true },
+  { "name": "images", "coverage": "PNG and JPEG images", "pageCount": 1, "textMarkers": [ "Image fixture" ], "visual": true },
+  { "name": "rich-text", "coverage": "Rich text", "pageCount": 1, "textMarkers": [ "Rich", "styled", "text" ], "visual": true },
+  { "name": "links-and-outline", "coverage": "External hyperlink, internal anchor and outline", "pageCount": 1, "textMarkers": [ "Introduction", "OpenAI" ], "visual": false },
+  { "name": "header-footer", "coverage": "Header and footer", "pageCount": 1, "textMarkers": [ "Validation header", "Validation footer", "Body content" ], "visual": true },
+  { "name": "multilingual-latin", "coverage": "Sanitised French and Spanish Latin text", "pageCount": 1, "textMarkers": [ "Résumé", "Español" ], "visual": false }
+]
