@@ -153,6 +153,8 @@ namespace PdfBuilder.Document.Layout
             };
 
             clone.ColumnWidths.AddRange(source.ColumnWidths);
+            foreach (var definition in source.ColumnDefinitions)
+                clone.ColumnDefinitions.Add(definition.Clone());
 
             foreach (var style in source.ColumnStyles)
             {

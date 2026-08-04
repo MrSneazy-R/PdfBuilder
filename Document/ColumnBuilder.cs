@@ -547,7 +547,13 @@ namespace PdfBuilder.Document
                 if (current != null)
                 {
                     NextColumnOrPage();
-                    if (++guard > guardLimit)
+                    if (reserved > 0f)
+                    {
+                        // A partial component made measurable progress. It may legitimately
+                        // continue across many pages (for example, a thousand-row table).
+                        guard = 0;
+                    }
+                    else if (++guard > guardLimit)
                     {
                         int attempts = guard;
                         throw CreatePlacementException(

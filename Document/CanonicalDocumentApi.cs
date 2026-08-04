@@ -100,6 +100,8 @@ public interface IContainer
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
+    /// <summary>Adds a flowing table that participates in normal layout and pagination.</summary>
+    void Table(Action<ITableDescriptor> configure);
     /// <summary>Adds a vertical column.</summary>
     void Column(Action<IColumnDescriptor> configure);
     /// <summary>Adds a horizontal row.</summary>
@@ -192,6 +194,60 @@ public interface ITextStyleDescriptor
 /// <summary>Configures text content added to a container.</summary>
 public interface ITextDescriptor : ITextStyleDescriptor
 {
+}
+
+/// <summary>Configures a basic flowing table.</summary>
+public interface ITableDescriptor
+{
+    /// <summary>Configures constant and relative columns.</summary>
+    void Columns(Action<ITableColumnsDescriptor> configure);
+    /// <summary>Adds the repeating header row.</summary>
+    void Header(Action<ITableRowDescriptor> configure);
+    /// <summary>Adds a body row.</summary>
+    void Row(Action<ITableRowDescriptor> configure);
+    /// <summary>Sets uniform cell padding in points.</summary>
+    void CellPadding(float value);
+    /// <summary>Sets the table border.</summary>
+    void Border(float width = 1f, string color = "#000000");
+    /// <summary>Sets the header background colour.</summary>
+    void HeaderBackground(string color);
+}
+
+/// <summary>Configures table columns.</summary>
+public interface ITableColumnsDescriptor
+{
+    /// <summary>Adds a proportional column.</summary>
+    void RelativeColumn(float weight = 1f);
+    /// <summary>Adds a fixed-width column in points.</summary>
+    void ConstantColumn(float width);
+}
+
+/// <summary>Configures a table row.</summary>
+public interface ITableRowDescriptor
+{
+    /// <summary>Adds a cell.</summary>
+    ITableCellDescriptor Cell();
+}
+
+/// <summary>Configures basic table-cell content and decoration.</summary>
+public interface ITableCellDescriptor
+{
+    /// <summary>Aligns cell content to the left.</summary>
+    ITableCellDescriptor AlignLeft();
+    /// <summary>Centers cell content.</summary>
+    ITableCellDescriptor AlignCenter();
+    /// <summary>Aligns cell content to the right.</summary>
+    ITableCellDescriptor AlignRight();
+    /// <summary>Sets the cell background colour.</summary>
+    ITableCellDescriptor Background(string color);
+    /// <summary>Sets a border around the cell.</summary>
+    ITableCellDescriptor Border(float width = 1f, string color = "#000000");
+    /// <summary>Sets uniform cell padding in points.</summary>
+    ITableCellDescriptor Padding(float value);
+    /// <summary>Adds text to the cell.</summary>
+    ITextDescriptor Text(string text);
+    /// <summary>Adds a formatted value to the cell.</summary>
+    ITextDescriptor Text(object? value, string? format);
 }
 
 /// <summary>Defines the orientation applied to a page size.</summary>
@@ -357,6 +413,13 @@ public partial class PdfDocument
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
+        public void Table(Action<ITableDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var descriptor = new CanonicalTableDescriptor();
+            configure(descriptor);
+            _content.Add(composer => composer.Component(new Layout.Components.TableComponent(descriptor.Build())));
+        }
         public void Column(Action<IColumnDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -430,6 +493,126 @@ public partial class PdfDocument
         private static void ValidateNonNegative(float value, string name) { if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(name); }
         private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
     }
+
+    private sealed class CanonicalTableDescriptor : ITableDescriptor
+    {
+        private readonly TableElement _table = new();
+
+        public void Columns(Action<ITableColumnsDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var columns = new CanonicalTableColumnsDescriptor(_table);
+            configure(columns);
+        }
+
+        public void Header(Action<ITableRowDescriptor> configure) => AddRow(configure, isHeader: true);
+
+        public void Row(Action<ITableRowDescriptor> configure) => AddRow(configure, isHeader: false);
+
+        public void CellPadding(float value)
+        {
+            if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value));
+            _table.CellPadding = value;
+        }
+
+        public void Border(float width = 1f, string color = "#000000")
+        {
+            if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
+            _table.BorderWidth = width;
+            _table.BorderColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+        }
+
+        public void HeaderBackground(string color) => _table.HeaderBackground = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+
+        public TableElement Build()
+        {
+            if (_table.ColumnDefinitions.Count == 0)
+                throw new InvalidOperationException("A table requires at least one column.");
+            return _table;
+        }
+
+        private void AddRow(Action<ITableRowDescriptor> configure, bool isHeader)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var row = new TableRow { IsHeader = isHeader };
+            configure(new CanonicalTableRowDescriptor(row));
+            if (row.Cells.Count == 0)
+                throw new InvalidOperationException("A table row requires at least one cell.");
+            _table.Rows.Add(row);
+        }
+    }
+
+    private sealed class CanonicalTableColumnsDescriptor : ITableColumnsDescriptor
+    {
+        private readonly TableElement _table;
+        public CanonicalTableColumnsDescriptor(TableElement table) => _table = table;
+        public void RelativeColumn(float weight = 1f)
+        {
+            if (weight <= 0f || float.IsNaN(weight) || float.IsInfinity(weight)) throw new ArgumentOutOfRangeException(nameof(weight));
+            _table.ColumnDefinitions.Add(PdfBuilder.Elements.Table.TableColumn.Relative(weight));
+        }
+        public void ConstantColumn(float width)
+        {
+            if (width <= 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
+            _table.ColumnDefinitions.Add(PdfBuilder.Elements.Table.TableColumn.Fixed(width));
+        }
+    }
+
+    private sealed class CanonicalTableRowDescriptor : ITableRowDescriptor
+    {
+        private readonly TableRow _row;
+        public CanonicalTableRowDescriptor(TableRow row) => _row = row;
+        public ITableCellDescriptor Cell()
+        {
+            var cell = new TableCell();
+            _row.Cells.Add(cell);
+            return new CanonicalTableCellDescriptor(cell);
+        }
+    }
+
+    private sealed class CanonicalTableCellDescriptor : ITableCellDescriptor
+    {
+        private readonly TableCell _cell;
+        public CanonicalTableCellDescriptor(TableCell cell) => _cell = cell;
+        public ITableCellDescriptor AlignLeft() { _cell.HorizontalAlign = HorizontalAlign.Left; return this; }
+        public ITableCellDescriptor AlignCenter() { _cell.HorizontalAlign = HorizontalAlign.Center; return this; }
+        public ITableCellDescriptor AlignRight() { _cell.HorizontalAlign = HorizontalAlign.Right; return this; }
+        public ITableCellDescriptor Background(string color) { _cell.BackgroundColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color)); return this; }
+        public ITableCellDescriptor Border(float width = 1f, string color = "#000000")
+        {
+            if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
+            _cell.BorderWidth = width;
+            _cell.BorderColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+            return this;
+        }
+        public ITableCellDescriptor Padding(float value)
+        {
+            if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value));
+            _cell.Padding = value;
+            return this;
+        }
+        public ITextDescriptor Text(string text)
+        {
+            _cell.Text = text ?? string.Empty;
+            return new CanonicalTableTextDescriptor(_cell);
+        }
+        public ITextDescriptor Text(object? value, string? format)
+        {
+            _cell.Text = value is IFormattable formattable ? formattable.ToString(format, System.Globalization.CultureInfo.InvariantCulture) : value?.ToString() ?? string.Empty;
+            return new CanonicalTableTextDescriptor(_cell);
+        }
+    }
+
+    private sealed class CanonicalTableTextDescriptor : ITextDescriptor
+    {
+        private readonly TableCell _cell;
+        public CanonicalTableTextDescriptor(TableCell cell) => _cell = cell;
+        public ITextStyleDescriptor FontFamily(string family) { _cell.Font = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
+        public ITextStyleDescriptor FontSize(float size) { _cell.FontSize = size <= 0f ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
+        public ITextStyleDescriptor Bold() { _cell.Bold = true; return this; }
+    }
+
+    private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
 
     private sealed class CanonicalColumnDescriptor : IColumnDescriptor
     {

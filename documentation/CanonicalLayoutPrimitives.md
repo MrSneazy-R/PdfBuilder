@@ -41,3 +41,35 @@ The `layout-primitives` visual fixture uses a documented 2% Linux pixel-differen
 All dimensions must be finite and non-negative. A minimum cannot exceed its corresponding maximum, and an exact size cannot contradict an active minimum or maximum. These cases throw an explicit exception during document composition.
 
 Text alignment remains a text-style concern; `AlignLeft`, `AlignCenter`, `AlignRight`, `AlignTop`, `AlignMiddle`, and `AlignBottom` position containers.
+
+## Flowing tables
+
+`IContainer.Table` uses the same measurement, partial-layout, remainder, and draw pipeline as normal flowing content. Declare columns before rows. A header repeats after a page break, rows stay together, and content after a split table resumes below its final segment.
+
+```csharp
+page.Content().Table(table =>
+{
+    table.Columns(columns =>
+    {
+        columns.RelativeColumn();
+        columns.ConstantColumn(80);
+    });
+
+    table.Header(header =>
+    {
+        header.Cell().Text("Description").Bold();
+        header.Cell().AlignRight().Text("Amount").Bold();
+    });
+
+    foreach (var line in lines)
+    {
+        table.Row(row =>
+        {
+            row.Cell().Text(line.Description);
+            row.Cell().AlignRight().Text(line.Amount, "N2");
+        });
+    }
+});
+```
+
+Use `CellPadding`, `Border`, `HeaderBackground`, and the cell `Padding`, `Border`, `Background`, and alignment methods for basic styling. A row taller than the usable page area throws an explicit exception because row splitting is intentionally deferred.

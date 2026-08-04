@@ -289,6 +289,7 @@ PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescrip
 PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.Table(System.Action<PdfBuilder.Document.ITableDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
@@ -355,6 +356,27 @@ PdfBuilder.Document.IRowDescriptor.ConstantItem(float width) -> PdfBuilder.Docum
 PdfBuilder.Document.IRowDescriptor.RelativeItem(float weight = 1) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IStackDescriptor
 PdfBuilder.Document.IStackDescriptor.Item() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ITableCellDescriptor
+PdfBuilder.Document.ITableCellDescriptor.AlignCenter() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.AlignLeft() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.AlignRight() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Background(string! color) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Border(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Padding(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Text(object? value, string? format) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.ITableColumnsDescriptor
+PdfBuilder.Document.ITableColumnsDescriptor.ConstantColumn(float width) -> void
+PdfBuilder.Document.ITableColumnsDescriptor.RelativeColumn(float weight = 1) -> void
+PdfBuilder.Document.ITableDescriptor
+PdfBuilder.Document.ITableDescriptor.Border(float width = 1, string! color = "#000000") -> void
+PdfBuilder.Document.ITableDescriptor.CellPadding(float value) -> void
+PdfBuilder.Document.ITableDescriptor.Columns(System.Action<PdfBuilder.Document.ITableColumnsDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.Header(System.Action<PdfBuilder.Document.ITableRowDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.HeaderBackground(string! color) -> void
+PdfBuilder.Document.ITableDescriptor.Row(System.Action<PdfBuilder.Document.ITableRowDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableRowDescriptor
+PdfBuilder.Document.ITableRowDescriptor.Cell() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITextDescriptor
 PdfBuilder.Document.ITextStyleDescriptor
 PdfBuilder.Document.ITextStyleDescriptor.Bold() -> PdfBuilder.Document.ITextStyleDescriptor!
