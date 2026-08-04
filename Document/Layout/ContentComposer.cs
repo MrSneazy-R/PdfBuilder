@@ -64,6 +64,13 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        /// <summary>Adds a shaped rich-text paragraph to the current layout flow.</summary>
+        internal ContentComposer RichText(Action<RichTextElement> configure)
+        {
+            _collection.RichText(configure);
+            return this;
+        }
+
         public ContentComposer List(Action<ListElement> configure)
         {
             _collection.List(configure);

@@ -54,6 +54,8 @@ public class TextElement : PdfElement
     public float LineHeight { get; set; } = 1.2f;
     public float? LetterSpacing { get; set; }
     public float? WordSpacing { get; set; }
+    public bool NoWrap { get; set; }
+    public bool EllipsisWhenConstrained { get; set; }
 
     // Position, alignment
     public float Rotation { get; set; } = 0;

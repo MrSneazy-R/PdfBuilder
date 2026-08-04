@@ -286,6 +286,7 @@ PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.ICont
 PdfBuilder.Document.IContainer.PageBreak() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.Document.IContainer!>! configure) -> void
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.RichText(System.Action<PdfBuilder.Document.IRichTextDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
@@ -358,8 +359,28 @@ PdfBuilder.Document.IStackDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ITextDescriptor
 PdfBuilder.Document.ITextStyleDescriptor
 PdfBuilder.Document.ITextStyleDescriptor.Bold() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.AlignCenter() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.AlignLeft() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.AlignRight() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Color(string! color) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Direction(PdfBuilder.Models.FlowDirection direction) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Ellipsis() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.FontFamily(string! family) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.FontSize(float size) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Italic() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Justify() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.LetterSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.LineHeight(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.NoWrap() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Strikethrough() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Subscript() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Superscript() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Underline() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.WordSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Wrap() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.IRichTextDescriptor
+PdfBuilder.Document.IRichTextDescriptor.DefaultStyle() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.IRichTextDescriptor.Span(string! text) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.Layout.CanvasBuilder
 PdfBuilder.Document.Layout.CanvasBuilder.AvoidBreakInside(bool value = true) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.ClosePath() -> PdfBuilder.Document.Layout.CanvasBuilder!
@@ -2148,6 +2169,8 @@ PdfBuilder.Elements.WaterfallSeries.WaterfallSeries() -> void
 PdfBuilder.Elements.WaterfallSeries.YAxisIndex.get -> int
 PdfBuilder.Elements.WaterfallSeries.YAxisIndex.set -> void
 PdfBuilder.Fonts.FontCatalog
+PdfBuilder.Fonts.FontNotFoundException
+PdfBuilder.Fonts.FontNotFoundException.FontNotFoundException(string! message) -> void
 PdfBuilder.Models.ColumnLayoutSpec
 PdfBuilder.Models.ColumnLayoutSpec.ColumnLayoutSpec() -> void
 PdfBuilder.Models.ColumnLayoutSpec.Columns.get -> int
@@ -2696,9 +2719,17 @@ static PdfBuilder.Elements.Table.TableColumn.Auto(float? minWidth = null, float?
 static PdfBuilder.Elements.Table.TableColumn.Fixed(float width, float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
 static PdfBuilder.Elements.Table.TableColumn.Relative(float weight, float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
 static PdfBuilder.Fonts.FontCatalog.RegisterFile(string! path, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFont(byte[]! data, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFont(System.IO.Stream! stream, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFontDirectory(string! path, System.IO.SearchOption searchOption = System.IO.SearchOption.AllDirectories) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFontFile(string! path, params string![]! aliases) -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterFolder(string! directory, System.IO.SearchOption searchOption = System.IO.SearchOption.AllDirectories) -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterSystemFonts() -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterTypeface(SkiaSharp.SKTypeface! typeface, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.SetFallbackFonts(params string![]! fontFamilies) -> void
+static PdfBuilder.Fonts.FontCatalog.FallbackFonts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static PdfBuilder.Fonts.FontCatalog.StrictMatching.get -> bool
+static PdfBuilder.Fonts.FontCatalog.StrictMatching.set -> void
 static PdfBuilder.Models.PdfPage.A3() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.A3Landscape() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.A4() -> PdfBuilder.Models.PdfPage!
@@ -2803,6 +2834,10 @@ TextElement.MaxWidth.get -> float?
 TextElement.MaxWidth.set -> void
 TextElement.Monospace.get -> bool
 TextElement.Monospace.set -> void
+TextElement.NoWrap.get -> bool
+TextElement.NoWrap.set -> void
+TextElement.EllipsisWhenConstrained.get -> bool
+TextElement.EllipsisWhenConstrained.set -> void
 TextElement.Opacity.get -> float
 TextElement.Opacity.set -> void
 TextElement.OrphanLines.get -> int

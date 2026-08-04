@@ -61,7 +61,7 @@ namespace PdfBuilder.Writer
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
-                float baselineY = baselines[i];
+                float baselineY = baselines[i] + (element.BaselineOffset ?? 0f);
 
                 var justification = TextJustification.Compute(element, line, textBlockWidth, i, lines.Count);
                 float effectiveLineWidth = justification.HasWordSpacing ? textBlockWidth : line.Width;
