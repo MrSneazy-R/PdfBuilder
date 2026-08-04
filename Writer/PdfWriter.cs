@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Fonts;
@@ -34,6 +35,8 @@ namespace PdfBuilder.Writer
         {
             using var ms = new MemoryStream();
             WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTime.UtcNow, cancellationToken);
+            if (doc.RenderLimits.MaximumOutputBytes is long maximum && ms.Length > maximum)
+                throw new PdfRenderLimitException(nameof(PdfRenderLimits.MaximumOutputBytes), $"The generated PDF exceeds the configured {maximum} byte limit.");
             return ms.ToArray();
         }
 
@@ -125,7 +128,7 @@ namespace PdfBuilder.Writer
             // Images / ExtGState -----------------------------------------------------------------
             var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
 
-            var resources = new PdfResourceManager(outputOptions);
+            var resources = new PdfResourceManager(outputOptions, doc.RenderLimits);
             var imageResourceMap = PreRegisterImages(laidOut, resources, writer, cancellationToken);
             PreRegisterWatermarks(laidOut, resources, writer);
             PreRegisterSolidRectOpacity(laidOut, resources, writer);

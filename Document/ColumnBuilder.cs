@@ -556,7 +556,10 @@ namespace PdfBuilder.Document
 
             float totalHeight = 0f;
             IMeasurable? current = component;
-            int guardLimit = Math.Max(1, _layoutOptions.Diagnostics.LayoutIterationLimit);
+            int configuredLimit = _document == null
+                ? _layoutOptions.Diagnostics.LayoutIterationLimit
+                : Math.Min(_document.RenderLimits.MaximumLayoutIterations, _layoutOptions.Diagnostics.LayoutIterationLimit);
+            int guardLimit = Math.Max(1, configuredLimit);
             int guard = 0;
 
             while (current != null)

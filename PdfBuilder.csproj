@@ -56,6 +56,10 @@
     <None Include="tests\**\*.cs" />
     <Compile Remove="samples\**\*.cs" />
     <None Include="samples\**\*.cs" />
+    <Compile Remove="benchmarks\**\*.cs" />
+    <None Include="benchmarks\**\*.cs" />
+    <Compile Remove="benchmarks\**\*.cs" />
+    <None Include="benchmarks\**\*.cs" />
   </ItemGroup>
 
 </Project>

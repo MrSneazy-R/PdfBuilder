@@ -2748,6 +2748,25 @@ static PdfBuilder.Document.Units.Centimeters(float value) -> float
 static PdfBuilder.Document.Units.Inches(float value) -> float
 static PdfBuilder.Document.Units.Millimeters(float value) -> float
 static PdfBuilder.Document.Units.Points(float value) -> float
+PdfBuilder.Document.PdfDocument.RenderLimits.get -> PdfBuilder.Document.Layout.PdfRenderLimits!
+PdfBuilder.Document.Layout.PdfRenderLimitException
+PdfBuilder.Document.Layout.PdfRenderLimitException.PdfRenderLimitException(string! limitName, string! message) -> void
+PdfBuilder.Document.Layout.PdfRenderLimitException.LimitName.get -> string!
+PdfBuilder.Document.Layout.PdfRenderLimits
+PdfBuilder.Document.Layout.PdfRenderLimits.PdfRenderLimits() -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPages.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPages.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumLayoutIterations.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumLayoutIterations.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumImagePixels.get -> long
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumImagePixels.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumSvgBytes.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumSvgBytes.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumTableRows.get -> int?
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumTableRows.set -> void
+PdfBuilder.Writer.PdfResourceManager.PdfResourceManager(PdfBuilder.Models.PdfOutputOptions? options, PdfBuilder.Document.Layout.PdfRenderLimits? renderLimits) -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumOutputBytes.get -> long?
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumOutputBytes.set -> void
 PdfBuilder.Document.IDocumentDescriptor.Diagnostics(System.Action<PdfBuilder.Document.Layout.PdfDiagnosticsOptions!>! configure) -> void
 PdfBuilder.Document.IContainer.DebugLabel(string! label) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.PdfDocument.GeneratePreviewImages(int dpi = 144, System.Collections.Generic.IEnumerable<int>? pageNumbers = null) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
