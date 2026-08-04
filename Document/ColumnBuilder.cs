@@ -60,13 +60,13 @@ namespace PdfBuilder.Document
             _defaultSpacing = defaultSpacing;
             _newPage = newPage;
             _hfForPage = hfForPage;
-            _layoutOptions = layoutOptions ?? page.LayoutOptions ?? new LayoutOptions();
-            _textDefaults = (textDefaults ?? page.TextDefaults ?? new TextStyleDefaults()).Clone();
+            _layoutOptions = layoutOptions ?? _page.LayoutOptions ?? new LayoutOptions();
+            _textDefaults = (textDefaults ?? _page.TextDefaults ?? new TextStyleDefaults()).Clone();
             _customColumnFactory = columnFactory;
-            _document = document ?? page.Owner;
-            _pagination = page.Pagination ?? _document?.Pagination;
-            _profilerSession = page.ProfilerSession ?? _document?.ProfilerSession;
-            _profilerEnabled = (_layoutOptions?.Profiler.Enabled ?? false) && _profilerSession != null;
+            _document = document ?? _page.Owner;
+            _pagination = _page.Pagination ?? _document?.Pagination;
+            _profilerSession = _page.ProfilerSession ?? _document?.ProfilerSession;
+            _profilerEnabled = _layoutOptions.Profiler.Enabled && _profilerSession != null;
 
             ResolveHeaderFooterBands(_page, out _headerH, out _footerH);
             InitColumns(_page);
