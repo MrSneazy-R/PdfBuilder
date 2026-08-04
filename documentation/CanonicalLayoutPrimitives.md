@@ -73,3 +73,9 @@ page.Content().Table(table =>
 ```
 
 Use `CellPadding`, `Border`, `HeaderBackground`, and the cell `Padding`, `Border`, `Background`, and alignment methods for basic styling. A row taller than the usable page area throws an explicit exception because row splitting is intentionally deferred.
+
+### Advanced table behaviour
+
+The legacy table models remain the advanced styling adapter: they support per-side `BorderStyle` values (dash, cap, join, and miter settings), separate and collapsed borders, table inner/outer borders, row and column banding, spans, per-side padding, rounded cell/table corners, rich runs, fallbacks, decorations, rotation, and explicit wrapping modes. Paint order is deterministic: cell background, row/column banding fills, text/content, inner borders, then the outer border.
+
+Collapsed-border conflicts prefer the thicker edge, then the higher-precedence owner, then the deterministic top, left, bottom, right order. Span geometry is validated during measure and render; invalid spans throw rather than emitting corrupt output. A span that cannot fit as an intact group on a page throws because row splitting is intentionally not implemented. Repeated footer rows and configurable row-splitting policy are deferred: both require a distinct continuation model so they cannot be added safely without changing the pagination contract.

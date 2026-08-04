@@ -31,6 +31,8 @@ namespace PdfBuilder.Document.Layout.Components
         {
             if (context == null) throw new ArgumentNullException(nameof(context));
 
+            TableGridValidator.Validate(_workingTable);
+
             var width = ResolveWidth(context.AvailableWidth);
             var metrics = TableMeasurementHelper.Measure(_workingTable, width);
             var rowHeights = metrics.RowHeights;
