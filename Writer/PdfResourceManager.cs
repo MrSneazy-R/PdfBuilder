@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Imaging;
@@ -30,6 +31,7 @@ namespace PdfBuilder.Writer
         // Each manager is document-scoped, so no caller-owned image data is shared across documents.
         private readonly Dictionary<string, List<ImageResource>> _imageMap = new(StringComparer.Ordinal);
         private readonly PdfOutputOptions _options;
+        private readonly PdfRenderLimits _renderLimits;
 
         private sealed class ImageResource
         {
@@ -51,8 +53,14 @@ namespace PdfBuilder.Writer
         }
 
         public PdfResourceManager(PdfOutputOptions? options)
+            : this(options, null)
+        {
+        }
+
+        public PdfResourceManager(PdfOutputOptions? options, PdfRenderLimits? renderLimits)
         {
             _options = options ?? new PdfOutputOptions();
+            _renderLimits = renderLimits ?? new PdfRenderLimits();
         }
 
         private readonly struct ExtGStateHandle
@@ -107,7 +115,8 @@ namespace PdfBuilder.Writer
             if (img.ImageData == null || img.ImageData.Length == 0)
                 throw new InvalidDataException("ImageElement.ImageData is empty.");
 
-            var imageInfo = MediaImageDecoders.ReadInfo(img.ImageData);
+            var imageInfo = MediaImageDecoders.ReadInfo(img.ImageData, _renderLimits.MaximumImagePixels);
+            _renderLimits.ValidateImagePixels(imageInfo.PixelCount);
             img.SourcePixelWidth = imageInfo.Width;
             img.SourcePixelHeight = imageInfo.Height;
             img.SourceDpiX = imageInfo.DpiX;

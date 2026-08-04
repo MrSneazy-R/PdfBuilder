@@ -59,9 +59,9 @@ internal static class MediaLimits
     public const int MaximumSvgNodes = 20_000;
     public const int MaximumSvgPathCharacters = 500_000;
 
-    public static void Validate(ImageInfo info)
+    public static void Validate(ImageInfo info, long maximumPixels = MaximumDecodedPixels)
     {
-        if (info.Width <= 0 || info.Height <= 0 || info.Width > MaximumDimension || info.Height > MaximumDimension || info.PixelCount > MaximumDecodedPixels)
+        if (info.Width <= 0 || info.Height <= 0 || info.Width > MaximumDimension || info.Height > MaximumDimension || info.PixelCount > maximumPixels)
             throw new InvalidDataException($"Image dimensions {info.Width}x{info.Height} exceed PdfBuilder media limits.");
     }
 
@@ -79,7 +79,7 @@ internal static class MediaImageDecoders
 {
     private static readonly IImageDecoder[] Decoders = [new PngImageDecoder(), new JpegImageDecoder()];
 
-    public static ImageInfo ReadInfo(byte[] data)
+    public static ImageInfo ReadInfo(byte[] data, long maximumPixels = MediaLimits.MaximumDecodedPixels)
     {
         MediaLimits.ValidateSource(data);
         foreach (var decoder in Decoders)
@@ -88,7 +88,7 @@ internal static class MediaImageDecoders
                 continue;
 
             var info = decoder.ReadInfo(data);
-            MediaLimits.Validate(info);
+            MediaLimits.Validate(info, maximumPixels);
             return info;
         }
 
