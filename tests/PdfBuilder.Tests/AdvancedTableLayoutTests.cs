@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using PdfBuilder.Document;
@@ -62,7 +63,21 @@ public sealed class AdvancedTableLayoutTests
             table.Rows.Add(new TableRow { Cells = { new TableCell { Text = "span", ColSpan = 2, Padding = 0 }, new TableCell { Text = "tail", Padding = 0 } } });
         });
 
-        PdfContentHelper.ExtractFirstStream(new PdfWriter().GenerateBytes(document)).Should().Contain("40 698.699 120");
+        string stream = PdfContentHelper.ExtractFirstStream(new PdfWriter().GenerateBytes(document));
+        var clippingRectangles = Regex.Matches(
+                stream,
+                @"(?<x>-?\d+(?:\.\d+)?)\s+(?<y>-?\d+(?:\.\d+)?)\s+(?<width>-?\d+(?:\.\d+)?)\s+(?<height>-?\d+(?:\.\d+)?)\s+re\s+W\s+n")
+            .Cast<Match>()
+            .Select(match => new
+            {
+                X = float.Parse(match.Groups["x"].Value, CultureInfo.InvariantCulture),
+                Width = float.Parse(match.Groups["width"].Value, CultureInfo.InvariantCulture)
+            });
+
+        clippingRectangles.Should().Contain(rectangle =>
+            Math.Abs(rectangle.X - 40f) <= 0.1f &&
+            Math.Abs(rectangle.Width - 120f) <= 0.1f,
+            "the spanning cell must cover the first two 60-point columns");
     }
 
     [Fact]

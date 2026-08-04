@@ -80,8 +80,8 @@ jobs:
           dotnet run --project samples/MultiPageReport/MultiPageReport.csproj -c Release --no-build
           dotnet run --project samples/MultiLanguage/MultiLanguage.csproj -c Release --no-build
           dotnet run --project samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-build
-      - name: Run unit tests
-        run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+      - name: Run maintained solution tests
+        run: dotnet test PdfBuilder.sln -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
       - name: Run independent PDF validation
         if: runner.os == 'Linux'
         env:
