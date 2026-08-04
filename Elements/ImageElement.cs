@@ -12,6 +12,33 @@ namespace PdfBuilder.Elements
         Circle,
         Ellipse
     }
+
+    /// <summary>Specifies how an image is placed inside its allocated layout box.</summary>
+    internal enum ImageFit
+    {
+        /// <summary>Stretches the source to fill the allocated box.</summary>
+        Stretch,
+        /// <summary>Preserves aspect ratio and fits the entire image inside the box.</summary>
+        Contain,
+        /// <summary>Preserves aspect ratio and fills the box, cropping overflow.</summary>
+        Cover,
+        /// <summary>Uses the intrinsic image size at its declared DPI where available.</summary>
+        Original
+    }
+
+    /// <summary>Specifies alignment of an aspect-ratio-preserving image inside its allocated box.</summary>
+    internal enum ImageAlignment
+    {
+        TopLeft,
+        Top,
+        TopRight,
+        Left,
+        Center,
+        Right,
+        BottomLeft,
+        Bottom,
+        BottomRight
+    }
     public enum EllipseOrientation
     {
         Horizontal, // major axis along X (default)
@@ -31,6 +58,8 @@ namespace PdfBuilder.Elements
         public float? MaxHeight { get; set; }
         public float Rotation { get; set; }        // Degrees
         public float Opacity { get; set; } = 1.0f;
+        internal ImageFit Fit { get; set; } = ImageFit.Stretch;
+        internal ImageAlignment Alignment { get; set; } = ImageAlignment.Center;
 
         // Padding & Margin
         public float? MarginTop { get; set; }
@@ -63,6 +92,11 @@ namespace PdfBuilder.Elements
 
         // Internal PDF resource name
         public string? PdfResourceName { get; set; }
+
+        internal int SourcePixelWidth { get; set; }
+        internal int SourcePixelHeight { get; set; }
+        internal float SourceDpiX { get; set; } = 96f;
+        internal float SourceDpiY { get; set; } = 96f;
 
         public ImageElement(byte[] imageData, float x, float y, float width, float height) : base(x, y)
         {

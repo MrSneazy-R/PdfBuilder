@@ -79,13 +79,17 @@ namespace PdfBuilder.Writer
                 sb.Append("W n ");
             }
 
+            // Resolve the source placement inside the allocated box. Cover overflow is
+            // intentionally clipped by the path above; contain leaves transparent margins.
+            var (drawX, drawY, drawWidth, drawHeight) = ResolveImagePlacement(img, w, h);
+
             // Draw image exactly within the clip (no bleed). A prior 0.5pt bleed
             // could create edge halos with alpha PNGs due to resampling beyond
             // image bounds in some PDF viewers.
             const float bleed = 0f;
             if (!string.IsNullOrEmpty(extGStateResourceName))
                 sb.Append($"{extGStateResourceName} gs ");
-            sb.Append($"{N(w + 2 * bleed)} 0 0 {N(h + 2 * bleed)} {N(-bleed)} {N(-bleed)} cm ");
+            sb.Append($"{N(drawWidth + 2 * bleed)} 0 0 {N(drawHeight + 2 * bleed)} {N(drawX - bleed)} {N(drawY - bleed)} cm ");
             sb.Append($"/Im{imageObjId} Do ");
             sb.Append("Q\n"); // <-- pop the clip + transform
 
@@ -120,6 +124,44 @@ namespace PdfBuilder.Writer
                 // Rotate around origin (which is at the image center after translate)
                 sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} 0 0 cm ");
             }
+        }
+
+        private static (float x, float y, float width, float height) ResolveImagePlacement(ImageElement image, float boxWidth, float boxHeight)
+        {
+            if (image.Fit == ImageFit.Stretch || image.SourcePixelWidth <= 0 || image.SourcePixelHeight <= 0)
+                return (0f, 0f, boxWidth, boxHeight);
+
+            float sourceWidth = image.SourcePixelWidth;
+            float sourceHeight = image.SourcePixelHeight;
+            if (image.Fit == ImageFit.Original)
+            {
+                sourceWidth = image.SourcePixelWidth * 72f / Math.Max(1f, image.SourceDpiX);
+                sourceHeight = image.SourcePixelHeight * 72f / Math.Max(1f, image.SourceDpiY);
+            }
+
+            float scale = image.Fit switch
+            {
+                ImageFit.Cover => Math.Max(boxWidth / sourceWidth, boxHeight / sourceHeight),
+                ImageFit.Original => 1f,
+                _ => Math.Min(boxWidth / sourceWidth, boxHeight / sourceHeight)
+            };
+            float width = sourceWidth * scale;
+            float height = sourceHeight * scale;
+            float extraX = boxWidth - width;
+            float extraY = boxHeight - height;
+            var (horizontal, vertical) = image.Alignment switch
+            {
+                ImageAlignment.TopLeft => (0f, 1f),
+                ImageAlignment.Top => (0.5f, 1f),
+                ImageAlignment.TopRight => (1f, 1f),
+                ImageAlignment.Left => (0f, 0.5f),
+                ImageAlignment.Right => (1f, 0.5f),
+                ImageAlignment.BottomLeft => (0f, 0f),
+                ImageAlignment.Bottom => (0.5f, 0f),
+                ImageAlignment.BottomRight => (1f, 0f),
+                _ => (0.5f, 0.5f)
+            };
+            return (extraX * horizontal, extraY * vertical, width, height);
         }
 
         private static bool AppendClipPath(StringBuilder sb, ImageElement img, float w, float h)

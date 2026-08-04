@@ -107,6 +107,12 @@ namespace PdfBuilder.Writer
             if (img.ImageData == null || img.ImageData.Length == 0)
                 throw new InvalidDataException("ImageElement.ImageData is empty.");
 
+            var imageInfo = MediaImageDecoders.ReadInfo(img.ImageData);
+            img.SourcePixelWidth = imageInfo.Width;
+            img.SourcePixelHeight = imageInfo.Height;
+            img.SourceDpiX = imageInfo.DpiX;
+            img.SourceDpiY = imageInfo.DpiY;
+
             string key = Hash(img.ImageData);
             if (!_imageMap.TryGetValue(key, out var candidates))
             {
@@ -389,11 +395,7 @@ namespace PdfBuilder.Writer
         // WebP (decode to RGB + optional alpha via WIC; write Flate + /SMask)
         private (int imObj, int? smaskObj) WriteWebpXObject(PdfStreamWriter w, byte[] webp)
         {
-            var info = WebpInspector.GetInfo(webp);
-            if (info.Animated) throw new InvalidDataException("Animated WebP is not supported.");
-
-            var wp = WebpWicDecoder.Decode(webp);
-            return WriteRawRgbWithOptionalAlpha(w, wp.Width, wp.Height, wp.Rgb, wp.Alpha);
+            throw new NotSupportedException("WebP is not supported because PdfBuilder does not provide a tested cross-platform WebP decoder.");
         }
 
         // Auto-detect and write
@@ -408,7 +410,7 @@ namespace PdfBuilder.Writer
             if (WebpInspector.LooksLikeWebp(bytes))
                 return WriteWebpXObject(w, bytes);
 
-            throw new InvalidDataException("Unsupported image format (expect JPEG/PNG/WebP).");
+            throw new InvalidDataException("Unsupported image format. PdfBuilder supports PNG and JPEG.");
         }
 
         // Helper: write RGB + optional alpha as Flate-decoded XObject + SMask

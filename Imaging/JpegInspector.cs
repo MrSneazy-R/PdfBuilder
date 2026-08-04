@@ -56,7 +56,10 @@ namespace PdfBuilder.Writer.Imaging
                 int segLen = len - 2;
 
                 // SOFn (frame header) for baseline/progressive etc.
-                if (marker == 0xC0 || marker == 0xC1 || marker == 0xC2)
+                if ((marker >= 0xC0 && marker <= 0xC3) ||
+                    (marker >= 0xC5 && marker <= 0xC7) ||
+                    (marker >= 0xC9 && marker <= 0xCB) ||
+                    (marker >= 0xCD && marker <= 0xCF))
                 {
                     if (segLen >= 7)
                     {
@@ -136,11 +139,7 @@ namespace PdfBuilder.Writer.Imaging
 
             // Fallback — if SOF never found, leave 1x1/Components 3 to avoid div by zero later
             if (info.Width == 0 || info.Height == 0)
-            {
-                info.Width = Math.Max(1, info.Width);
-                info.Height = Math.Max(1, info.Height);
-                if (info.Components == 0) info.Components = 3;
-            }
+                throw new InvalidDataException("JPEG does not contain a supported frame header.");
 
             return info;
         }
