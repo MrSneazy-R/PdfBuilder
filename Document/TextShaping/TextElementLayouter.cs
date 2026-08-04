@@ -18,8 +18,11 @@ namespace PdfBuilder.TextShaping
 
             if (element.Spans.Count == 0)
             {
-                var request = BuildRequestForElement(element, targetWidth);
-                return TextShaper.Shared.ShapeParagraph(request);
+                var request = BuildRequestForElement(element, element.NoWrap ? 0f : targetWidth);
+                var paragraph = TextShaper.Shared.ShapeParagraph(request);
+                return element.NoWrap && element.EllipsisWhenConstrained && targetWidth > 0f && paragraph.MaxLineWidth > targetWidth
+                    ? ShapeEllipsized(element, targetWidth)
+                    : paragraph;
             }
 
             var rich = BuildRichElement(element);
@@ -44,6 +47,45 @@ namespace PdfBuilder.TextShaping
         {
             return new TextShapingRequest(
                 element.Text ?? string.Empty,
+                element.FontFamily,
+                element.FontSize,
+                element.LineHeight,
+                maxWidth,
+                element.Bold,
+                element.Italic,
+                element.SmallCaps,
+                element.Monospace,
+                element.FallbackFonts,
+                element.FlowDirection,
+                element.LetterSpacing,
+                element.WordSpacing,
+                element.Transform);
+        }
+
+        private static ShapedParagraph ShapeEllipsized(TextElement element, float maxWidth)
+        {
+            const string ellipsis = "…";
+            string text = element.Text ?? string.Empty;
+            var pieces = new List<string>();
+            var enumerator = System.Globalization.StringInfo.GetTextElementEnumerator(text);
+            while (enumerator.MoveNext())
+                pieces.Add(enumerator.GetTextElement());
+
+            for (int count = pieces.Count; count >= 0; count--)
+            {
+                string candidate = string.Concat(pieces.Take(count)) + ellipsis;
+                var shape = TextShaper.Shared.ShapeParagraph(BuildRequestForElement(element, 0f, candidate));
+                if (shape.MaxLineWidth <= maxWidth)
+                    return shape;
+            }
+
+            return TextShaper.Shared.ShapeParagraph(BuildRequestForElement(element, 0f, string.Empty));
+        }
+
+        private static TextShapingRequest BuildRequestForElement(TextElement element, float maxWidth, string text)
+        {
+            return new TextShapingRequest(
+                text,
                 element.FontFamily,
                 element.FontSize,
                 element.LineHeight,

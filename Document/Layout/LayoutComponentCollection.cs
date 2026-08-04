@@ -157,6 +157,23 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        /// <summary>Adds a shaped rich-text paragraph to the current layout flow.</summary>
+        internal LayoutComponentCollection RichText(Action<RichTextElement> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            var flow = _owner.GetFlow();
+            var element = new RichTextElement(flow.X, flow.Y)
+            {
+                MaxWidth = flow.Width
+            };
+            _owner.ApplyRichTextDefaults(element);
+            element.FlowDirection = _owner.CurrentFlowDirection;
+            configure(element);
+            _components.Add(new RichTextComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
         public LayoutComponentCollection List(Action<ListElement> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));

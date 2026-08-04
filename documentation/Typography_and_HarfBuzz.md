@@ -5,6 +5,25 @@ Overview
 --------
 PdfBuilder uses HarfBuzz (via SkiaSharp.HarfBuzz) for shaping text in `TextElement`, `RichTextElement`, and table cells. Complex scripts, ligatures, diacritics, and mixed-direction paragraphs render correctly without manual intervention.
 
+The same `ShapedParagraph` is retained from measurement through rendering. Width, direction, family, style, spacing, transforms, and the active font-catalog version participate in shaping; registration changes therefore cannot reuse a stale typeface cache.
+
+For the canonical API, normal text and rich spans stay coordinate-free:
+
+```csharp
+document.Page(page => page.Content().Column(column =>
+{
+    column.Item().Text("Heading").FontSize(18).Bold().Color("#123456");
+    column.Item().RichText(rich =>
+    {
+        rich.DefaultStyle().FontFamily("Invoice Sans").LineHeight(1.3f);
+        rich.Span("Amount: ").Bold();
+        rich.Span("R 1 250.00").Color("#0B6E4F").Underline();
+    });
+}));
+```
+
+`NoWrap().Ellipsis()` limits a canonical paragraph to one line while preserving grapheme clusters. `Direction(FlowDirection.RightToLeft)` controls paragraph direction; text alignment is independent of container alignment.
+
 Key Components
 --------------
 - `TextShaper` (`Document/TextShaping/TextShaper.cs`): shapes paragraphs into glyph runs with directionality and line wrapping.

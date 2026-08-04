@@ -100,6 +100,8 @@ public interface IContainer
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
+    /// <summary>Adds a rich-text paragraph with independently styled spans.</summary>
+    void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a vertical column.</summary>
     void Column(Action<IColumnDescriptor> configure);
     /// <summary>Adds a horizontal row.</summary>
@@ -187,11 +189,54 @@ public interface ITextStyleDescriptor
     ITextStyleDescriptor FontSize(float size);
     /// <summary>Uses a bold font style.</summary>
     ITextStyleDescriptor Bold();
+    /// <summary>Uses an italic font style.</summary>
+    ITextStyleDescriptor Italic();
+    /// <summary>Sets the text colour as a #RRGGBB value.</summary>
+    ITextStyleDescriptor Color(string color);
+    /// <summary>Sets the line-height multiplier.</summary>
+    ITextStyleDescriptor LineHeight(float value);
+    /// <summary>Sets extra spacing between glyphs in points.</summary>
+    ITextStyleDescriptor LetterSpacing(float value);
+    /// <summary>Sets extra spacing for whitespace glyphs in points.</summary>
+    ITextStyleDescriptor WordSpacing(float value);
+    /// <summary>Draws an underline beneath the text.</summary>
+    ITextStyleDescriptor Underline();
+    /// <summary>Draws a strikethrough through the text.</summary>
+    ITextStyleDescriptor Strikethrough();
+    /// <summary>Raises the text relative to its baseline.</summary>
+    ITextStyleDescriptor Superscript();
+    /// <summary>Lowers the text relative to its baseline.</summary>
+    ITextStyleDescriptor Subscript();
+    /// <summary>Aligns text to the left of its available width.</summary>
+    ITextStyleDescriptor AlignLeft();
+    /// <summary>Centers text within its available width.</summary>
+    ITextStyleDescriptor AlignCenter();
+    /// <summary>Aligns text to the right of its available width.</summary>
+    ITextStyleDescriptor AlignRight();
+    /// <summary>Justifies all non-final wrapped lines.</summary>
+    ITextStyleDescriptor Justify();
+    /// <summary>Sets the paragraph text direction.</summary>
+    ITextStyleDescriptor Direction(FlowDirection direction);
+    /// <summary>Prevents automatic line wrapping.</summary>
+    ITextStyleDescriptor NoWrap();
+    /// <summary>Enables automatic line wrapping.</summary>
+    ITextStyleDescriptor Wrap();
+    /// <summary>Uses an ellipsis when a no-wrap paragraph is constrained.</summary>
+    ITextStyleDescriptor Ellipsis();
 }
 
 /// <summary>Configures text content added to a container.</summary>
 public interface ITextDescriptor : ITextStyleDescriptor
 {
+}
+
+/// <summary>Configures a rich-text paragraph.</summary>
+public interface IRichTextDescriptor
+{
+    /// <summary>Sets paragraph text styling.</summary>
+    ITextStyleDescriptor DefaultStyle();
+    /// <summary>Adds a text span and returns its style descriptor.</summary>
+    ITextStyleDescriptor Span(string text);
 }
 
 /// <summary>Defines the orientation applied to a page size.</summary>
@@ -356,6 +401,13 @@ public partial class PdfDocument
             var descriptor = new CanonicalTextStyle();
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
+        }
+        public void RichText(Action<IRichTextDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var descriptor = new CanonicalRichTextDescriptor();
+            configure(descriptor);
+            _content.Add(composer => composer.RichText(descriptor.Apply));
         }
         public void Column(Action<IColumnDescriptor> configure)
         {
@@ -557,11 +609,106 @@ public partial class PdfDocument
 
     private sealed class CanonicalTextStyle : ITextDescriptor
     {
-        private string? _family; private float? _size; private bool _bold;
+        private string? _family, _color;
+        private float? _size, _lineHeight, _letterSpacing, _wordSpacing, _baselineOffset;
+        private bool _bold, _italic, _underline, _strikethrough, _noWrap, _ellipsis;
+        private TextAlignment? _alignment;
+        private FlowDirection? _direction;
         public ITextStyleDescriptor FontFamily(string family) { _family = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
         public ITextStyleDescriptor FontSize(float size) { _size = size <= 0 ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
         public ITextStyleDescriptor Bold() { _bold = true; return this; }
-        public void Apply(TextStyleDefaults defaults) { if (_family != null) defaults.FontFamily = _family; if (_size.HasValue) defaults.FontSize = _size; if (_bold) defaults.Bold = true; }
-        public void Apply(TextElement element) { if (_family != null) element.FontFamily = _family; if (_size.HasValue) element.FontSize = _size.Value; if (_bold) element.Bold = true; }
+        public ITextStyleDescriptor Italic() { _italic = true; return this; }
+        public ITextStyleDescriptor Color(string color) { _color = ValidateColor(color); return this; }
+        public ITextStyleDescriptor LineHeight(float value) { _lineHeight = ValidatePositive(value, nameof(value)); return this; }
+        public ITextStyleDescriptor LetterSpacing(float value) { _letterSpacing = ValidateFinite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor WordSpacing(float value) { _wordSpacing = ValidateFinite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor Underline() { _underline = true; return this; }
+        public ITextStyleDescriptor Strikethrough() { _strikethrough = true; return this; }
+        public ITextStyleDescriptor Superscript() { _baselineOffset = 0.35f; return this; }
+        public ITextStyleDescriptor Subscript() { _baselineOffset = -0.20f; return this; }
+        public ITextStyleDescriptor AlignLeft() { _alignment = TextAlignment.Left; return this; }
+        public ITextStyleDescriptor AlignCenter() { _alignment = TextAlignment.Center; return this; }
+        public ITextStyleDescriptor AlignRight() { _alignment = TextAlignment.Right; return this; }
+        public ITextStyleDescriptor Justify() { _alignment = TextAlignment.Justify; return this; }
+        public ITextStyleDescriptor Direction(FlowDirection direction) { _direction = direction; return this; }
+        public ITextStyleDescriptor NoWrap() { _noWrap = true; return this; }
+        public ITextStyleDescriptor Wrap() { _noWrap = false; return this; }
+        public ITextStyleDescriptor Ellipsis() { _ellipsis = true; return this; }
+        public void Apply(TextStyleDefaults defaults)
+        {
+            if (_family != null) defaults.FontFamily = _family;
+            if (_size.HasValue) defaults.FontSize = _size;
+            if (_bold) defaults.Bold = true;
+            if (_italic) defaults.Italic = true;
+        }
+        public void Apply(TextElement element)
+        {
+            if (_family != null) element.FontFamily = _family;
+            if (_size.HasValue) element.FontSize = _size.Value;
+            if (_bold) element.Bold = true;
+            if (_italic) element.Italic = true;
+            if (_color != null) element.Color = _color;
+            if (_lineHeight.HasValue) element.LineHeight = _lineHeight.Value;
+            if (_letterSpacing.HasValue) element.LetterSpacing = _letterSpacing;
+            if (_wordSpacing.HasValue) element.WordSpacing = _wordSpacing;
+            if (_baselineOffset.HasValue) element.BaselineOffset = element.FontSize * _baselineOffset.Value;
+            if (_underline) element.Underline = true;
+            if (_strikethrough) element.Strikethrough = true;
+            if (_alignment.HasValue) element.Alignment = _alignment.Value;
+            if (_direction.HasValue) element.FlowDirection = _direction.Value;
+            element.NoWrap = _noWrap;
+            element.EllipsisWhenConstrained = _ellipsis;
+        }
+        public void Apply(RichRun run)
+        {
+            if (_family != null) run.FontFamily = _family;
+            if (_size.HasValue) run.FontSize = _size;
+            if (_bold) run.Bold = true;
+            if (_italic) run.Italic = true;
+            if (_color != null) run.Color = _color;
+            if (_underline) run.Underline = true;
+            if (_strikethrough) run.Strikethrough = true;
+            if (_letterSpacing.HasValue) run.LetterSpacing = _letterSpacing;
+            if (_wordSpacing.HasValue) run.WordSpacing = _wordSpacing;
+        }
+        public void Apply(RichTextElement element)
+        {
+            if (_family != null) element.FontFamily = _family;
+            if (_size.HasValue) element.FontSize = _size.Value;
+            if (_lineHeight.HasValue) element.LineHeight = _lineHeight.Value;
+            if (_alignment.HasValue) element.Alignment = _alignment.Value;
+            if (_direction.HasValue) element.FlowDirection = _direction.Value;
+        }
+        private static float ValidatePositive(float value, string parameterName) => value <= 0f || float.IsNaN(value) || float.IsInfinity(value) ? throw new ArgumentOutOfRangeException(parameterName) : value;
+        private static float ValidateFinite(float value, string parameterName) => float.IsNaN(value) || float.IsInfinity(value) ? throw new ArgumentOutOfRangeException(parameterName) : value;
+        private static string ValidateColor(string color)
+        {
+            if (string.IsNullOrWhiteSpace(color)) throw new ArgumentException("A color is required.", nameof(color));
+            return color;
+        }
+    }
+
+    private sealed class CanonicalRichTextDescriptor : IRichTextDescriptor
+    {
+        private readonly CanonicalTextStyle _defaultStyle = new();
+        private readonly List<(string Text, CanonicalTextStyle Style)> _spans = new();
+        public ITextStyleDescriptor DefaultStyle() => _defaultStyle;
+        public ITextStyleDescriptor Span(string text)
+        {
+            var style = new CanonicalTextStyle();
+            _spans.Add((text ?? string.Empty, style));
+            return style;
+        }
+        public void Apply(RichTextElement element)
+        {
+            _defaultStyle.Apply(element);
+            foreach (var (text, style) in _spans)
+            {
+                var run = new RichRun { Text = text, FontFamily = element.FontFamily, FontSize = element.FontSize };
+                _defaultStyle.Apply(run);
+                style.Apply(run);
+                element.Runs.Add(run);
+            }
+        }
     }
 }
