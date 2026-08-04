@@ -643,6 +643,7 @@ namespace PdfBuilder.Document
         public ChartBuilder AddSeries(IChartSeries series) { if (series != null) _chart.Series.Add(series); return this; }
 
         // ========== Commit ==========
+        [Obsolete("Use IContainer.Chart instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB004")]
         public float Add()
         {
             return _col.AddChart(_chart);

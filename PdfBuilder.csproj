@@ -4,11 +4,25 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <NoWarn>$(NoWarn);RS0026;RS0027</NoWarn>
+    <NoWarn>$(NoWarn);RS0026;RS0027;CS1591;CS1570;PDFB001;PDFB002;PDFB003;PDFB004;PDFB005;PDFB006;PDFB007</NoWarn>
+    <PackageId>PdfBuilder</PackageId>
+    <Version>0.1.0-alpha.1</Version>
+    <Description>Pre-release, coordinate-free PDF generation for .NET applications.</Description>
+    <Authors>MrSneazy-R</Authors>
+    <PackageTags>pdf;document;invoice;report;layout</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.HarfBuzz" />
     <PackageReference Include="SkiaSharp.Svg" />
@@ -20,6 +34,10 @@
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.macOS" />
     <PackageReference Include="ZXing.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
   <ItemGroup>

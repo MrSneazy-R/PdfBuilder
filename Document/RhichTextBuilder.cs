@@ -31,6 +31,7 @@ namespace PdfBuilder.Document
             return new SpanBuilder(this, run);
         }
 
+        [Obsolete("Use IContainer.Text and canonical text descriptors instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB005")]
         public float Add()
         {
             return _col.AddRichText(_rt);

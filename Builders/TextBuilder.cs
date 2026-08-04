@@ -93,6 +93,7 @@ namespace PdfBuilder.Document
         }
 
         // --- End chain and add to column ---
+        [Obsolete("Use PdfDocument.Create and IContainer.Text instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB001")]
         public float Add()
         {
             _text.FlowDirection = _col.CurrentFlowDirection;

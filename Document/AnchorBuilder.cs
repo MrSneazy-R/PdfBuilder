@@ -7,6 +7,7 @@ namespace PdfBuilder.Document
         public AnchorBuilder(ColumnBuilder col, string id, float x, float y) { _col = col; _a = new AnchorElement(id, x, y); }
         public AnchorBuilder Title(string t) { _a.Title = t; return this; }
         public AnchorBuilder Level(int lvl) { _a.Level = lvl; return this; }
+        [Obsolete("Use canonical section and navigation composition instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB007")]
         public ColumnBuilder Add() { _col.AddAnchor(_a); return _col; }
     }
 }
