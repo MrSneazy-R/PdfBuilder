@@ -36,4 +36,4 @@ var pdf = PdfDocument.Create(document =>
     });
 });
 
-pdf.Save("hello.pdf");
+pdf.Save(Path.Combine(AppContext.BaseDirectory, "hello.pdf"));

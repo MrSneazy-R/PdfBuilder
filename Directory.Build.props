@@ -3,6 +3,8 @@
     <Deterministic>true</Deterministic>
     <RepositoryUrl>https://github.com/MrSneazy-R/PdfBuilder</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <DebugType>portable</DebugType>
+    <DebugSymbols>true</DebugSymbols>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

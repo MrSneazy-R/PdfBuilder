@@ -14,7 +14,7 @@ var pdf = PdfDocument.Create(document =>
     });
 });
 
-pdf.Save("layout-diagnostics.pdf");
-File.WriteAllText("layout-trace.json", pdf.LayoutTrace.ToJson());
+pdf.Save(Path.Combine(AppContext.BaseDirectory, "layout-diagnostics.pdf"));
+File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "layout-trace.json"), pdf.LayoutTrace.ToJson());
 var preview = pdf.GeneratePreviewImages(96, new[] { 1 }).Single();
-File.WriteAllBytes("layout-preview.png", preview.ImageData);
+File.WriteAllBytes(Path.Combine(AppContext.BaseDirectory, "layout-preview.png"), preview.ImageData);
