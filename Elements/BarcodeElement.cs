@@ -23,8 +23,12 @@ namespace PdfBuilder.Elements
 
             _value = value;
             _kind = kind;
-            _moduleSize = Math.Max(0.25f, moduleSize);
-            _quietZone = Math.Max(0, quietZone);
+            if (moduleSize <= 0f || float.IsNaN(moduleSize) || float.IsInfinity(moduleSize))
+                throw new ArgumentOutOfRangeException(nameof(moduleSize), "Barcode module size must be a positive finite value.");
+            if (quietZone < 0)
+                throw new ArgumentOutOfRangeException(nameof(quietZone), "Barcode quiet zone cannot be negative.");
+            _moduleSize = moduleSize;
+            _quietZone = quietZone;
             _foregroundColor = "#000000";
             RebuildCommands();
         }
@@ -62,7 +66,9 @@ namespace PdfBuilder.Elements
             get => _moduleSize;
             set
             {
-                float normalized = Math.Max(0.25f, value);
+                if (value <= 0f || float.IsNaN(value) || float.IsInfinity(value))
+                    throw new ArgumentOutOfRangeException(nameof(value), "Barcode module size must be a positive finite value.");
+                float normalized = value;
                 if (Math.Abs(_moduleSize - normalized) > 0.001f)
                 {
                     _moduleSize = normalized;
@@ -76,7 +82,8 @@ namespace PdfBuilder.Elements
             get => _quietZone;
             set
             {
-                int normalized = Math.Max(0, value);
+                if (value < 0) throw new ArgumentOutOfRangeException(nameof(value), "Barcode quiet zone cannot be negative.");
+                int normalized = value;
                 if (_quietZone != normalized)
                 {
                     _quietZone = normalized;

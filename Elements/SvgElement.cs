@@ -1,7 +1,5 @@
 using System;
-using System.IO;
-using System.Text;
-using SkiaSharp;
+using PdfBuilder.Writer.Imaging;
 
 namespace PdfBuilder.Elements
 {
@@ -83,37 +81,7 @@ namespace PdfBuilder.Elements
                 return;
             }
 
-            var svg = new SkiaSharp.Extended.Svg.SKSvg();
-            using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(_svgContent)))
-            {
-                svg.Load(stream);
-            }
-
-            var picture = svg.Picture ?? throw new InvalidOperationException("Unable to parse SVG content.");
-            var bounds = svg.ViewBox;
-            if (bounds.Width <= 0f || bounds.Height <= 0f)
-                bounds = picture.CullRect;
-
-            if (bounds.Width <= 0f || bounds.Height <= 0f)
-                bounds = new SKRect(0, 0, Width, Height);
-
-            int pixelWidth = Math.Max(1, (int)Math.Ceiling(Width * _dpi / 72f));
-            int pixelHeight = Math.Max(1, (int)Math.Ceiling(Height * _dpi / 72f));
-
-            var info = new SKImageInfo(pixelWidth, pixelHeight, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using var surface = SKSurface.Create(info);
-            var canvas = surface.Canvas;
-            canvas.Clear(SKColors.Transparent);
-
-            float scaleX = pixelWidth / bounds.Width;
-            float scaleY = pixelHeight / bounds.Height;
-            canvas.Scale(scaleX, scaleY);
-            canvas.DrawPicture(picture);
-            canvas.Flush();
-
-            using var image = surface.Snapshot();
-            using var data = image.Encode(SKEncodedImageFormat.Png, 100);
-            ImageData = data.ToArray();
+            ImageData = new SecureSvgRenderer().Render(_svgContent, Width, Height, _dpi);
             MimeType = "image/png";
         }
     }

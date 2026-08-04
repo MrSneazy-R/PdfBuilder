@@ -260,6 +260,7 @@ PdfBuilder.Document.IContainer.AlignRight() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.AlignTop() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.AspectRatio(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Background(string! color) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Barcode(string! value, PdfBuilder.Elements.BarcodeKind kind = PdfBuilder.Elements.BarcodeKind.QrCode, float moduleSize = 2, int quietZone = 4) -> void
 PdfBuilder.Document.IContainer.Border(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderBottom(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
@@ -271,6 +272,7 @@ PdfBuilder.Document.IContainer.EnsureSpace(float minimumHeight) -> PdfBuilder.Do
 PdfBuilder.Document.IContainer.Extend() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Grid(System.Action<PdfBuilder.Document.IGridDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Height(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Image(byte[]! data, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IContainer.KeepTogether() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Layer(System.Action<PdfBuilder.Document.ILayerDescriptor!>! configure) -> void
@@ -288,14 +290,21 @@ PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.D
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Svg(string! markup, float width, float height) -> void
 PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Table(System.Action<PdfBuilder.Document.ITableDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.Chart(System.Action<PdfBuilder.Document.IChartDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Text(System.Func<string!>! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Page(System.Action<PdfBuilder.Document.IPageDescriptor!>! configure) -> void
+PdfBuilder.Document.IChartDescriptor
+PdfBuilder.Document.IChartDescriptor.Bars(string! name, System.Collections.Generic.IEnumerable<float>! values, PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IChartDescriptor.Line(string! name, System.Collections.Generic.IEnumerable<float>! values, PdfBuilder.Models.PdfColor color, float strokeWidth = 1) -> void
+PdfBuilder.Document.IChartDescriptor.Size(float width, float height) -> void
+PdfBuilder.Document.IChartDescriptor.Title(string! value) -> void
 PdfBuilder.Document.IGridDescriptor
 PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
 PdfBuilder.Document.IGridDescriptor.ColumnSpacing(float value) -> void
@@ -305,6 +314,16 @@ PdfBuilder.Document.ILayerDescriptor
 PdfBuilder.Document.ILayerDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ILayerDescriptor.Content() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ILayerDescriptor.Foreground() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IImageDescriptor
+PdfBuilder.Document.IImageDescriptor.AlignCenter() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Border(float width = 1, PdfBuilder.Models.PdfColor? color = null) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Circle() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Contain() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.CornerRadius(float value) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Cover() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Opacity(float value) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.OriginalSize() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Stretch() -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.ImageBuilder
 PdfBuilder.Document.ImageBuilder.Add() -> float
 PdfBuilder.Document.ImageBuilder.Border(string! color, float width) -> PdfBuilder.Document.ImageBuilder!
@@ -2271,6 +2290,11 @@ PdfBuilder.Models.MasterPageSpec.BackgroundImageY.set -> void
 PdfBuilder.Models.MasterPageSpec.MasterPageSpec() -> void
 PdfBuilder.Models.MasterPageSpec.Watermark.get -> PdfBuilder.Models.WatermarkSpec?
 PdfBuilder.Models.MasterPageSpec.Watermark.set -> void
+PdfBuilder.Models.PdfColor.Alpha.init -> void
+PdfBuilder.Models.PdfColor.Blue.init -> void
+PdfBuilder.Models.PdfColor.Green.init -> void
+PdfBuilder.Models.PdfColor.PdfColor() -> void
+PdfBuilder.Models.PdfColor.Red.init -> void
 PdfBuilder.Models.PdfOutputOptions
 PdfBuilder.Models.PdfOutputOptions.Clone() -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.CompressContentStreams.get -> bool
@@ -2740,6 +2764,15 @@ static PdfBuilder.Models.PdfPage.A4Landscape() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.Custom(float width, float height) -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.Letter() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.LetterLandscape() -> PdfBuilder.Models.PdfPage!
+PdfBuilder.Models.PdfColor
+PdfBuilder.Models.PdfColor.Alpha.get -> byte
+PdfBuilder.Models.PdfColor.Blue.get -> byte
+PdfBuilder.Models.PdfColor.Green.get -> byte
+PdfBuilder.Models.PdfColor.PdfColor(byte Red, byte Green, byte Blue, byte Alpha = 255) -> void
+PdfBuilder.Models.PdfColor.Red.get -> byte
+static PdfBuilder.Models.PdfColor.Parse(string! value) -> PdfBuilder.Models.PdfColor
+static PdfBuilder.Models.PdfColor.Rgb(byte red, byte green, byte blue) -> PdfBuilder.Models.PdfColor
+override PdfBuilder.Models.PdfColor.ToString() -> string!
 static PdfBuilder.Writer.FontManager.MapToBase14(string! key) -> string!
 static PdfBuilder.Writer.FontManager.NormalizeFontKey(string? fontFamily, bool bold = false, bool italic = false) -> string!
 PdfBuilder.Writer.PdfWriter.GenerateBytes(PdfBuilder.Document.PdfDocument! doc, System.Threading.CancellationToken cancellationToken) -> byte[]!

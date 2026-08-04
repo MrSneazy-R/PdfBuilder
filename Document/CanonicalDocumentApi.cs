@@ -112,6 +112,14 @@ public interface IContainer
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
+    /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>
+    IImageDescriptor Image(byte[] data, float width, float height);
+    /// <summary>Adds sanitised inline SVG markup without exposing image elements.</summary>
+    void Svg(string markup, float width, float height);
+    /// <summary>Adds a vector QR Code or Code 128 barcode.</summary>
+    void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4);
+    /// <summary>Adds a vector chart using PdfColor rather than System.Drawing types.</summary>
+    void Chart(Action<IChartDescriptor> configure);
     /// <summary>Adds a flowing table that participates in normal layout and pagination.</summary>
     void Table(Action<ITableDescriptor> configure);
     /// <summary>Adds text resolved when the container is rendered.</summary>
@@ -208,6 +216,42 @@ public interface ITextStyleDescriptor
 /// <summary>Configures text content added to a container.</summary>
 public interface ITextDescriptor : ITextStyleDescriptor
 {
+}
+
+/// <summary>Configures a canonical raster image.</summary>
+public interface IImageDescriptor
+{
+    /// <summary>Fits the complete image inside the allocated box.</summary>
+    IImageDescriptor Contain();
+    /// <summary>Fills the allocated box and crops overflow.</summary>
+    IImageDescriptor Cover();
+    /// <summary>Stretches the image to the allocated box.</summary>
+    IImageDescriptor Stretch();
+    /// <summary>Uses intrinsic image size where DPI metadata is available.</summary>
+    IImageDescriptor OriginalSize();
+    /// <summary>Centres an aspect-ratio-preserving image.</summary>
+    IImageDescriptor AlignCenter();
+    /// <summary>Sets image opacity.</summary>
+    IImageDescriptor Opacity(float value);
+    /// <summary>Adds an image border.</summary>
+    IImageDescriptor Border(float width = 1f, PdfColor? color = null);
+    /// <summary>Rounds image corners.</summary>
+    IImageDescriptor CornerRadius(float value);
+    /// <summary>Clips the image to a circle.</summary>
+    IImageDescriptor Circle();
+}
+
+/// <summary>Configures a canonical vector chart.</summary>
+public interface IChartDescriptor
+{
+    /// <summary>Sets the chart size in points.</summary>
+    void Size(float width, float height);
+    /// <summary>Sets the chart title.</summary>
+    void Title(string value);
+    /// <summary>Adds a line series with values plotted against ordinal positions.</summary>
+    void Line(string name, IEnumerable<float> values, PdfColor color, float strokeWidth = 1f);
+    /// <summary>Adds a bar series with values plotted against ordinal positions.</summary>
+    void Bars(string name, IEnumerable<float> values, PdfColor color);
 }
 
 /// <summary>Configures a basic flowing table.</summary>
@@ -471,6 +515,33 @@ public partial class PdfDocument
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
+        public IImageDescriptor Image(byte[] data, float width, float height)
+        {
+            if (data == null) throw new ArgumentNullException(nameof(data));
+            if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "Image dimensions must be positive.");
+            var descriptor = new CanonicalImageDescriptor();
+            _content.Add(composer => composer.Image(data, width, height, descriptor.Apply));
+            return descriptor;
+        }
+        public void Svg(string markup, float width, float height)
+        {
+            if (string.IsNullOrWhiteSpace(markup)) throw new ArgumentException("SVG markup is required.", nameof(markup));
+            if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "SVG dimensions must be positive.");
+            _content.Add(composer => composer.Svg(width, height, element => element.SvgContent = markup));
+        }
+        public void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4)
+        {
+            if (kind is not BarcodeKind.QrCode and not BarcodeKind.Code128)
+                throw new NotSupportedException("The canonical barcode API supports QR Code and Code 128.");
+            _content.Add(composer => composer.Barcode(value, kind, moduleSize, quietZone));
+        }
+        public void Chart(Action<IChartDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var descriptor = new CanonicalChartDescriptor();
+            configure(descriptor);
+            _content.Add(composer => composer.Component(new Layout.Components.ChartComponent(descriptor.Chart)));
+        }
         public void Table(Action<ITableDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -561,6 +632,65 @@ public partial class PdfDocument
         private static float ValidateDimension(float value, string name) { ValidateNonNegative(value, name); return value; }
         private static void ValidateNonNegative(float value, string name) { if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(name); }
         private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
+    }
+
+    private sealed class CanonicalImageDescriptor : IImageDescriptor
+    {
+        private ImageFit _fit = ImageFit.Contain;
+        private ImageAlignment _alignment = ImageAlignment.Center;
+        private float _opacity = 1f;
+        private float? _borderWidth;
+        private PdfColor _borderColor = PdfColor.Rgb(0, 0, 0);
+        private float? _cornerRadius;
+        private bool _circle;
+
+        public IImageDescriptor Contain() { _fit = ImageFit.Contain; return this; }
+        public IImageDescriptor Cover() { _fit = ImageFit.Cover; return this; }
+        public IImageDescriptor Stretch() { _fit = ImageFit.Stretch; return this; }
+        public IImageDescriptor OriginalSize() { _fit = ImageFit.Original; return this; }
+        public IImageDescriptor AlignCenter() { _alignment = ImageAlignment.Center; return this; }
+        public IImageDescriptor Opacity(float value) { if (value < 0f || value > 1f || float.IsNaN(value)) throw new ArgumentOutOfRangeException(nameof(value)); _opacity = value; return this; }
+        public IImageDescriptor Border(float width = 1f, PdfColor? color = null) { if (width < 0f || float.IsNaN(width)) throw new ArgumentOutOfRangeException(nameof(width)); _borderWidth = width; _borderColor = color ?? PdfColor.Rgb(0, 0, 0); return this; }
+        public IImageDescriptor CornerRadius(float value) { if (value < 0f || float.IsNaN(value)) throw new ArgumentOutOfRangeException(nameof(value)); _cornerRadius = value; return this; }
+        public IImageDescriptor Circle() { _circle = true; return this; }
+        public void Apply(ImageElement image)
+        {
+            image.Fit = _fit;
+            image.Alignment = _alignment;
+            image.Opacity = _opacity;
+            image.BorderWidth = _borderWidth;
+            image.BorderColor = _borderColor.ToString();
+            image.CornerRadius = _cornerRadius;
+            image.ClipShape = _circle ? ImageClipShape.Circle : ImageClipShape.None;
+        }
+    }
+
+    private sealed class CanonicalChartDescriptor : IChartDescriptor
+    {
+        public ChartElement Chart { get; } = new();
+        public void Size(float width, float height)
+        {
+            if (width <= 0f || height <= 0f || float.IsNaN(width) || float.IsNaN(height)) throw new ArgumentOutOfRangeException(nameof(width));
+            Chart.Width = width;
+            Chart.Height = height;
+        }
+        public void Title(string value) => Chart.Title = value ?? string.Empty;
+        public void Line(string name, IEnumerable<float> values, PdfColor color, float strokeWidth = 1f)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            if (strokeWidth <= 0f || float.IsNaN(strokeWidth)) throw new ArgumentOutOfRangeException(nameof(strokeWidth));
+            var series = new LineSeries { Name = name ?? string.Empty, Stroke = ToDrawingColor(color), StrokeWidth = strokeWidth };
+            series.Points.AddRange(values.Select((value, index) => new System.Drawing.PointF(index, value)));
+            Chart.Series.Add(series);
+        }
+        public void Bars(string name, IEnumerable<float> values, PdfColor color)
+        {
+            if (values == null) throw new ArgumentNullException(nameof(values));
+            var series = new BarSeries { Name = name ?? string.Empty, Fill = ToDrawingColor(color), Stroke = ToDrawingColor(color) };
+            foreach (var (value, index) in values.Select((value, index) => (value, index))) series.Bars.Add((index, value));
+            Chart.Series.Add(series);
+        }
+        private static System.Drawing.Color ToDrawingColor(PdfColor color) => System.Drawing.Color.FromArgb(color.Alpha, color.Red, color.Green, color.Blue);
     }
 
     private sealed class CanonicalTableDescriptor : ITableDescriptor
