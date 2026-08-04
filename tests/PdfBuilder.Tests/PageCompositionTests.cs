@@ -62,6 +62,50 @@ public sealed class PageCompositionTests
     }
 
     [Fact]
+    public void Header_FirstPageDifferent_RendersCorrectly()
+    {
+        var document = PdfDocument.Create(descriptor =>
+        {
+            descriptor.Page(page =>
+            {
+                page.FirstPageDifferent();
+                page.Header().Text("Repeated header");
+                page.Content().Text("First page");
+            });
+            descriptor.Page(page =>
+            {
+                page.Header().Text("Repeated header");
+                page.Content().Text("Second page");
+            });
+        });
+
+        var text = string.Join("\n", PdfTextExtractor.ExtractTextBlocks(document.GenerateBytes()));
+        Assert.Equal(1, text.Split("Repeated", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
+    public void Footer_HideOnLastPage_RendersCorrectly()
+    {
+        var document = PdfDocument.Create(descriptor =>
+        {
+            descriptor.Page(page =>
+            {
+                page.Footer().Text("Footer marker");
+                page.Content().Text("First page");
+            });
+            descriptor.Page(page =>
+            {
+                page.HideFooterOnLastPage();
+                page.Footer().Text("Footer marker");
+                page.Content().Text("Last page");
+            });
+        });
+
+        var text = string.Join("\n", PdfTextExtractor.ExtractTextBlocks(document.GenerateBytes()));
+        Assert.Equal(1, text.Split("Footer", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
     public void MultiColumnPage_PaginatesCorrectly()
     {
         var document = PdfDocument.Create(descriptor => descriptor.Page(page =>

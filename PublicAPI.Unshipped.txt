@@ -346,6 +346,8 @@ PdfBuilder.Document.ImageBuilder.X(float x) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.Y(float y) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.IPageDescriptor
 PdfBuilder.Document.IPageDescriptor.Background() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.FirstPageDifferent() -> void
+PdfBuilder.Document.IPageDescriptor.HideFooterOnLastPage() -> void
 PdfBuilder.Document.IPageDescriptor.Columns(int count, float gutter = 14) -> void
 PdfBuilder.Document.IPageDescriptor.Content() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.DefaultTextStyle(System.Action<PdfBuilder.Document.ITextStyleDescriptor!>! configure) -> void
@@ -2698,6 +2700,8 @@ static PdfBuilder.Document.HeaderFooterTokens.NowUtc.get -> System.DateTime
 static PdfBuilder.Document.HeaderFooterTokens.Page.get -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Document.HeaderFooterTokens.PageCount.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.PageNumber.get -> int
+static PdfBuilder.Document.HeaderFooterTokens.SectionPageCount.get -> int
+static PdfBuilder.Document.HeaderFooterTokens.SectionPageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.Title.get -> string?
 static PdfBuilder.Document.Layout.LayoutMeasurement.Wrap(float usedWidth = 0, object? metadata = null) -> PdfBuilder.Document.Layout.LayoutMeasurement!
 static PdfBuilder.Document.PageSizes.A3.get -> PdfBuilder.Document.PageSize

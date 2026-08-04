@@ -35,6 +35,10 @@ public interface IPageDescriptor
     IContainer Footer();
     /// <summary>Returns the page background container.</summary>
     IContainer Background();
+    /// <summary>Suppresses the canonical header and footer on this page when it is the document's first page.</summary>
+    void FirstPageDifferent();
+    /// <summary>Suppresses the canonical footer when this page is the document's last page.</summary>
+    void HideFooterOnLastPage();
     /// <summary>Configures equal-width content columns and their gutter in points.</summary>
     void Columns(int count, float gutter = 14f);
 }
@@ -337,7 +341,7 @@ public partial class PdfDocument
         private readonly CanonicalTextStyle _defaultStyle = new();
         private int _columnCount = 1;
         private float _columnGutter = 14f;
-        private bool _hasHeader, _hasFooter, _hasBackground;
+        private bool _hasHeader, _hasFooter, _hasBackground, _firstPageDifferent, _hideFooterOnLastPage;
 
         public CanonicalPageDescriptor(PdfDocument document) => _document = document;
         public void Size(PageSize size)
@@ -361,6 +365,8 @@ public partial class PdfDocument
         public IContainer Header() { _hasHeader = true; return _header; }
         public IContainer Footer() { _hasFooter = true; return _footer; }
         public IContainer Background() { _hasBackground = true; return _background; }
+        public void FirstPageDifferent() => _firstPageDifferent = true;
+        public void HideFooterOnLastPage() => _hideFooterOnLastPage = true;
         public void Columns(int count, float gutter = 14f)
         {
             if (count <= 0) throw new ArgumentOutOfRangeException(nameof(count));
@@ -379,7 +385,9 @@ public partial class PdfDocument
                 page.HeaderFooterOverride = new HeaderFooterSpec
                 {
                     HeaderLayout = _hasHeader ? new HeaderFooterLayoutDefinition(_header.Compose) : null,
-                    FooterLayout = _hasFooter ? new HeaderFooterLayoutDefinition(_footer.Compose) : null
+                    FooterLayout = _hasFooter ? new HeaderFooterLayoutDefinition(_footer.Compose) : null,
+                    FirstPageDifferent = _firstPageDifferent,
+                    HideOnLastPage = _hideFooterOnLastPage
                 };
             }
             if (_hasBackground)
