@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using SkiaSharp;
@@ -9,7 +10,7 @@ namespace PdfBuilder.Writer.Fonts
 {
     internal sealed class EmbeddedFontRegistry
     {
-        private readonly Dictionary<long, EmbeddedFont> _fonts = new();
+        private readonly Dictionary<string, List<EmbeddedFont>> _fonts = new(StringComparer.Ordinal);
         private int _fontSequence = 1;
 
         public GlyphRegistration RegisterGlyph(SKTypeface typeface, uint glyphId, string unicode)
@@ -21,7 +22,7 @@ namespace PdfBuilder.Writer.Fonts
             return new GlyphRegistration(font, glyph);
         }
 
-        public IReadOnlyCollection<EmbeddedFont> GetFonts() => _fonts.Values;
+        public IReadOnlyCollection<EmbeddedFont> GetFonts() => _fonts.Values.SelectMany(fonts => fonts).ToArray();
 
         public void Reset()
         {
@@ -31,14 +32,40 @@ namespace PdfBuilder.Writer.Fonts
 
         private EmbeddedFont EnsureFont(SKTypeface typeface)
         {
-            long key = typeface.Handle.ToInt64();
-            if (_fonts.TryGetValue(key, out var existing))
-                return existing;
+            byte[] fontData = ReadTypefaceData(typeface);
+            string key = Convert.ToHexString(SHA256.HashData(fontData));
+            if (!_fonts.TryGetValue(key, out var candidates))
+            {
+                candidates = new List<EmbeddedFont>();
+                _fonts.Add(key, candidates);
+            }
+
+            // Hashes identify candidates; exact data equality makes collision handling explicit.
+            foreach (var candidate in candidates)
+            {
+                if (candidate.HasFontData(fontData))
+                    return candidate;
+            }
 
             string resourceName = $"/Ff{_fontSequence++}";
-            var embedded = new EmbeddedFont(resourceName, typeface);
-            _fonts[key] = embedded;
+            var embedded = new EmbeddedFont(resourceName, typeface, fontData);
+            candidates.Add(embedded);
             return embedded;
+        }
+
+        private static byte[] ReadTypefaceData(SKTypeface typeface)
+        {
+            using var stream = typeface.OpenStream();
+            if (stream == null)
+                throw new InvalidOperationException($"Unable to open font stream for '{typeface.FamilyName}'.");
+
+            using var memory = new MemoryStream();
+            var buffer = new byte[8192];
+            int read;
+            while ((read = stream.Read(buffer, buffer.Length)) > 0)
+                memory.Write(buffer, 0, read);
+
+            return memory.ToArray();
         }
     }
 
@@ -50,11 +77,12 @@ namespace PdfBuilder.Writer.Fonts
         private byte[]? _fontData;
         private int _nextCid = 1;
 
-        public EmbeddedFont(string resourceName, SKTypeface typeface)
+        public EmbeddedFont(string resourceName, SKTypeface typeface, byte[]? fontData = null)
         {
             ResourceName = resourceName ?? throw new ArgumentNullException(nameof(resourceName));
             _typeface = typeface ?? throw new ArgumentNullException(nameof(typeface));
             _baseFontName = BuildBaseFontName(typeface);
+            _fontData = fontData;
         }
 
         public string ResourceName { get; }
@@ -98,6 +126,8 @@ namespace PdfBuilder.Writer.Fonts
             _fontData = memory.ToArray();
             return _fontData;
         }
+
+        public bool HasFontData(byte[] data) => GetFontData().AsSpan().SequenceEqual(data);
 
         private float MeasureGlyphWidth(uint glyphId)
         {

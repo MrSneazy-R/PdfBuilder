@@ -2708,6 +2708,9 @@ static PdfBuilder.Document.PageSizes.A3.get -> PdfBuilder.Document.PageSize
 static PdfBuilder.Document.PageSizes.A4.get -> PdfBuilder.Document.PageSize
 static PdfBuilder.Document.PageSizes.Letter.get -> PdfBuilder.Document.PageSize
 static PdfBuilder.Document.PdfDocument.Create(System.Action<PdfBuilder.Document.IDocumentDescriptor!>! configure) -> PdfBuilder.Document.PdfDocument!
+PdfBuilder.Document.PdfDocument.Generate(System.IO.Stream! destination, System.Threading.CancellationToken cancellationToken) -> void
+PdfBuilder.Document.PdfDocument.GenerateBytes(System.Threading.CancellationToken cancellationToken) -> byte[]!
+PdfBuilder.Document.PdfDocument.Save(string! path, System.Threading.CancellationToken cancellationToken) -> void
 static PdfBuilder.Document.PdfLayoutUtils.EncodeText(string! text) -> string!
 static PdfBuilder.Document.PdfLayoutUtils.EstimateTextWidth(string! text, string! fontFamily, float fontSize, bool monospace = false, bool bold = false) -> float
 static PdfBuilder.Document.PdfLayoutUtils.GetHorizontalAlignedX(PdfBuilder.Document.HorizontalAlign align, float startX, float cellWidth, System.Collections.Generic.List<string!>! lines, string! fontFamily, float fontSize, float padding) -> float
@@ -2739,6 +2742,9 @@ static PdfBuilder.Models.PdfPage.Letter() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.LetterLandscape() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Writer.FontManager.MapToBase14(string! key) -> string!
 static PdfBuilder.Writer.FontManager.NormalizeFontKey(string? fontFamily, bool bold = false, bool italic = false) -> string!
+PdfBuilder.Writer.PdfWriter.GenerateBytes(PdfBuilder.Document.PdfDocument! doc, System.Threading.CancellationToken cancellationToken) -> byte[]!
+PdfBuilder.Writer.PdfWriter.GenerateStream(PdfBuilder.Document.PdfDocument! doc, System.IO.Stream! destination, System.Threading.CancellationToken cancellationToken) -> void
+PdfBuilder.Writer.PdfWriter.Save(PdfBuilder.Document.PdfDocument! doc, string! path, System.Threading.CancellationToken cancellationToken) -> void
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Enabled.get -> bool
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Enabled.set -> void
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Writer.get -> System.Action<string!>?

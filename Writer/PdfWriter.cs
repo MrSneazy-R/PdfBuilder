@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
@@ -20,28 +21,55 @@ namespace PdfBuilder.Writer
         private static readonly IFormatProvider Inv = CultureInfo.InvariantCulture;
         private static string N(double v) => v.ToString("0.###", Inv);
 
-        public byte[] GenerateBytes(PdfDocument doc)
+        internal PdfGenerationMetrics? LastGenerationMetrics { get; private set; }
+
+        /// <summary>Generates a PDF into a newly allocated byte array.</summary>
+        /// <param name="doc">The document to generate.</param>
+        public byte[] GenerateBytes(PdfDocument doc) => GenerateBytes(doc, CancellationToken.None);
+
+        /// <summary>Generates a PDF into a newly allocated byte array.</summary>
+        /// <param name="doc">The document to generate.</param>
+        /// <param name="cancellationToken">Cancels layout planning or page writing.</param>
+        public byte[] GenerateBytes(PdfDocument doc, CancellationToken cancellationToken)
         {
             using var ms = new MemoryStream();
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTime.UtcNow);
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTime.UtcNow, cancellationToken);
             return ms.ToArray();
         }
 
-        public void GenerateStream(PdfDocument doc, Stream destination)
+        /// <summary>Generates a PDF directly into a writable stream without buffering all page content streams.</summary>
+        /// <param name="doc">The document to generate.</param>
+        /// <param name="destination">The writable stream that receives the PDF.</param>
+        public void GenerateStream(PdfDocument doc, Stream destination) => GenerateStream(doc, destination, CancellationToken.None);
+
+        /// <summary>Generates a PDF directly into a writable stream without buffering all page content streams.</summary>
+        /// <param name="doc">The document to generate.</param>
+        /// <param name="destination">The writable stream that receives the PDF.</param>
+        /// <param name="cancellationToken">Cancels layout planning or page writing.</param>
+        public void GenerateStream(PdfDocument doc, Stream destination, CancellationToken cancellationToken)
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
             if (destination == null) throw new ArgumentNullException(nameof(destination));
             if (!destination.CanWrite) throw new ArgumentException("Destination stream must be writable.", nameof(destination));
 
-            WriteDocument(doc, destination, DateTime.UtcNow);
+            WriteDocument(doc, destination, DateTime.UtcNow, cancellationToken);
             destination.Flush();
         }
 
-        public void Save(PdfDocument doc, string path)
+        /// <summary>Generates a PDF directly into a file.</summary>
+        /// <param name="doc">The document to generate.</param>
+        /// <param name="path">The output file path.</param>
+        public void Save(PdfDocument doc, string path) => Save(doc, path, CancellationToken.None);
+
+        /// <summary>Generates a PDF directly into a file.</summary>
+        /// <param name="doc">The document to generate.</param>
+        /// <param name="path">The output file path.</param>
+        /// <param name="cancellationToken">Cancels layout planning or page writing.</param>
+        public void Save(PdfDocument doc, string path, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path must be provided.", nameof(path));
             using var fileStream = File.Create(path);
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTime.UtcNow);
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTime.UtcNow, cancellationToken);
         }
 
         public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(PdfDocument doc, int dpi = 144)
@@ -50,14 +78,17 @@ namespace PdfBuilder.Writer
             return new PdfPreviewGenerator().Generate(doc, dpi);
         }
 
-        private void WriteDocument(PdfDocument doc, Stream destination, DateTime nowUtc)
+        private void WriteDocument(PdfDocument doc, Stream destination, DateTime nowUtc, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (doc.Pages.Count == 0) throw new InvalidOperationException("Document has no pages.");
 
             // Flowing content, including tables, is resolved by ColumnBuilder before serialization.
             // The writer must consume that resolved document without cloning or repaginating it.
             var laidOut = doc;
             int pageCount = laidOut.Pages.Count;
+            var metrics = new PdfGenerationMetrics { PagesPlanned = pageCount };
+            LastGenerationMetrics = metrics;
 
             HeaderFooterLayoutComposer.Prepare(laidOut, nowUtc);
 
@@ -84,20 +115,22 @@ namespace PdfBuilder.Writer
             var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
 
             var resources = new PdfResourceManager(outputOptions);
-            var imageResourceMap = PreRegisterImages(laidOut, resources, writer);
+            var imageResourceMap = PreRegisterImages(laidOut, resources, writer, cancellationToken);
             PreRegisterWatermarks(laidOut, resources, writer);
             PreRegisterSolidRectOpacity(laidOut, resources, writer);
             string xobjRes = resources.BuildXObjectResources();
             string gsRes = resources.BuildExtGStateResources();
 
-            // PREPASS: render each page to a byte[] and collect annotations/anchors --------------
-            var preContent = new List<byte[]>(pageCount);
+            // RESOURCE-PLANNING PASS ---------------------------------------------------------------
+            // Render solely to collect font glyphs plus navigation metadata. Content bytes are
+            // deliberately discarded here; the write pass below produces one page at a time.
             var pageAnnotations = new List<List<AnnotationWriter.LinkAnnot>>(pageCount);
             var pageAnchors = new List<List<(AnchorElement anchor, float xPdf, float yPdf)>>(pageCount);
             var anchorLookup = new Dictionary<string, (int pageIndex, float xPdf, float yPdf)>(StringComparer.Ordinal);
 
             for (int i = 0; i < pageCount; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var page = laidOut.Pages[i];
                 var pageImgMap = BuildPageImageMap(page, imageResourceMap);
 
@@ -109,9 +142,9 @@ namespace PdfBuilder.Writer
                     renderContext,
                     fontObjId,
                     pageImgMap,
-                    nowUtc);
+                    nowUtc,
+                    cancellationToken);
 
-                preContent.Add(contentBytes);
                 pageAnnotations.Add(annots);
                 pageAnchors.Add(anchors);
 
@@ -128,23 +161,17 @@ namespace PdfBuilder.Writer
             string embeddedFontRes = string.Join(" ", embeddedFontResources.Select(kv => $"{kv.Key} {kv.Value} 0 R"));
             string fontRes = CombineFontResources(baseFontRes, embeddedFontRes);
 
-            // Annotation counts -> predict page object ids (content + annots interleave) ---------
-            var annCount = pageAnnotations.Select(list => list.Count).ToArray();
-            var cumAnn = new int[pageCount];
-            int running = 0;
-            for (int i = 0; i < pageCount; i++)
-            {
-                running += annCount[i];
-                cumAnn[i] = running;
-            }
+            // Page object references are reserved before /Pages is written. This is deliberately
+            // independent of the number of annotation, image, or font objects emitted later.
+            int pagesObjId = writer.ReserveObject();
+            var pageObjectIds = Enumerable.Range(0, pageCount)
+                .Select(_ => writer.ReserveObject())
+                .ToArray();
 
             // /Pages ---------------------------------------------------------------------------------
-            int pagesObjId = writer.BeginObject();
-            var predictedPageIds = new List<int>(pageCount);
-            for (int i = 0; i < pageCount; i++)
-                predictedPageIds.Add(pagesObjId + 2 * (i + 1) + cumAnn[i]);
+            writer.BeginReservedObject(pagesObjId);
 
-            string kids = string.Join(" ", predictedPageIds.Select(id => $"{id} 0 R"));
+            string kids = string.Join(" ", pageObjectIds.Select(id => $"{id} 0 R"));
             writer.WriteLine("<<");
             writer.WriteLine(" /Type /Pages");
             writer.WriteLine($" /Kids [{kids}]");
@@ -153,15 +180,28 @@ namespace PdfBuilder.Writer
             writer.EndObject();
 
             // Pages ----------------------------------------------------------------------------------
-            var actualPageIds = new List<int>(pageCount);
-
             for (int i = 0; i < pageCount; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var page = laidOut.Pages[i];
+
+                // WRITE PASS: only the current page's stream is retained at any time.
+                var pageImgMap = BuildPageImageMap(page, imageResourceMap);
+                var (rawContent, _, _) = BuildContentStream(
+                    laidOut,
+                    page,
+                    i + 1,
+                    pageCount,
+                    renderContext,
+                    fontObjId,
+                    pageImgMap,
+                    nowUtc,
+                    cancellationToken);
+                metrics.PageContentStreamsWritten++;
+                metrics.MaximumRetainedPageContentStreams = Math.Max(metrics.MaximumRetainedPageContentStreams, 1);
 
                 // a) content stream
                 int contentId = writer.BeginObject();
-                var rawContent = preContent[i];
                 if (outputOptions.CompressContentStreams && rawContent.Length > 0)
                 {
                     var compressed = PdfCompression.Flate(rawContent, outputOptions.ContentCompressionLevel);
@@ -180,7 +220,7 @@ namespace PdfBuilder.Writer
                     int PageRefByAnchor(string anchor)
                     {
                         if (!anchorLookup.TryGetValue(anchor, out var info)) return 0;
-                        return predictedPageIds[info.pageIndex];
+                        return pageObjectIds[info.pageIndex];
                     }
 
                     AnnotationWriter.Dest DestByAnchor(string anchor)
@@ -194,7 +234,8 @@ namespace PdfBuilder.Writer
                 }
 
                 // c) page dictionary
-                int pageId = writer.BeginObject();
+                int pageId = pageObjectIds[i];
+                writer.BeginReservedObject(pageId);
                 writer.WriteLine("<<");
                 writer.WriteLine(" /Type /Page");
                 writer.WriteLine($" /Parent {pagesObjId} 0 R");
@@ -215,7 +256,6 @@ namespace PdfBuilder.Writer
                 writer.WriteLine(">>");
                 writer.EndObject();
 
-                actualPageIds.Add(pageId);
             }
 
             // Outlines (bookmarks) -------------------------------------------------------------------
@@ -229,7 +269,7 @@ namespace PdfBuilder.Writer
                     {
                         Title = anchor.Title!,
                         Level = Math.Max(1, anchor.Level),
-                        PageObjId = actualPageIds[i],
+                        PageObjId = pageObjectIds[i],
                         X = xPdf,
                         Y = yPdf
                     });
@@ -289,12 +329,14 @@ namespace PdfBuilder.Writer
         private static Dictionary<ImageElement, (int imageObjId, string? gsName)> PreRegisterImages(
             PdfDocument doc,
             PdfResourceManager resources,
-            PdfStreamWriter writer)
+            PdfStreamWriter writer,
+            CancellationToken cancellationToken)
         {
             var map = new Dictionary<ImageElement, (int imageObjId, string? gsName)>(ReferenceEqualityComparer.Instance);
 
             foreach (var img in doc.Pages.SelectMany(EnumerateAllElements).OfType<ImageElement>())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var (imageObj, _, gsName, _) = resources.EnsureImageXObject(writer, img);
                 map[img] = (imageObj, gsName);
             }
@@ -376,7 +418,8 @@ namespace PdfBuilder.Writer
             PdfRenderContext context,
             Dictionary<string, int> fontObjId,
             Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
-            DateTime nowUtc)
+            DateTime nowUtc,
+            CancellationToken cancellationToken)
         {
             var sb = new StringBuilder();
             var annotations = new List<AnnotationWriter.LinkAnnot>();
@@ -392,9 +435,9 @@ namespace PdfBuilder.Writer
                     MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false);
             }
 
-            RenderElements(page.HeaderElements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
-            RenderElements(page.Elements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
-            RenderElements(page.FooterElements, sb, page, context, pageImageMap, annotations, anchorsOnPage);
+            RenderElements(page.HeaderElements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.Elements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.FooterElements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
 
             if (effectiveHeaderFooter != null)
                 HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc);
@@ -532,10 +575,12 @@ namespace PdfBuilder.Writer
             PdfRenderContext context,
             Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
             List<AnnotationWriter.LinkAnnot> annotations,
-            List<(AnchorElement anchor, float xPdf, float yPdf)> anchorsOnPage)
+            List<(AnchorElement anchor, float xPdf, float yPdf)> anchorsOnPage,
+            CancellationToken cancellationToken)
         {
             foreach (var element in elements)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 switch (element)
                 {
                     case TextElement text:
