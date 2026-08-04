@@ -78,6 +78,17 @@ namespace PdfBuilder.Writer
             return new PdfPreviewGenerator().Generate(doc, dpi);
         }
 
+        /// <summary>Generates selected preview images from the already-resolved document layout.</summary>
+        public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(
+            PdfDocument doc,
+            int dpi,
+            IEnumerable<int>? pageNumbers,
+            CancellationToken cancellationToken)
+        {
+            if (doc == null) throw new ArgumentNullException(nameof(doc));
+            return new PdfPreviewGenerator().Generate(doc, dpi, pageNumbers, cancellationToken);
+        }
+
         private void WriteDocument(PdfDocument doc, Stream destination, DateTime nowUtc, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -25,6 +25,9 @@ namespace PdfBuilder.Document
 
         public LayoutProfilerSession ProfilerSession { get; } = new();
 
+        /// <summary>Gets the structured layout trace recorded when diagnostics are enabled.</summary>
+        public PdfLayoutTrace LayoutTrace { get; } = new();
+
         public PdfDocument()
         {
         }

@@ -2748,6 +2748,96 @@ static PdfBuilder.Document.Units.Centimeters(float value) -> float
 static PdfBuilder.Document.Units.Inches(float value) -> float
 static PdfBuilder.Document.Units.Millimeters(float value) -> float
 static PdfBuilder.Document.Units.Points(float value) -> float
+PdfBuilder.Document.IDocumentDescriptor.Diagnostics(System.Action<PdfBuilder.Document.Layout.PdfDiagnosticsOptions!>! configure) -> void
+PdfBuilder.Document.IContainer.DebugLabel(string! label) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.PdfDocument.GeneratePreviewImages(int dpi = 144, System.Collections.Generic.IEnumerable<int>? pageNumbers = null) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
+PdfBuilder.Document.PdfDocument.GeneratePreviewImages(int dpi, System.Collections.Generic.IEnumerable<int>? pageNumbers, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
+PdfBuilder.Document.PdfDocument.LayoutTrace.get -> PdfBuilder.Document.Layout.PdfLayoutTrace!
+PdfBuilder.Document.Layout.LayoutOptions.Diagnostics.get -> PdfBuilder.Document.Layout.PdfDiagnosticsOptions!
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.PdfDiagnosticsOptions() -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.get -> int
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.set -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.PdfLayoutTraceEntry() -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Event.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Event.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ComponentPath.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ComponentPath.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Component.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Component.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.PageNumber.get -> int
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.PageNumber.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ColumnIndex.get -> int
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ColumnIndex.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.AvailableWidth.get -> float
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.AvailableWidth.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.AvailableHeight.get -> float
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.AvailableHeight.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Result.get -> string?
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Result.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.HasRemainder.get -> bool
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.HasRemainder.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ElapsedMilliseconds.get -> double
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.ElapsedMilliseconds.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.CacheHit.get -> bool
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.CacheHit.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Warning.get -> string?
+PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Warning.init -> void
+PdfBuilder.Document.Layout.PdfLayoutTrace
+PdfBuilder.Document.Layout.PdfLayoutTrace.PdfLayoutTrace() -> void
+PdfBuilder.Document.Layout.PdfLayoutTrace.Entries.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Document.Layout.PdfLayoutTraceEntry!>!
+PdfBuilder.Document.Layout.PdfLayoutTrace.Clear() -> void
+PdfBuilder.Document.Layout.PdfLayoutTrace.ToJson(bool indented = true) -> string!
+PdfBuilder.Document.Layout.PdfCompositionException
+PdfBuilder.Document.Layout.PdfCompositionException.PdfCompositionException(string! message, System.Exception? innerException = null) -> void
+PdfBuilder.Document.Layout.PdfLayoutException
+PdfBuilder.Document.Layout.PdfLayoutException.PdfLayoutException(string! message, PdfBuilder.Document.Layout.PdfLayoutFailureContext! context, System.Exception? innerException = null) -> void
+PdfBuilder.Document.Layout.PdfLayoutException.Context.get -> PdfBuilder.Document.Layout.PdfLayoutFailureContext!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.PdfLayoutFailureContext() -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.ComponentPath.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.ComponentPath.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.Component.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.Component.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.PageNumber.get -> int
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.PageNumber.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.Section.get -> string?
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.Section.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.ColumnIndex.get -> int
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.ColumnIndex.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.AvailableWidth.get -> float
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.AvailableWidth.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.AvailableHeight.get -> float
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.AvailableHeight.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.RequestedWidth.get -> float?
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.RequestedWidth.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.RequestedHeight.get -> float?
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.RequestedHeight.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.MeasuredWidth.get -> float?
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.MeasuredWidth.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.MeasuredHeight.get -> float?
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.MeasuredHeight.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.BreakPolicy.get -> string!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.BreakPolicy.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.LayoutIterationCount.get -> int
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.LayoutIterationCount.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.StyleConstraints.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.StyleConstraints.init -> void
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.SuggestedActions.get -> System.Collections.Generic.IReadOnlyList<string!>!
+PdfBuilder.Document.Layout.PdfLayoutFailureContext.SuggestedActions.init -> void
+PdfBuilder.Document.Layout.PdfDrawingException
+PdfBuilder.Document.Layout.PdfDrawingException.PdfDrawingException(string! message, System.Exception? innerException = null) -> void
+PdfBuilder.Document.Layout.PdfFontException
+PdfBuilder.Document.Layout.PdfFontException.PdfFontException(string! message, System.Exception? innerException = null) -> void
+PdfBuilder.Document.Layout.PdfMediaException
+PdfBuilder.Document.Layout.PdfMediaException.PdfMediaException(string! message, System.Exception? innerException = null) -> void
+PdfBuilder.Writer.PdfPreviewGenerator.Generate(PdfBuilder.Document.PdfDocument! document, int dpi, System.Collections.Generic.IEnumerable<int>? pageNumbers, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
+PdfBuilder.Writer.PdfWriter.GeneratePreviewImages(PdfBuilder.Document.PdfDocument! doc, int dpi, System.Collections.Generic.IEnumerable<int>? pageNumbers, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
 static PdfBuilder.Elements.Axis.Category() -> PdfBuilder.Elements.Axis!
 static PdfBuilder.Elements.Axis.Numeric() -> PdfBuilder.Elements.Axis!
 static PdfBuilder.Elements.Table.TableColumn.Auto(float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!

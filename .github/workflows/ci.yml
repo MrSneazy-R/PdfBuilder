@@ -48,6 +48,7 @@ jobs:
           dotnet restore samples/SimpleRenderCheck/SimpleRenderCheck.csproj
           dotnet restore samples/TablePerfSample/TablePerfSample.csproj
           dotnet restore samples/HelloPdf/HelloPdf.csproj
+          dotnet restore samples/LayoutDiagnostics/LayoutDiagnostics.csproj
       - name: Verify formatting
         run: |
           dotnet format PdfBuilder.sln --verify-no-changes --no-restore
@@ -63,6 +64,7 @@ jobs:
           dotnet build samples/SimpleRenderCheck/SimpleRenderCheck.csproj -c Release --no-restore
           dotnet build samples/TablePerfSample/TablePerfSample.csproj -c Release --no-restore
           dotnet build samples/HelloPdf/HelloPdf.csproj -c Release --no-restore
+          dotnet build samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-restore
       - name: Run unit tests
         run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
       - name: Run independent PDF validation
@@ -78,6 +80,8 @@ jobs:
           path: |
             TestResults/**/*.trx
             ValidationFailures/**/*.png
+            ValidationFailures/**/*.pdf
+            ValidationFailures/**/*.json
           if-no-files-found: warn
 
   package-smoke:

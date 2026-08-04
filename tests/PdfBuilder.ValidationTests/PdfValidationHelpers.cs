@@ -62,6 +62,7 @@ internal static class PdfValidationHelpers
         {
             Directory.CreateDirectory(failureDirectory);
             File.Copy(actualPath, Path.Combine(failureDirectory, Path.GetFileName(actualPath)), overwrite: true);
+            File.Copy(approvedPath, Path.Combine(failureDirectory, "expected-" + Path.GetFileName(actualPath)), overwrite: true);
             difference.SaveAsPng(Path.Combine(failureDirectory, Path.GetFileNameWithoutExtension(actualPath) + ".diff.png"));
         }
 

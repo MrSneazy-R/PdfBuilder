@@ -56,6 +56,13 @@ namespace PdfBuilder.Document.Layout
 
         public LayoutComponentCollection Component(IMeasurable component) => Add(component);
 
+        internal LayoutComponentCollection DebugLabel(string label, Action<LayoutComponentCollection> configure)
+        {
+            if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("A debug label is required.", nameof(label));
+            _components.Add(new DebugLabelComponent(label, BuildComposite(configure, nameof(DebugLabel))));
+            return this;
+        }
+
         public LayoutComponentCollection Component(
             Func<LayoutMeasureContext, LayoutMeasurement> measure,
             Action<LayoutDrawContext, LayoutMeasurement> draw)
