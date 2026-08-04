@@ -105,13 +105,17 @@ namespace PdfBuilder.Tests
         [Fact]
         public void Table_RowBanding_PersistsAcrossPages()
         {
-            var doc = CreateTableDocument(table =>
+            var doc = new PdfDocument();
+            var page = doc.AddPage();
+            new PdfPageBuilder(page).Margin(40).AutoPaginate(doc).Content(column =>
             {
-                table.EnablePageBreaks = true;
-                table.PageTopY = 500;
-                table.PageBottomY = 300;
-                table.Y = table.PageTopY ?? table.Y;
-                table.RowBanding = new TableModels.RowBandingSpec
+                var width = page.Width - page.MarginLeft - page.MarginRight;
+                var table = column.Table(page.MarginLeft, column.GetCurrentY(), width, 0)
+                    .EnablePageBreaks()
+                    .CellPadding(0);
+
+                var model = table.Build();
+                model.RowBanding = new TableModels.RowBandingSpec
                 {
                     Step = 1,
                     Fills = new List<TableModels.BandFill>
@@ -121,12 +125,14 @@ namespace PdfBuilder.Tests
                     }
                 };
 
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 10; i++)
                 {
                     var row = new TableRow { RowHeight = 80f };
                     row.Cells.Add(new TableCell { Text = string.Empty, Padding = 0 });
-                    table.Rows.Add(row);
+                    model.Rows.Add(row);
                 }
+
+                table.Add();
             });
 
             var streams = PdfContentHelper.ExtractStreams(PdfContentHelper.Generate(doc));

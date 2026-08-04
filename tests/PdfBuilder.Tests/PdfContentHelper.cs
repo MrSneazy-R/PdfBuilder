@@ -118,8 +118,6 @@ namespace PdfBuilder.Tests
                         result.Add(streamMatch.Groups["content"].Value);
                 }
 
-                if (result.Count > 0)
-                    break;
             }
 
             return result;

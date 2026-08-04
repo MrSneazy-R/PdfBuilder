@@ -37,7 +37,8 @@ namespace PdfBuilder.Writer
             if (document == null) throw new ArgumentNullException(nameof(document));
             if (dpi <= 0) throw new ArgumentOutOfRangeException(nameof(dpi), "DPI must be positive.");
 
-            var laidOut = TablePaginator.Paginate(document);
+            // Preview uses the same already-resolved layout as PDF serialization.
+            var laidOut = document;
             var pages = new List<PdfPreviewPage>(laidOut.Pages.Count);
 
             for (int i = 0; i < laidOut.Pages.Count; i++)

@@ -54,9 +54,10 @@ namespace PdfBuilder.Writer
         {
             if (doc.Pages.Count == 0) throw new InvalidOperationException("Document has no pages.");
 
-            var laidOut = TablePaginator.Paginate(doc);
+            // Flowing content, including tables, is resolved by ColumnBuilder before serialization.
+            // The writer must consume that resolved document without cloning or repaginating it.
+            var laidOut = doc;
             int pageCount = laidOut.Pages.Count;
-            if (pageCount == 0) throw new InvalidOperationException("Document has no pages after pagination.");
 
             HeaderFooterLayoutComposer.Prepare(laidOut, nowUtc);
 

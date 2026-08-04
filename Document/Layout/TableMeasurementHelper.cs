@@ -62,19 +62,7 @@ namespace PdfBuilder.Document.Layout
 
         internal static float[] ResolveColumnWidths(TableElement table, int totalCols, float tableWidth)
         {
-            var widths = new float[totalCols];
-            if (table.ColumnWidths != null && table.ColumnWidths.Count == totalCols)
-            {
-                for (int i = 0; i < totalCols; i++)
-                    widths[i] = Math.Max(0f, table.ColumnWidths[i]);
-            }
-            else
-            {
-                float equal = totalCols > 0 ? tableWidth / totalCols : 0f;
-                for (int i = 0; i < totalCols; i++)
-                    widths[i] = Math.Max(0f, equal);
-            }
-            return widths;
+            return TableColumnWidthCalculator.Calculate(table, totalCols, tableWidth);
         }
 
         internal static float[] ComputeRowHeights(TableElement table, float[] colWidths)

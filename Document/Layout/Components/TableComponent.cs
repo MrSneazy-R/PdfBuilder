@@ -35,11 +35,23 @@ namespace PdfBuilder.Document.Layout.Components
             var metrics = TableMeasurementHelper.Measure(_workingTable, width);
             var rowHeights = metrics.RowHeights;
 
+            // Rows are kept together by default. A row taller than the usable page area
+            // cannot make progress because row splitting is not implemented yet.
+            float pageContentHeight = context.Column.TopY - context.Column.BottomY;
+            if (rowHeights.Any(height => height > pageContentHeight + Epsilon))
+            {
+                throw new InvalidOperationException(
+                    "A table row is larger than the available page height and row splitting is not enabled.");
+            }
+
             float captionHeight = ComputeCaptionHeight(_workingTable);
             float totalBodyHeight = SumRows(rowHeights, 0, rowHeights.Length);
             float totalHeight = captionHeight + totalBodyHeight;
 
-            if (totalHeight <= context.AvailableHeight + Epsilon)
+            bool mustRepeatHeader = _isContinuation && _workingTable.RepeatHeaders &&
+                (_rootTable.HeaderRowCount ?? CountLeadingHeaders(_rootTable)) > 0;
+
+            if (totalHeight <= context.AvailableHeight + Epsilon && !mustRepeatHeader)
             {
                 var drawPieces = new List<TablePiece>
                 {
@@ -320,7 +332,10 @@ namespace PdfBuilder.Document.Layout.Components
 
             var remainderTable = LayoutSplitUtils.CloneTableWithRows(_workingTable, remainingRows);
             remainderTable.CaptionText = null;
-            remainderTable.EnablePageBreaks = false;
+            // This table is still owned by the layout engine.  Rendered slice tables have
+            // pagination disabled in Draw, but a remainder must remain flowable so it can
+            // produce another partial measurement on the following column or page.
+            remainderTable.EnablePageBreaks = _workingTable.EnablePageBreaks;
             remainderTable.RowBandOffset = _workingTable.RowBandOffset + rowsConsumed;
             remainderTable.TableWidth = _workingTable.TableWidth;
 
