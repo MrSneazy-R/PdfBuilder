@@ -98,8 +98,12 @@ namespace PdfBuilder.Document
                 var hf = _hfForPage(page);
                 if (hf != null)
                 {
-                    headerH = Math.Max(0f, hf.HeaderHeight);
-                    footerH = Math.Max(0f, hf.FooterHeight);
+                    headerH = hf.HeaderLayout != null || !string.IsNullOrWhiteSpace(hf.HeaderTemplate)
+                        ? Math.Max(0f, hf.HeaderHeight)
+                        : 0f;
+                    footerH = hf.FooterLayout != null || !string.IsNullOrWhiteSpace(hf.FooterTemplate)
+                        ? Math.Max(0f, hf.FooterHeight)
+                        : 0f;
                 }
             }
         }
