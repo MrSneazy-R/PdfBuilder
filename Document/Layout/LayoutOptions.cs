@@ -20,6 +20,9 @@ namespace PdfBuilder.Document.Layout
 
         public LayoutProfilerConfig Profiler { get; } = new LayoutProfilerConfig();
 
+        /// <summary>Gets document-scoped structured diagnostics configuration.</summary>
+        public PdfDiagnosticsOptions Diagnostics { get; } = new PdfDiagnosticsOptions();
+
         /// <summary>
         /// Backwards compatible access to trace flag.
         /// </summary>
@@ -46,6 +49,9 @@ namespace PdfBuilder.Document.Layout
             clone.Profiler.Enabled = Profiler.Enabled;
             clone.Profiler.OutputPath = Profiler.OutputPath;
             clone.Profiler.OnCompleted = Profiler.OnCompleted;
+            clone.Diagnostics.EnableLayoutTrace = Diagnostics.EnableLayoutTrace;
+            clone.Diagnostics.IncludeTextContent = Diagnostics.IncludeTextContent;
+            clone.Diagnostics.LayoutIterationLimit = Diagnostics.LayoutIterationLimit;
             return clone;
         }
     }

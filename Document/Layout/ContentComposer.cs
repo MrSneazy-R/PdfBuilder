@@ -24,6 +24,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal ContentComposer DebugLabel(string label, Action<ContentComposer> configure)
+        {
+            _collection.DebugLabel(label, inner => configure(new ContentComposer(inner)));
+            return this;
+        }
+
         public ContentComposer Component(
             Func<LayoutMeasureContext, LayoutMeasurement> measure,
             Action<LayoutDrawContext, LayoutMeasurement> draw)

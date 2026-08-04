@@ -90,6 +90,50 @@ namespace PdfBuilder.Document
             }
         }
 
+        private bool IsStructuredTracingEnabled => _layoutOptions.Diagnostics.EnableLayoutTrace && _document != null;
+
+        private string ComponentName(IMeasurable? component)
+        {
+            return component is DebugLabelComponent labeled
+                ? labeled.Label
+                : component?.GetType().Name ?? "unknown";
+        }
+
+        private string ComponentPath(IMeasurable? component)
+        {
+            return $"Document > Page[{_pageSequence}] > Content > {ComponentName(component)}";
+        }
+
+        private void RecordTrace(
+            string @event,
+            IMeasurable? component,
+            FlowColumn? column = null,
+            LayoutMeasurement? measurement = null,
+            double elapsedMilliseconds = 0d,
+            bool cacheHit = false,
+            string? warning = null)
+        {
+            if (!IsStructuredTracingEnabled)
+                return;
+
+            var flow = column ?? CurrentColumn;
+            _document!.LayoutTrace.Record(new PdfLayoutTraceEntry
+            {
+                Event = @event,
+                ComponentPath = ComponentPath(component),
+                Component = ComponentName(component),
+                PageNumber = _pageSequence,
+                ColumnIndex = flow.Index,
+                AvailableWidth = flow.Width,
+                AvailableHeight = flow.Available,
+                Result = measurement?.Result.ToString(),
+                HasRemainder = measurement?.Remainder != null,
+                ElapsedMilliseconds = elapsedMilliseconds,
+                CacheHit = cacheHit,
+                Warning = warning
+            });
+        }
+
         private void ResolveHeaderFooterBands(PdfPage page, out float headerH, out float footerH)
         {
             headerH = 0f; footerH = 0f;
@@ -196,6 +240,7 @@ namespace PdfBuilder.Document
                 _columns[_colIndex].Reset();
             _pageSequence++;
             Trace($"Started new page {_pageSequence} with {_columns.Length} columns");
+            RecordTrace("page-transition", null, CurrentColumn);
             return this;
         }
 
@@ -210,6 +255,7 @@ namespace PdfBuilder.Document
                 _colIndex++;
                 _columns[_colIndex].Reset();
                 Trace($"Advanced to column {_colIndex + 1} on page {_pageSequence}");
+                RecordTrace("column-transition", null, CurrentColumn);
             }
             else
             {
@@ -432,7 +478,7 @@ namespace PdfBuilder.Document
 
         private static string FormatFloat(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);
 
-        private InvalidOperationException CreatePlacementException(
+        private PdfLayoutException CreatePlacementException(
             string reason,
             IMeasurable? component,
             FlowColumn column,
@@ -471,8 +517,34 @@ namespace PdfBuilder.Document
                 }
             }
 
-            var hint = "Enable LayoutOptions.Debug.TraceLayout or DrawBoundingBoxes for diagnostics.";
-            return new InvalidOperationException($"{reason} Details: {string.Join(", ", details)}. {hint}");
+            var context = new PdfLayoutFailureContext
+            {
+                ComponentPath = ComponentPath(component),
+                Component = ComponentName(component),
+                PageNumber = _pageSequence,
+                ColumnIndex = column.Index,
+                AvailableWidth = column.Width,
+                AvailableHeight = column.Available,
+                RequestedWidth = measurement?.UsedWidth,
+                RequestedHeight = measurement?.ReservedHeight,
+                MeasuredWidth = measurement?.UsedWidth,
+                MeasuredHeight = measurement?.ReservedHeight,
+                BreakPolicy = measurement?.AvoidBreakInside == true ? "keep-together" : "allow-break",
+                LayoutIterationCount = attempts,
+                StyleConstraints = new Dictionary<string, string>
+                {
+                    ["result"] = measurement?.Result.ToString() ?? "unknown",
+                    ["hasRemainder"] = (measurement?.Remainder != null).ToString()
+                },
+                SuggestedActions = new[]
+                {
+                    "Reduce the requested size or remove a conflicting minimum constraint.",
+                    "Allow the component to break across pages, or increase the available page area.",
+                    "Use DebugLabel on the enclosing canonical container to make this path domain-specific."
+                }
+            };
+            RecordTrace("warning", component, column, measurement, warning: reason);
+            return new PdfLayoutException($"{reason} Details: {string.Join(", ", details)}.", context);
         }
 
         internal float AddComponent(IMeasurable component)
@@ -484,7 +556,7 @@ namespace PdfBuilder.Document
 
             float totalHeight = 0f;
             IMeasurable? current = component;
-            const int guardLimit = 32;
+            int guardLimit = Math.Max(1, _layoutOptions.Diagnostics.LayoutIterationLimit);
             int guard = 0;
 
             while (current != null)
@@ -497,6 +569,7 @@ namespace PdfBuilder.Document
                 var column = CurrentColumn;
                 var measureContext = new LayoutMeasureContext(_page, column, _layoutOptions);
                 var measurement = MeasureWithCache(current, measureContext);
+                RecordTrace("measure-result", current, column, measurement);
 
                 if (measurement.IsWrap)
                 {
@@ -536,7 +609,30 @@ namespace PdfBuilder.Document
 
                 float contentTop = column.Y - measurement.MarginTop;
                 var drawContext = new LayoutDrawContext(_page, column, column.X, contentTop, column.Width, _layoutOptions);
-                current.Draw(drawContext, measurement);
+                try
+                {
+                    if (_profilerEnabled)
+                    {
+                        var drawTimer = Stopwatch.StartNew();
+                        current.Draw(drawContext, measurement);
+                        drawTimer.Stop();
+                        _profilerSession!.RecordDraw(current.GetType(), drawTimer.Elapsed.TotalMilliseconds);
+                        RecordTrace("draw", current, column, measurement, drawTimer.Elapsed.TotalMilliseconds);
+                    }
+                    else
+                    {
+                        current.Draw(drawContext, measurement);
+                        RecordTrace("draw", current, column, measurement);
+                    }
+                }
+                catch (PdfCompositionException)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    throw new PdfDrawingException($"Drawing failed for {ComponentPath(current)}.", exception);
+                }
 
                 float reserved = Math.Max(0f, measurement.ReservedHeight);
                 if (reserved > 0f)
@@ -588,6 +684,7 @@ namespace PdfBuilder.Document
             if (_measurementCache.TryGetValue(key, out var cached))
             {
                 Trace($"Cache hit for {component.GetType().Name} ({widthKey},{heightKey})");
+                RecordTrace("measure-cache-hit", component, context.Column, cached, cacheHit: true);
                 return cached;
             }
 
@@ -608,10 +705,13 @@ namespace PdfBuilder.Document
                 var measurement = component.Measure(context);
                 sw.Stop();
                 _profilerSession!.RecordMeasurement(component.GetType(), sw.Elapsed.TotalMilliseconds);
+                RecordTrace("measure", component, context.Column, measurement, sw.Elapsed.TotalMilliseconds);
                 return measurement;
             }
 
-            return component.Measure(context);
+            var result = component.Measure(context);
+            RecordTrace("measure", component, context.Column, result);
+            return result;
         }
 
 

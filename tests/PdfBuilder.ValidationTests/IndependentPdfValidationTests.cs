@@ -78,11 +78,24 @@ public sealed class IndependentPdfValidationTests
                     File.Copy(actualPages[index], Path.Combine(missingBaselineDirectory, Path.GetFileName(actualPages[index])), overwrite: true);
                     throw new Xunit.Sdk.XunitException($"Approved baseline is missing for {fixture.Name} page {index + 1}. The actual raster was written to '{missingBaselineDirectory}'.");
                 }
-                PdfValidationHelpers.CompareImages(
-                    approved,
-                    actualPages[index],
-                    Path.Combine(failureDirectory, fixture.Name),
-                    GetVisualTolerance(fixture.Name));
+                try
+                {
+                    PdfValidationHelpers.CompareImages(
+                        approved,
+                        actualPages[index],
+                        Path.Combine(failureDirectory, fixture.Name),
+                        GetVisualTolerance(fixture.Name));
+                }
+                catch
+                {
+                    var output = Path.Combine(failureDirectory, fixture.Name);
+                    Directory.CreateDirectory(output);
+                    File.Copy(pdfPath, Path.Combine(output, fixture.Name + ".pdf"), overwrite: true);
+                    File.WriteAllText(
+                        Path.Combine(output, "layout-trace.json"),
+                        $"{{\"fixture\":\"{fixture.Name}\",\"page\":{index + 1},\"event\":\"visual-regression-failure\",\"textIncluded\":false}}");
+                    throw;
+                }
             }
         }
     }

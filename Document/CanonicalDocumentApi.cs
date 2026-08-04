@@ -10,6 +10,9 @@ public interface IDocumentDescriptor
     /// <summary>Configures document metadata.</summary>
     void Metadata(Action<DocumentMetadata> configure);
 
+    /// <summary>Configures optional layout diagnostics before pages are composed.</summary>
+    void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure);
+
     /// <summary>Adds and configures a page.</summary>
     void Page(Action<IPageDescriptor> configure);
 }
@@ -108,6 +111,8 @@ public interface IContainer
     IContainer KeepWithNext();
     /// <summary>Includes this container only when <paramref name="condition"/> is true.</summary>
     IContainer ShowIf(bool condition);
+    /// <summary>Associates a source label with this container for layout diagnostics.</summary>
+    IContainer DebugLabel(string label);
     /// <summary>Forces subsequent content onto a new page.</summary>
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
@@ -347,6 +352,14 @@ public partial class PdfDocument
     /// <summary>Generates the document as PDF bytes.</summary>
     public byte[] GenerateBytes() => new PdfWriter().GenerateBytes(this);
 
+    /// <summary>Generates selected PNG preview images from the resolved document layout.</summary>
+    public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(int dpi = 144, IEnumerable<int>? pageNumbers = null)
+        => new PdfWriter().GeneratePreviewImages(this, dpi, pageNumbers, CancellationToken.None);
+
+    /// <summary>Generates selected PNG preview images and observes cancellation between page renders.</summary>
+    public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(int dpi, IEnumerable<int>? pageNumbers, CancellationToken cancellationToken)
+        => new PdfWriter().GeneratePreviewImages(this, dpi, pageNumbers, cancellationToken);
+
     /// <summary>Generates the document as PDF bytes and observes cancellation between layout and page writes.</summary>
     /// <param name="cancellationToken">Cancels generation before the next expensive operation.</param>
     public byte[] GenerateBytes(CancellationToken cancellationToken) => new PdfWriter().GenerateBytes(this, cancellationToken);
@@ -376,6 +389,11 @@ public partial class PdfDocument
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             configure(_document.Metadata);
             _document.Title = _document.Metadata.Title;
+        }
+        public void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.LayoutOptions.Diagnostics);
         }
         public void Page(Action<IPageDescriptor> configure)
         {
@@ -468,6 +486,7 @@ public partial class PdfDocument
         private Layout.Components.LayoutVerticalAlignment _vertical = Layout.Components.LayoutVerticalAlignment.Top;
         private float? _width, _height, _minWidth, _maxWidth, _minHeight, _maxHeight, _aspectRatio, _ensureSpace;
         private bool _extend, _shrink, _keepTogether, _keepWithNext, _visible = true;
+        private string? _debugLabel;
 
         public IContainer Padding(float value) => Padding(value, value, value, value);
         public IContainer Padding(float left, float top, float right, float bottom)
@@ -508,6 +527,12 @@ public partial class PdfDocument
         public IContainer KeepTogether() { _keepTogether = true; return this; }
         public IContainer KeepWithNext() { _keepWithNext = true; return this; }
         public IContainer ShowIf(bool condition) { _visible &= condition; return this; }
+        public IContainer DebugLabel(string label)
+        {
+            if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("A debug label is required.", nameof(label));
+            _debugLabel = label;
+            return this;
+        }
         public IContainer PageBreak() { _content.Add(composer => composer.PageBreak()); return this; }
         public ITextDescriptor Text(string text)
         {
@@ -592,7 +617,9 @@ public partial class PdfDocument
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             for (var index = 0; index < count; index++) { var item = new CanonicalContainer(); configure(index, item); _content.Add(item.Compose); }
         }
-        public void Compose(Layout.ContentComposer composer)
+        public void Compose(Layout.ContentComposer composer) => Compose(composer, null);
+
+        internal void Compose(Layout.ContentComposer composer, string? automaticLabel)
         {
             if (!_visible) { composer.Component(new Layout.Components.EmptyComponent()); return; }
             ValidateConstraints();
@@ -606,6 +633,8 @@ public partial class PdfDocument
             { var next = content; content = inner => inner.Align(_horizontal, _vertical, next, _ensureSpace); }
             else if (_ensureSpace.HasValue) { var next = content; content = inner => inner.EnsureSpace(_ensureSpace.Value, next); }
             if (_keepTogether || _keepWithNext) { var next = content; content = inner => inner.KeepTogether(next); }
+            var label = _debugLabel ?? automaticLabel;
+            if (label != null) { var next = content; content = inner => inner.DebugLabel(label, next); }
             content(composer);
         }
         private void ComposeCore(Layout.ContentComposer composer)
@@ -822,7 +851,12 @@ public partial class PdfDocument
         public void Compose(Layout.LayoutComponentCollection.ColumnComponentBuilder builder)
         {
             builder.Spacing(_spacing);
-            foreach (var item in _items) builder.Item(item.Compose);
+            for (var index = 0; index < _items.Count; index++)
+            {
+                var item = _items[index];
+                var itemNumber = index + 1;
+                builder.Item(composer => item.Compose(composer, $"Column > Item[{itemNumber}]"));
+            }
         }
     }
 
@@ -839,13 +873,17 @@ public partial class PdfDocument
         }
         public void Compose(Layout.LayoutComponentCollection.RowComponentBuilder builder)
         {
-            foreach (var item in _items)
+            for (var index = 0; index < _items.Count; index++)
+            {
+                var item = _items[index];
+                var itemNumber = index + 1;
                 switch (item.kind)
                 {
-                    case RowItemKind.Constant: builder.Constant(item.value, item.container.Compose); break;
-                    case RowItemKind.Relative: builder.Relative(item.value, item.container.Compose); break;
-                    case RowItemKind.Auto: builder.Auto(item.container.Compose); break;
+                    case RowItemKind.Constant: builder.Constant(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
+                    case RowItemKind.Relative: builder.Relative(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
+                    case RowItemKind.Auto: builder.Auto(composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
                 }
+            }
         }
         private enum RowItemKind { Constant, Relative, Auto }
     }
