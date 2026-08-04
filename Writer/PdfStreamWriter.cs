@@ -38,11 +38,38 @@ namespace PdfBuilder.Writer
             EnsureNotDisposed();
             if (_inObject) throw new InvalidOperationException("Already inside an object.");
 
+            int objectId = ReserveObject();
+            BeginReservedObject(objectId);
+            return objectId;
+        }
+
+        /// <summary>
+        /// Reserves an object number without writing it. Reserved objects let callers build
+        /// forward references without relying on the order in which later objects are emitted.
+        /// </summary>
+        internal int ReserveObject()
+        {
+            EnsureNotDisposed();
+            if (_inObject) throw new InvalidOperationException("Cannot reserve an object while inside an object.");
+
             _objectCount++;
-            _offsets.Add(_stream.Position); // store exact byte offset where "n 0 obj" is written
-            WriteLine($"{_objectCount} 0 obj");
-            _inObject = true;
+            _offsets.Add(-1);
             return _objectCount;
+        }
+
+        /// <summary>Begins writing an object that was previously reserved.</summary>
+        internal void BeginReservedObject(int objectId)
+        {
+            EnsureNotDisposed();
+            if (_inObject) throw new InvalidOperationException("Already inside an object.");
+            if (objectId <= 0 || objectId > _objectCount)
+                throw new ArgumentOutOfRangeException(nameof(objectId));
+            if (_offsets[objectId - 1] >= 0)
+                throw new InvalidOperationException($"Object {objectId} has already been written.");
+
+            _offsets[objectId - 1] = _stream.Position;
+            WriteLine($"{objectId} 0 obj");
+            _inObject = true;
         }
 
         /// <summary>Ends the current PDF object.</summary>
@@ -144,6 +171,8 @@ namespace PdfBuilder.Writer
             for (int i = 0; i < _offsets.Count; i++)
             {
                 long off = _offsets[i];
+                if (off < 0)
+                    throw new InvalidOperationException($"Reserved PDF object {i + 1} was never written.");
                 // 10-digit, leading zeros, then " 00000 n "
                 WriteLine($"{off:D10} 00000 n ");
             }

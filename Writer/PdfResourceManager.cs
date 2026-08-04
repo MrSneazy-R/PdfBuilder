@@ -26,9 +26,24 @@ namespace PdfBuilder.Writer
         private readonly Dictionary<string, int> _imagesLegacy = new();
         private readonly Dictionary<float, int> _opacityStatesLegacy = new();
 
-        // New image map: main image object + optional SMask object
-        private readonly Dictionary<string, (int imObj, int? smaskObj)> _imageMap = new();
+        // The hash identifies candidates; byte equality prevents a collision from aliasing two assets.
+        // Each manager is document-scoped, so no caller-owned image data is shared across documents.
+        private readonly Dictionary<string, List<ImageResource>> _imageMap = new(StringComparer.Ordinal);
         private readonly PdfOutputOptions _options;
+
+        private sealed class ImageResource
+        {
+            public ImageResource(byte[] content, int imageObjectId, int? softMaskObjectId)
+            {
+                Content = content;
+                ImageObjectId = imageObjectId;
+                SoftMaskObjectId = softMaskObjectId;
+            }
+
+            public byte[] Content { get; }
+            public int ImageObjectId { get; }
+            public int? SoftMaskObjectId { get; }
+        }
 
         public PdfResourceManager()
             : this(null)
@@ -92,15 +107,22 @@ namespace PdfBuilder.Writer
             if (img.ImageData == null || img.ImageData.Length == 0)
                 throw new InvalidDataException("ImageElement.ImageData is empty.");
 
-            string key = !string.IsNullOrWhiteSpace(img.ImageId)
-                ? img.ImageId!
-                : Hash(img.ImageData);
-
-            if (!_imageMap.TryGetValue(key, out var ids))
+            string key = Hash(img.ImageData);
+            if (!_imageMap.TryGetValue(key, out var candidates))
             {
-                // Single auto path handles JPEG/PNG/WebP
-                ids = WriteImageAuto(w, img.ImageData);
-                _imageMap[key] = ids;
+                candidates = new List<ImageResource>();
+                _imageMap.Add(key, candidates);
+            }
+
+            var resource = candidates.FirstOrDefault(candidate =>
+                candidate.Content.AsSpan().SequenceEqual(img.ImageData));
+            if (resource == null)
+            {
+                // Keep a private immutable snapshot for collision-safe equality. The original data
+                // may be caller-owned and must not be retained as mutable shared state.
+                var ids = WriteImageAuto(w, img.ImageData);
+                resource = new ImageResource(img.ImageData.ToArray(), ids.imObj, ids.smaskObj);
+                candidates.Add(resource);
             }
 
             // Optional overall opacity (separate from per-pixel alpha)
@@ -112,9 +134,9 @@ namespace PdfBuilder.Writer
                 gsName = handle.ResourceName;
             }
 
-            string name = $"/Im{ids.imObj}";
+            string name = $"/Im{resource.ImageObjectId}";
             img.PdfResourceName = name; // optional debug
-            return (ids.imObj, ids.smaskObj, gsName, name);
+            return (resource.ImageObjectId, resource.SoftMaskObjectId, gsName, name);
         }
 
         /// <summary>Build /XObject entries, e.g. "/Im5 5 0 R /Im9 9 0 R"</summary>
@@ -122,9 +144,9 @@ namespace PdfBuilder.Writer
         {
             if (_imageMap.Count == 0) return string.Empty;
             var sb = new StringBuilder();
-            foreach (var kv in _imageMap)
+            foreach (var resource in _imageMap.Values.SelectMany(value => value).OrderBy(value => value.ImageObjectId))
             {
-                int id = kv.Value.imObj;
+                int id = resource.ImageObjectId;
                 sb.Append($"/Im{id} {id} 0 R ");
             }
             return sb.ToString();
@@ -440,7 +462,7 @@ namespace PdfBuilder.Writer
         }
 
         // ---------- UTILS ----------
-        private static string Hash(byte[] data) => Convert.ToHexString(SHA1.HashData(data));
+        private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data));
 
         private static float Clamp01(float v)
         {

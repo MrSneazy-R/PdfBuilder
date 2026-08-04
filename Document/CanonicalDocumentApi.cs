@@ -303,11 +303,25 @@ public partial class PdfDocument
     /// <summary>Generates the document as PDF bytes.</summary>
     public byte[] GenerateBytes() => new PdfWriter().GenerateBytes(this);
 
+    /// <summary>Generates the document as PDF bytes and observes cancellation between layout and page writes.</summary>
+    /// <param name="cancellationToken">Cancels generation before the next expensive operation.</param>
+    public byte[] GenerateBytes(CancellationToken cancellationToken) => new PdfWriter().GenerateBytes(this, cancellationToken);
+
     /// <summary>Generates the document into a writable stream.</summary>
     public void Generate(Stream destination) => new PdfWriter().GenerateStream(this, destination);
 
+    /// <summary>Generates the document directly into a writable stream and observes cancellation between layout and page writes.</summary>
+    /// <param name="destination">The stream that receives the PDF.</param>
+    /// <param name="cancellationToken">Cancels generation before the next expensive operation.</param>
+    public void Generate(Stream destination, CancellationToken cancellationToken) => new PdfWriter().GenerateStream(this, destination, cancellationToken);
+
     /// <summary>Generates and saves the document to a file path.</summary>
     public void Save(string path) => new PdfWriter().Save(this, path);
+
+    /// <summary>Generates and saves the document to a file path while observing cancellation.</summary>
+    /// <param name="path">The destination file path.</param>
+    /// <param name="cancellationToken">Cancels generation before the next expensive operation.</param>
+    public void Save(string path, CancellationToken cancellationToken) => new PdfWriter().Save(this, path, cancellationToken);
 
     private sealed class CanonicalDocumentDescriptor : IDocumentDescriptor
     {
