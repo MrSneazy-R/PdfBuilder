@@ -80,8 +80,14 @@ jobs:
           dotnet run --project samples/MultiPageReport/MultiPageReport.csproj -c Release --no-build
           dotnet run --project samples/MultiLanguage/MultiLanguage.csproj -c Release --no-build
           dotnet run --project samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-build
+      # The solution deliberately includes the Linux-only independent validation
+      # project so local `dotnet test PdfBuilder.sln` exercises every maintained
+      # project. QPDF and Poppler are required in CI, but only Ubuntu is the
+      # supported independent-validator host. Keep ordinary unit tests required
+      # on every platform rather than misclassifying missing validator tools as
+      # Windows/macOS test failures.
       - name: Run unit tests
-        run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=tests.trx" --results-directory TestResults
+        run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
       - name: Run independent PDF validation
         if: runner.os == 'Linux'
         env:
