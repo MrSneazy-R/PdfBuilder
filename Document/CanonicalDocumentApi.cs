@@ -13,6 +13,9 @@ public interface IDocumentDescriptor
     /// <summary>Configures optional layout diagnostics before pages are composed.</summary>
     void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure);
 
+    /// <summary>Configures document-scoped canonical theme values.</summary>
+    void Theme(Action<DocumentTheme> configure);
+
     /// <summary>Adds and configures a page.</summary>
     void Page(Action<IPageDescriptor> configure);
 }
@@ -113,6 +116,10 @@ public interface IContainer
     IContainer ShowIf(bool condition);
     /// <summary>Associates a source label with this container for layout diagnostics.</summary>
     IContainer DebugLabel(string label);
+    /// <summary>Composes a reusable component into this container.</summary>
+    IContainer Component(IPdfComponent component);
+    /// <summary>Composes a reusable component using a caller-owned model.</summary>
+    IContainer Component<TModel>(IPdfComponent<TModel> component, TModel model);
     /// <summary>Forces subsequent content onto a new page.</summary>
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
@@ -216,11 +223,15 @@ public interface ITextStyleDescriptor
     ITextStyleDescriptor FontSize(float size);
     /// <summary>Uses a bold font style.</summary>
     ITextStyleDescriptor Bold();
+    /// <summary>Sets the text colour or resolves a named theme colour.</summary>
+    ITextStyleDescriptor Color(string color);
 }
 
 /// <summary>Configures text content added to a container.</summary>
 public interface ITextDescriptor : ITextStyleDescriptor
 {
+    /// <summary>Applies a named document theme text style.</summary>
+    ITextDescriptor Style(string name);
 }
 
 /// <summary>Configures a canonical raster image.</summary>
@@ -395,6 +406,11 @@ public partial class PdfDocument
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             configure(_document.LayoutOptions.Diagnostics);
         }
+        public void Theme(Action<DocumentTheme> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.Theme);
+        }
         public void Page(Action<IPageDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -407,19 +423,25 @@ public partial class PdfDocument
     private sealed class CanonicalPageDescriptor : IPageDescriptor
     {
         private readonly PdfDocument _document;
-        private readonly CanonicalContainer _content = new();
-        private readonly CanonicalContainer _header = new();
-        private readonly CanonicalContainer _footer = new();
-        private readonly CanonicalContainer _background = new();
+        private readonly CanonicalContainer _content;
+        private readonly CanonicalContainer _header;
+        private readonly CanonicalContainer _footer;
+        private readonly CanonicalContainer _background;
         private PageSize _size = PageSizes.Letter;
         private PageOrientation _orientation = PageOrientation.Portrait;
         private float _left = 40f, _top = 40f, _right = 40f, _bottom = 40f;
-        private readonly CanonicalTextStyle _defaultStyle = new();
+        private readonly CanonicalTextStyle _defaultStyle;
         private int _columnCount = 1;
         private float _columnGutter = 14f;
         private bool _hasHeader, _hasFooter, _hasBackground, _firstPageDifferent, _hideFooterOnLastPage;
 
-        public CanonicalPageDescriptor(PdfDocument document) => _document = document;
+        public CanonicalPageDescriptor(PdfDocument document)
+        {
+            _document = document;
+            _content = new CanonicalContainer(document.Theme); _header = new CanonicalContainer(document.Theme);
+            _footer = new CanonicalContainer(document.Theme); _background = new CanonicalContainer(document.Theme);
+            _defaultStyle = new CanonicalTextStyle(document.Theme);
+        }
         public void Size(PageSize size)
         {
             if (size.Width <= 0 || size.Height <= 0) throw new ArgumentOutOfRangeException(nameof(size));
@@ -455,6 +477,7 @@ public partial class PdfDocument
             var page = _document.AddPage(size.Width, size.Height);
             page.MarginLeft = _left; page.MarginTop = _top; page.MarginRight = _right; page.MarginBottom = _bottom;
             page.Columns = new ColumnLayoutSpec { Columns = _columnCount, Gutter = _columnGutter };
+            _document.Theme.DefaultTextStyle.Apply(page.TextDefaults, _document.Theme);
             _defaultStyle.Apply(page.TextDefaults);
             if (_hasHeader || _hasFooter)
             {
@@ -475,6 +498,7 @@ public partial class PdfDocument
 
     private sealed class CanonicalContainer : IContainer
     {
+        private readonly DocumentTheme? _theme;
         private readonly List<Action<Layout.ContentComposer>> _content = new();
         private float? _paddingLeft, _paddingTop, _paddingRight, _paddingBottom;
         private float? _marginLeft, _marginTop, _marginRight, _marginBottom;
@@ -487,6 +511,8 @@ public partial class PdfDocument
         private float? _width, _height, _minWidth, _maxWidth, _minHeight, _maxHeight, _aspectRatio, _ensureSpace;
         private bool _extend, _shrink, _keepTogether, _keepWithNext, _visible = true;
         private string? _debugLabel;
+
+        public CanonicalContainer(DocumentTheme? theme = null) => _theme = theme;
 
         public IContainer Padding(float value) => Padding(value, value, value, value);
         public IContainer Padding(float left, float top, float right, float bottom)
@@ -533,10 +559,20 @@ public partial class PdfDocument
             _debugLabel = label;
             return this;
         }
+        public IContainer Component(IPdfComponent component)
+        {
+            if (component == null) throw new ArgumentNullException(nameof(component));
+            DebugLabel(component.GetType().Name); component.Compose(this); return this;
+        }
+        public IContainer Component<TModel>(IPdfComponent<TModel> component, TModel model)
+        {
+            if (component == null) throw new ArgumentNullException(nameof(component));
+            DebugLabel(component.GetType().Name); component.Compose(this, model); return this;
+        }
         public IContainer PageBreak() { _content.Add(composer => composer.PageBreak()); return this; }
         public ITextDescriptor Text(string text)
         {
-            var descriptor = new CanonicalTextStyle();
+            var descriptor = new CanonicalTextStyle(_theme);
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
@@ -577,45 +613,45 @@ public partial class PdfDocument
         public ITextDescriptor Text(Func<string> text)
         {
             if (text == null) throw new ArgumentNullException(nameof(text));
-            var descriptor = new CanonicalTextStyle();
+            var descriptor = new CanonicalTextStyle(_theme);
             _content.Add(composer => composer.Text(text() ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
         public void Column(Action<IColumnDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var column = new CanonicalColumnDescriptor(); configure(column);
+            var column = new CanonicalColumnDescriptor(_theme); configure(column);
             _content.Add(composer => composer.Column(builder => column.Compose(builder)));
         }
         public void Row(Action<IRowDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var row = new CanonicalRowDescriptor(); configure(row);
+            var row = new CanonicalRowDescriptor(_theme); configure(row);
             _content.Add(composer => composer.Row(builder => row.Compose(builder)));
         }
         public void Grid(Action<IGridDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var grid = new CanonicalGridDescriptor(); configure(grid);
+            var grid = new CanonicalGridDescriptor(_theme); configure(grid);
             _content.Add(composer => composer.Grid(builder => grid.Compose(builder)));
         }
         public void Stack(Action<IStackDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var stack = new CanonicalStackDescriptor(); configure(stack);
+            var stack = new CanonicalStackDescriptor(_theme); configure(stack);
             _content.Add(composer => composer.Stack(builder => stack.Compose(builder)));
         }
         public void Layer(Action<ILayerDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var layer = new CanonicalLayerDescriptor(); configure(layer);
+            var layer = new CanonicalLayerDescriptor(_theme); configure(layer);
             _content.Add(composer => composer.Layer(builder => layer.Compose(builder)));
         }
         public void Repeat(int count, Action<int, IContainer> configure)
         {
             if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(); configure(index, item); _content.Add(item.Compose); }
+            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(_theme); configure(index, item); _content.Add(item.Compose); }
         }
         public void Compose(Layout.ContentComposer composer) => Compose(composer, null);
 
@@ -838,16 +874,20 @@ public partial class PdfDocument
         public ITextStyleDescriptor FontFamily(string family) { _cell.Font = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
         public ITextStyleDescriptor FontSize(float size) { _cell.FontSize = size <= 0f ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
         public ITextStyleDescriptor Bold() { _cell.Bold = true; return this; }
+        public ITextStyleDescriptor Color(string color) { _cell.TextColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color)); return this; }
+        public ITextDescriptor Style(string name) => throw new NotSupportedException("Named theme styles are currently supported for canonical text containers, not table cells.");
     }
 
     private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
 
     private sealed class CanonicalColumnDescriptor : IColumnDescriptor
     {
+        private readonly DocumentTheme? _theme;
         private readonly List<CanonicalContainer> _items = new();
+        public CanonicalColumnDescriptor(DocumentTheme? theme) => _theme = theme;
         private float _spacing = 8f;
         public void Spacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _spacing = value; }
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.ColumnComponentBuilder builder)
         {
             builder.Spacing(_spacing);
@@ -862,14 +902,16 @@ public partial class PdfDocument
 
     private sealed class CanonicalRowDescriptor : IRowDescriptor
     {
+        private readonly DocumentTheme? _theme;
         private readonly List<(RowItemKind kind, float value, CanonicalContainer container)> _items = new();
+        public CanonicalRowDescriptor(DocumentTheme? theme) => _theme = theme;
         public IContainer ConstantItem(float width) => Add(RowItemKind.Constant, width);
         public IContainer RelativeItem(float weight = 1f) => Add(RowItemKind.Relative, weight);
         public IContainer AutoItem() => Add(RowItemKind.Auto, 0f);
         private IContainer Add(RowItemKind kind, float value)
         {
             if (value < 0 || (kind == RowItemKind.Relative && value == 0)) throw new ArgumentOutOfRangeException(nameof(value));
-            var container = new CanonicalContainer(); _items.Add((kind, value, container)); return container;
+            var container = new CanonicalContainer(_theme); _items.Add((kind, value, container)); return container;
         }
         public void Compose(Layout.LayoutComponentCollection.RowComponentBuilder builder)
         {
@@ -890,13 +932,15 @@ public partial class PdfDocument
 
     private sealed class CanonicalGridDescriptor : IGridDescriptor
     {
+        private readonly DocumentTheme? _theme;
         private readonly List<CanonicalContainer> _items = new();
+        public CanonicalGridDescriptor(DocumentTheme? theme) => _theme = theme;
         private int _columns = 1;
         private float _rowGap = 8f, _columnGap = 8f;
         public void Columns(int value) { if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value)); _columns = value; }
         public void RowSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _rowGap = value; }
         public void ColumnSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _columnGap = value; }
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.GridComponentBuilder builder)
         {
             builder.Columns(_columns).RowGap(_rowGap).ColumnGap(_columnGap);
@@ -906,17 +950,23 @@ public partial class PdfDocument
 
     private sealed class CanonicalStackDescriptor : IStackDescriptor
     {
+        private readonly DocumentTheme? _theme;
         private readonly List<CanonicalContainer> _items = new();
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public CanonicalStackDescriptor(DocumentTheme? theme) => _theme = theme;
+        public IContainer Item() { var item = new CanonicalContainer(_theme); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.StackComponentBuilder builder) { foreach (var item in _items) builder.Item(item.Compose); }
     }
 
     private sealed class CanonicalLayerDescriptor : ILayerDescriptor
     {
-        private readonly CanonicalContainer _background = new();
-        private readonly CanonicalContainer _content = new();
-        private readonly CanonicalContainer _foreground = new();
+        private readonly CanonicalContainer _background;
+        private readonly CanonicalContainer _content;
+        private readonly CanonicalContainer _foreground;
         private bool _hasBackground, _hasContent, _hasForeground;
+        public CanonicalLayerDescriptor(DocumentTheme? theme)
+        {
+            _background = new CanonicalContainer(theme); _content = new CanonicalContainer(theme); _foreground = new CanonicalContainer(theme);
+        }
         public IContainer Background() { _hasBackground = true; return _background; }
         public IContainer Content() { _hasContent = true; return _content; }
         public IContainer Foreground() { _hasForeground = true; return _foreground; }
@@ -977,11 +1027,24 @@ public partial class PdfDocument
 
     private sealed class CanonicalTextStyle : ITextDescriptor
     {
-        private string? _family; private float? _size; private bool _bold;
+        private readonly DocumentTheme? _theme;
+        private string? _family; private float? _size; private bool _bold; private string? _color; private string? _style;
+        public CanonicalTextStyle(DocumentTheme? theme = null) => _theme = theme;
         public ITextStyleDescriptor FontFamily(string family) { _family = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
         public ITextStyleDescriptor FontSize(float size) { _size = size <= 0 ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
         public ITextStyleDescriptor Bold() { _bold = true; return this; }
-        public void Apply(TextStyleDefaults defaults) { if (_family != null) defaults.FontFamily = _family; if (_size.HasValue) defaults.FontSize = _size; if (_bold) defaults.Bold = true; }
-        public void Apply(TextElement element) { if (_family != null) element.FontFamily = _family; if (_size.HasValue) element.FontSize = _size.Value; if (_bold) element.Bold = true; }
+        public ITextStyleDescriptor Color(string color) { _color = string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A colour is required.", nameof(color)) : color; return this; }
+        public ITextDescriptor Style(string name) { _style = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("A style name is required.", nameof(name)) : name; return this; }
+        public void Apply(TextStyleDefaults defaults)
+        {
+            if (_style != null && _theme != null && _theme.TryGetTextStyle(_style, out var named)) named.Apply(defaults, _theme);
+            if (_family != null) defaults.FontFamily = _family; if (_size.HasValue) defaults.FontSize = _size; if (_bold) defaults.Bold = true;
+        }
+        public void Apply(TextElement element)
+        {
+            if (_style != null && _theme != null && _theme.TryGetTextStyle(_style, out var named)) named.Apply(element, _theme);
+            if (_family != null) element.FontFamily = _family; if (_size.HasValue) element.FontSize = _size.Value; if (_bold) element.Bold = true;
+            if (_color != null) element.Color = _theme != null && _theme.TryGetColor(_color, out var resolved) ? resolved : _color;
+        }
     }
 }

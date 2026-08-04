@@ -2748,6 +2748,43 @@ static PdfBuilder.Document.Units.Centimeters(float value) -> float
 static PdfBuilder.Document.Units.Inches(float value) -> float
 static PdfBuilder.Document.Units.Millimeters(float value) -> float
 static PdfBuilder.Document.Units.Points(float value) -> float
+PdfBuilder.Document.DocumentTheme
+PdfBuilder.Document.DocumentTheme.DocumentTheme() -> void
+PdfBuilder.Document.DocumentTheme.DefaultTextStyle.get -> PdfBuilder.Document.TextStyle!
+PdfBuilder.Document.DocumentTheme.Page.get -> PdfBuilder.Document.PageTheme!
+PdfBuilder.Document.DocumentTheme.Spacing.get -> PdfBuilder.Document.SpacingTheme!
+PdfBuilder.Document.DocumentTheme.ConfigureDefaultTextStyle(System.Action<PdfBuilder.Document.TextStyle!>! configure) -> void
+PdfBuilder.Document.DocumentTheme.Color(string! name, string! color) -> void
+PdfBuilder.Document.DocumentTheme.TextStyle(string! name, System.Action<PdfBuilder.Document.TextStyle!>! configure) -> void
+PdfBuilder.Document.DocumentTheme.SetSpacing(string! name, float value) -> void
+PdfBuilder.Document.IPdfComponent
+PdfBuilder.Document.IPdfComponent.Compose(PdfBuilder.Document.IContainer! container) -> void
+PdfBuilder.Document.IPdfComponent<TModel>
+PdfBuilder.Document.IPdfComponent<TModel>.Compose(PdfBuilder.Document.IContainer! container, TModel model) -> void
+PdfBuilder.Document.PdfTemplate<TModel>
+PdfBuilder.Document.PdfTemplate<TModel>.PdfTemplate() -> void
+abstract PdfBuilder.Document.PdfTemplate<TModel>.Compose(PdfBuilder.Document.IDocumentDescriptor! document, TModel model) -> void
+PdfBuilder.Document.PdfTemplate<TModel>.Create(TModel model) -> PdfBuilder.Document.PdfDocument!
+PdfBuilder.Document.PdfTemplate<TModel>.GenerateBytes(TModel model, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> byte[]!
+PdfBuilder.Document.PdfTemplate<TModel>.Generate(System.IO.Stream! destination, TModel model, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
+PdfBuilder.Document.PageTheme
+PdfBuilder.Document.PageTheme.PageTheme() -> void
+PdfBuilder.Document.SpacingTheme
+PdfBuilder.Document.SpacingTheme.SpacingTheme() -> void
+PdfBuilder.Document.SpacingTheme.Set(string! name, float value) -> void
+PdfBuilder.Document.SpacingTheme.Get(string! name) -> float
+PdfBuilder.Document.TextStyle
+PdfBuilder.Document.TextStyle.TextStyle() -> void
+PdfBuilder.Document.TextStyle.FontFamily(string! family) -> PdfBuilder.Document.TextStyle!
+PdfBuilder.Document.TextStyle.FontSize(float size) -> PdfBuilder.Document.TextStyle!
+PdfBuilder.Document.TextStyle.Bold() -> PdfBuilder.Document.TextStyle!
+PdfBuilder.Document.TextStyle.Color(string! color) -> PdfBuilder.Document.TextStyle!
+PdfBuilder.Document.PdfDocument.Theme.get -> PdfBuilder.Document.DocumentTheme!
+PdfBuilder.Document.IDocumentDescriptor.Theme(System.Action<PdfBuilder.Document.DocumentTheme!>! configure) -> void
+PdfBuilder.Document.IContainer.Component(PdfBuilder.Document.IPdfComponent! component) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Component<TModel>(PdfBuilder.Document.IPdfComponent<TModel>! component, TModel model) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ITextStyleDescriptor.Color(string! color) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextDescriptor.Style(string! name) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.PdfDocument.RenderLimits.get -> PdfBuilder.Document.Layout.PdfRenderLimits!
 PdfBuilder.Document.Layout.PdfRenderLimitException
 PdfBuilder.Document.Layout.PdfRenderLimitException.PdfRenderLimitException(string! limitName, string! message) -> void
