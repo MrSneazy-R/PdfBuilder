@@ -531,13 +531,13 @@ namespace PdfBuilder.Writer
 
             if (hasFill)
             {
-                string fillRgb = TryRgb(rect.FillColor) ?? "0 0 0";
+                string fillRgb = TryRgb(rect.FillColor!) ?? "0 0 0";
                 sb.Append($"{fillRgb} rg ");
             }
 
             if (hasStroke)
             {
-                string strokeRgb = TryRgb(rect.StrokeColor) ?? "0 0 0";
+                string strokeRgb = TryRgb(rect.StrokeColor!) ?? "0 0 0";
                 sb.Append($"{strokeRgb} RG {N(rect.StrokeWidth)} w ");
                 if (rect.DashPattern != null && rect.DashPattern.Length > 0)
                 {

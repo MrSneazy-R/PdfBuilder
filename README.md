@@ -1,6 +1,6 @@
 # PdfBuilder
 
-> **Pre-release:** PdfBuilder `0.1.0-alpha.1` is under active production hardening. Validate output against your own documents before production use.
+> **Pre-release:** PdfBuilder `0.1.0-preview.1` is under active production hardening. Validate output against your own documents before production use.
 
 PdfBuilder is a cross-platform .NET PDF library for invoices, statements, operational documents, and reports. It keeps its own PDF writer and layout engine; it is not a wrapper around another PDF generator.
 
@@ -11,6 +11,9 @@ dotnet add package PdfBuilder --prerelease
 ```
 
 Use the stable .NET 10 SDK specified in [global.json](global.json).
+
+The production-readiness gates, supported platforms, security model, support policy,
+and release limitations are recorded in [the release-candidate guide](documentation/release/release-candidate.md).
 
 ## Five-minute quick start
 

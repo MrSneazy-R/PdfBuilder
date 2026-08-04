@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);RS0026;RS0027;CS1591;CS1570;PDFB001;PDFB002;PDFB003;PDFB004;PDFB005;PDFB006;PDFB007</NoWarn>
     <PackageId>PdfBuilder</PackageId>
-    <Version>0.1.0-alpha.1</Version>
+    <Version>0.1.0-preview.1</Version>
     <Description>Pre-release, coordinate-free PDF generation for .NET applications.</Description>
     <Authors>MrSneazy-R</Authors>
     <PackageTags>pdf;document;invoice;report;layout</PackageTags>
@@ -56,8 +56,6 @@
     <None Include="tests\**\*.cs" />
     <Compile Remove="samples\**\*.cs" />
     <None Include="samples\**\*.cs" />
-    <Compile Remove="benchmarks\**\*.cs" />
-    <None Include="benchmarks\**\*.cs" />
     <Compile Remove="benchmarks\**\*.cs" />
     <None Include="benchmarks\**\*.cs" />
   </ItemGroup>

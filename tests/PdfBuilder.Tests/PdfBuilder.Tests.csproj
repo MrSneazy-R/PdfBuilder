@@ -6,6 +6,7 @@
     <IsTestProject>true</IsTestProject>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <NoWarn>$(NoWarn);PDFB001;PDFB002;PDFB003;PDFB004;PDFB005;PDFB006;PDFB007</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
