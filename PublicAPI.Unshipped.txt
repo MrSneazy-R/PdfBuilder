@@ -291,6 +291,7 @@ PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Table(System.Action<PdfBuilder.Document.ITableDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.IContainer.Text(System.Func<string!>! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
@@ -344,8 +345,14 @@ PdfBuilder.Document.ImageBuilder.Width(float width) -> PdfBuilder.Document.Image
 PdfBuilder.Document.ImageBuilder.X(float x) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.Y(float y) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.IPageDescriptor
+PdfBuilder.Document.IPageDescriptor.Background() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.FirstPageDifferent() -> void
+PdfBuilder.Document.IPageDescriptor.HideFooterOnLastPage() -> void
+PdfBuilder.Document.IPageDescriptor.Columns(int count, float gutter = 14) -> void
 PdfBuilder.Document.IPageDescriptor.Content() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.DefaultTextStyle(System.Action<PdfBuilder.Document.ITextStyleDescriptor!>! configure) -> void
+PdfBuilder.Document.IPageDescriptor.Footer() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.Header() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.Margin(float left, float top, float right, float bottom) -> void
 PdfBuilder.Document.IPageDescriptor.Margin(float value) -> void
 PdfBuilder.Document.IPageDescriptor.Orientation(PdfBuilder.Document.PageOrientation orientation) -> void
@@ -2693,6 +2700,8 @@ static PdfBuilder.Document.HeaderFooterTokens.NowUtc.get -> System.DateTime
 static PdfBuilder.Document.HeaderFooterTokens.Page.get -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Document.HeaderFooterTokens.PageCount.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.PageNumber.get -> int
+static PdfBuilder.Document.HeaderFooterTokens.SectionPageCount.get -> int
+static PdfBuilder.Document.HeaderFooterTokens.SectionPageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.Title.get -> string?
 static PdfBuilder.Document.Layout.LayoutMeasurement.Wrap(float usedWidth = 0, object? metadata = null) -> PdfBuilder.Document.Layout.LayoutMeasurement!
 static PdfBuilder.Document.PageSizes.A3.get -> PdfBuilder.Document.PageSize

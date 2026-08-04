@@ -80,6 +80,12 @@ namespace PdfBuilder.Document
 
         public static int PageCount => HeaderFooterRenderScope.Current.PageCount;
 
+        /// <summary>Gets the page number within the current section when a section-specific counter is available.</summary>
+        public static int SectionPageNumber => PageNumber;
+
+        /// <summary>Gets the total pages in the current section when a section-specific counter is available.</summary>
+        public static int SectionPageCount => PageCount;
+
         public static string? Title => HeaderFooterRenderScope.Current.Document?.Title;
 
         public static DateTime NowUtc => HeaderFooterRenderScope.Current.TimestampUtc;

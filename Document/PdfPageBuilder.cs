@@ -65,14 +65,30 @@ namespace PdfBuilder.Document
                         MarginBottom = _page.MarginBottom,
                         MarginLeft = _page.MarginLeft,
                         MarginRight = _page.MarginRight,
-                        TextDefaults = _page.TextDefaults.Clone()
+                        TextDefaults = _page.TextDefaults.Clone(),
+                        HeaderFooterOverride = _page.HeaderFooterOverride,
+                        MasterOverride = _page.MasterOverride,
+                        Columns = _page.Columns == null ? null : new ColumnLayoutSpec
+                        {
+                            Columns = _page.Columns.Columns,
+                            Gutter = _page.Columns.Gutter,
+                            Widths = _page.Columns.Widths == null ? null : (float[])_page.Columns.Widths.Clone()
+                        }
                     };
                     autoDoc!.Pages.Add(p);
                     return p;
                 };
             }
 
-            var column = new ColumnBuilder(_page, _margin, defaultSpacing: 8f, newPage: newPageFactory, layoutOptions: _page.LayoutOptions, textDefaults: _page.TextDefaults, document: _document ?? _autoDoc);
+            var column = new ColumnBuilder(
+                _page,
+                _margin,
+                defaultSpacing: 8f,
+                newPage: newPageFactory,
+                hfForPage: page => page.HeaderFooterOverride ?? (_document ?? _autoDoc)?.HeaderFooter,
+                layoutOptions: _page.LayoutOptions,
+                textDefaults: _page.TextDefaults,
+                document: _document ?? _autoDoc);
             columnAction(column);
             return this;
         }

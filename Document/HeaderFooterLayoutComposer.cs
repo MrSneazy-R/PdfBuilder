@@ -28,8 +28,14 @@ namespace PdfBuilder.Document
                 var context = new HeaderFooterRenderContext(document, page, i + 1, pageCount, timestampUtc);
                 using (HeaderFooterRenderScope.Push(context))
                 {
-                    page.SetHeaderElements(Render(spec.HeaderLayout, isHeader: true, page, spec));
-                    page.SetFooterElements(Render(spec.FooterLayout, isHeader: false, page, spec));
+                    bool isFirst = i == 0;
+                    bool isLast = i == pageCount - 1;
+                    page.SetHeaderElements(spec.FirstPageDifferent && isFirst
+                        ? Array.Empty<PdfElement>()
+                        : Render(spec.HeaderLayout, isHeader: true, page, spec));
+                    page.SetFooterElements((spec.FirstPageDifferent && isFirst) || (spec.HideOnLastPage && isLast)
+                        ? Array.Empty<PdfElement>()
+                        : Render(spec.FooterLayout, isHeader: false, page, spec));
                 }
             }
         }
