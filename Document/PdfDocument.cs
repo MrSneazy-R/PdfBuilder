@@ -21,6 +21,9 @@ namespace PdfBuilder.Document
 
         public TextStyleDefaults TextDefaults { get; } = new TextStyleDefaults();
 
+        /// <summary>Gets document-scoped canonical theme values.</summary>
+        public DocumentTheme Theme { get; } = new();
+
         public PaginationRegistry Pagination { get; } = new();
 
         public LayoutProfilerSession ProfilerSession { get; } = new();
