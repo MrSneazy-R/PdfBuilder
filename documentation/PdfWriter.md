@@ -15,7 +15,7 @@ API Surface
 Expectations & Preconditions
 ----------------------------
 - The document must contain at least one page; otherwise an `InvalidOperationException` is thrown.
-- Table pagination is executed automatically (`TablePaginator.Paginate`) prior to rendering, so tables that overflow pages are fully resolved.
+- Flowing tables are resolved while the document is composed. The writer serializes that resolved layout and does not clone or repaginate tables immediately before rendering.
 - Fonts collected from text runs are registered before encoding. Embedded fonts are included when required, while base-14 fonts use WinAnsi encoding for compatibility.
 - Outlines and link annotations are emitted when anchors or rich text links are present.
 

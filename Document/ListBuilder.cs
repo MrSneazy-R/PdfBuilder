@@ -33,6 +33,7 @@ namespace PdfBuilder.Document
         public ListBuilder BeginNest() { _stack.Push(_list.Items.Count > 0 ? _list.Items[^1] : new ListItem()); return this; }
         public ListBuilder EndNest() { if (_stack.Count > 0) _stack.Pop(); return this; }
 
+        [Obsolete("Use canonical container composition instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB006")]
         public float Add()
         {
             return _col.AddList(_list);

@@ -47,7 +47,15 @@ namespace PdfBuilder.Tests
             {
                 table.Rows.Add(new TableRow
                 {
-                    Cells = { new TableCell { Text = text, Padding = 0 } }
+                    Cells =
+                    {
+                        new TableCell
+                        {
+                            Text = text,
+                            Padding = 0,
+                            TextStyle = CreateMultilingualTextStyle()
+                        }
+                    }
                 });
             });
 
@@ -206,7 +214,8 @@ namespace PdfBuilder.Tests
                             Padding = 0,
                             TextStyle = new TableModels.TextStyle
                             {
-                                Wrap = TableModels.TextWrapMode.Wrap
+                                Wrap = TableModels.TextWrapMode.Wrap,
+                                FallbackFonts = CreateMultilingualTextStyle().FallbackFonts
                             }
                         }
                     }
@@ -259,6 +268,16 @@ namespace PdfBuilder.Tests
             page.Elements.Add(table);
             return doc;
         }
+
+        private static TableModels.TextStyle CreateMultilingualTextStyle() => new()
+        {
+            FallbackFonts = new List<string>
+            {
+                "Noto Naskh Arabic",
+                "Noto Sans Arabic",
+                "Noto Sans Hebrew"
+            }
+        };
 
         private static string RemoveDiacritics(string text)
         {

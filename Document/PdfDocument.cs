@@ -9,7 +9,7 @@ namespace PdfBuilder.Document
     /// Internal representation of a PDF document.
     /// Use PdfDocumentBuilder for fluent API creation.
     /// </summary>
-    public class PdfDocument
+    public partial class PdfDocument
     {
         public List<PdfPage> Pages { get; } = new();
 
@@ -29,6 +29,12 @@ namespace PdfBuilder.Document
 
         public LayoutProfilerSession ProfilerSession { get; } = new();
 
+        /// <summary>Gets the structured layout trace recorded when diagnostics are enabled.</summary>
+        public PdfLayoutTrace LayoutTrace { get; } = new();
+
+        /// <summary>Gets configurable rendering safeguards for this document.</summary>
+        public PdfRenderLimits RenderLimits { get; } = new();
+
         public PdfDocument()
         {
         }
@@ -40,6 +46,7 @@ namespace PdfBuilder.Document
 
         public PdfPage AddPage(float width = 612f, float height = 792f)
         {
+            RenderLimits.ValidatePageCount(Pages.Count + 1);
             var page = new PdfPage(width, height)
             {
                 LayoutOptions = LayoutOptions.Clone(),

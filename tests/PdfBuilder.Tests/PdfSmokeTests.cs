@@ -14,9 +14,10 @@ namespace PdfBuilder.Tests
 {
     public class PdfSmokeTests
     {
-        private static byte[] BuildPdfBytes(Action<ColumnBuilder> draw)
+        private static byte[] BuildPdfBytes(Action<ColumnBuilder> draw, bool readableContentStreams = false)
         {
             var doc = new PdfDocument();
+            doc.OutputOptions.ReadableContentStreams = readableContentStreams;
             var page = PdfPage.Letter();
 
             // Use page builder to layout into a single column with 40pt margin
@@ -86,7 +87,7 @@ namespace PdfBuilder.Tests
                 {
                     col.Image(webp, 40, col.GetCurrentY(), 128, 64).CornerRadius(8).Add();
                 }
-            });
+            }, readableContentStreams: true);
 
             var ascii = Encoding.ASCII.GetString(bytes);
 
@@ -95,9 +96,8 @@ namespace PdfBuilder.Tests
             ascii.Should().Contain("/Im");
 
             // Content stream should invoke image draw operator for at least the successfully embedded images
-            var content = string.Join("\n", PdfContentHelper.ExtractPageContentStreams(bytes));
-            var doCount = content.Split(" Do ", StringSplitOptions.None).Length - 1;
-            doCount.Should().BeGreaterOrEqualTo(webpEmbedded ? 3 : 2);
+            var doCount = ascii.Split(" Do ", StringSplitOptions.None).Length - 1;
+            doCount.Should().BeGreaterThanOrEqualTo(webpEmbedded ? 3 : 2);
         }
 
         [Fact]

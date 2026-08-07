@@ -57,6 +57,13 @@ namespace PdfBuilder.Document.Layout
 
         public LayoutComponentCollection Component(IMeasurable component) => Add(component);
 
+        internal LayoutComponentCollection DebugLabel(string label, Action<LayoutComponentCollection> configure)
+        {
+            if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("A debug label is required.", nameof(label));
+            _components.Add(new DebugLabelComponent(label, BuildComposite(configure, nameof(DebugLabel))));
+            return this;
+        }
+
         public LayoutComponentCollection Component(
             Func<LayoutMeasureContext, LayoutMeasurement> measure,
             Action<LayoutDrawContext, LayoutMeasurement> draw)
@@ -77,6 +84,25 @@ namespace PdfBuilder.Document.Layout
                 configure(this);
             }
 
+            return this;
+        }
+
+        internal LayoutComponentCollection PageBreak()
+        {
+            _components.Add(new PageBreakComponent());
+            return this;
+        }
+
+        internal LayoutComponentCollection EnsureSpace(float minimumHeight, Action<LayoutComponentCollection> configure)
+        {
+            if (minimumHeight < 0f || float.IsNaN(minimumHeight) || float.IsInfinity(minimumHeight)) throw new ArgumentOutOfRangeException(nameof(minimumHeight));
+            _components.Add(new EnsureSpaceComponent(BuildComposite(configure, nameof(EnsureSpace)), minimumHeight));
+            return this;
+        }
+
+        internal LayoutComponentCollection KeepTogether(Action<LayoutComponentCollection> configure)
+        {
+            _components.Add(new KeepTogetherComponent(BuildComposite(configure, nameof(KeepTogether))));
             return this;
         }
 
@@ -135,6 +161,8 @@ namespace PdfBuilder.Document.Layout
             _owner.ApplyTextDefaults(element);
             element.FlowDirection = _owner.CurrentFlowDirection;
             configure?.Invoke(element);
+            if (!string.IsNullOrWhiteSpace(element.ThemeStyleName))
+                _owner.ApplyNamedTextStyle(element, element.ThemeStyleName);
             element.Color = _owner.ResolveThemeColor(element.Color);
             _components.Add(new TextComponent(element, _owner.DefaultSpacing));
             return this;

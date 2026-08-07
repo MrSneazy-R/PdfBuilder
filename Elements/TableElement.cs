@@ -157,6 +157,7 @@ namespace PdfBuilder.Elements
         public string Text { get; set; } = string.Empty;
         public List<TableModels.InlineRun> TextRuns { get; set; } = new();
         public TableModels.TextStyle? TextStyle { get; set; } = null;
+        internal string? ThemeStyleName { get; set; }
 
         // Typography
         public string Font { get; set; } = "Helvetica";

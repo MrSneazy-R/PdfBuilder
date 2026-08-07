@@ -115,8 +115,6 @@ namespace PdfBuilder.Tests
                         result.Add(decoded);
                 }
 
-                if (result.Count > 0)
-                    break;
             }
 
             return result;

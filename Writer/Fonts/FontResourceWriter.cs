@@ -23,7 +23,7 @@ namespace PdfBuilder.Writer.Fonts
                 if (font.Glyphs.Count == 0)
                     continue;
 
-                var glyphEntries = font.Glyphs.Values.OrderBy(g => g.Cid).ToList();
+                var glyphEntries = font.Glyphs.OrderBy(g => g.Cid).ToList();
                 var originalData = font.GetFontData();
                 byte[] fontData = originalData;
 
@@ -103,6 +103,9 @@ namespace PdfBuilder.Writer.Fonts
                 writer.EndObject();
 
                 string widthSpec = BuildWidthArray(glyphEntries);
+                int cidToGidMapId = writer.BeginObject();
+                writer.WriteStream(BuildCidToGidMap(glyphEntries));
+                writer.EndObject();
 
                 int cidFontId = writer.BeginObject();
                 writer.WriteLine("<< /Type /Font");
@@ -112,6 +115,7 @@ namespace PdfBuilder.Writer.Fonts
                 writer.WriteLine($" /FontDescriptor {descriptorId} 0 R");
                 writer.WriteLine(" /DW 1000");
                 writer.WriteLine($" /W {widthSpec}");
+                writer.WriteLine($" /CIDToGIDMap {cidToGidMapId} 0 R");
                 writer.WriteLine(">>");
                 writer.EndObject();
 
@@ -151,6 +155,20 @@ namespace PdfBuilder.Writer.Fonts
             if (weightValue <= 800) return 140f;
             if (weightValue <= 900) return 160f;
             return 170f;
+        }
+
+        private static byte[] BuildCidToGidMap(IReadOnlyList<EmbeddedGlyph> glyphs)
+        {
+            int maxCid = glyphs.Count == 0 ? 0 : glyphs.Max(glyph => (int)glyph.Cid);
+            var map = new byte[(maxCid + 1) * 2];
+            foreach (var glyph in glyphs)
+            {
+                int offset = glyph.Cid * 2;
+                map[offset] = (byte)(glyph.GlyphId >> 8);
+                map[offset + 1] = (byte)glyph.GlyphId;
+            }
+
+            return map;
         }
 
         private static string BuildWidthArray(IReadOnlyList<EmbeddedGlyph> glyphs)

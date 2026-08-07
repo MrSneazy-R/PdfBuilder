@@ -33,17 +33,32 @@ namespace PdfBuilder.Writer
     public sealed class PdfPreviewGenerator
     {
         public IReadOnlyList<PdfPreviewPage> Generate(PdfDocument document, int dpi = 144)
+            => Generate(document, dpi, null, CancellationToken.None);
+
+        /// <summary>Renders selected one-based pages from an already-resolved document layout.</summary>
+        public IReadOnlyList<PdfPreviewPage> Generate(
+            PdfDocument document,
+            int dpi,
+            IEnumerable<int>? pageNumbers,
+            CancellationToken cancellationToken)
         {
             if (document == null) throw new ArgumentNullException(nameof(document));
             if (dpi <= 0) throw new ArgumentOutOfRangeException(nameof(dpi), "DPI must be positive.");
 
-            var laidOut = TablePaginator.Paginate(document);
-            var pages = new List<PdfPreviewPage>(laidOut.Pages.Count);
+            // Preview uses the same already-resolved layout as PDF serialization.
+            var laidOut = document;
+            var requestedPages = pageNumbers?.Distinct().OrderBy(number => number).ToArray()
+                ?? Enumerable.Range(1, laidOut.Pages.Count).ToArray();
+            if (requestedPages.Any(number => number < 1 || number > laidOut.Pages.Count))
+                throw new ArgumentOutOfRangeException(nameof(pageNumbers), "Page numbers are one-based and must exist in the document.");
 
-            for (int i = 0; i < laidOut.Pages.Count; i++)
+            var pages = new List<PdfPreviewPage>(requestedPages.Length);
+
+            foreach (var pageNumber in requestedPages)
             {
-                var page = laidOut.Pages[i];
-                pages.Add(RenderPage(laidOut, page, i + 1, dpi));
+                cancellationToken.ThrowIfCancellationRequested();
+                var page = laidOut.Pages[pageNumber - 1];
+                pages.Add(RenderPage(laidOut, page, pageNumber, dpi));
             }
 
             return pages;

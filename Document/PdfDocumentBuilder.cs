@@ -8,7 +8,7 @@ using PdfBuilder.Writer.Fonts;
 
 namespace PdfBuilder.Document
 {
-    public partial class PdfDocumentBuilder : IDocumentDescriptor
+    public partial class PdfDocumentBuilder
     {
         private readonly PdfDocument _doc;
         private HeaderFooterSpec _currentSectionHF;
@@ -197,10 +197,6 @@ namespace PdfBuilder.Document
             return this;
         }
 
-        IDocumentDescriptor IDocumentDescriptor.Theme(Action<DocumentThemeBuilder> configure) => Theme(configure);
-        IDocumentDescriptor IDocumentDescriptor.Compose(Action<DocumentComposer> configure) => Compose(configure);
-        IDocumentDescriptor IDocumentDescriptor.Metadata(Action<DocumentMetadata> configure) => Metadata(configure);
-        IDocumentDescriptor IDocumentDescriptor.OutputOptions(Action<PdfOutputOptions> configure) => OutputOptions(configure);
 
         internal float GetDefaultContentMargin() => _doc.Theme.Page.Margin ?? _defaultContentMargin;
 

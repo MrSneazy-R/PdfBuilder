@@ -20,6 +20,8 @@ mono_crash.*
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/
+!documentation/release/
+!documentation/release/*.md
 [Rr]eleases/
 x64/
 x86/
@@ -62,6 +64,9 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+samples/**/*.pdf
+samples/**/*.png
+samples/**/layout-trace.json
 
 # Independent PDF validation outputs are generated in CI. Only small, sanitised
 # approved raster baselines under the explicit exception below are versioned.
@@ -69,6 +74,8 @@ tests/PdfBuilder.ValidationTests/Actual/
 tests/PdfBuilder.ValidationTests/Differences/
 !tests/PdfBuilder.ValidationTests/Baselines/
 !tests/PdfBuilder.ValidationTests/Baselines/*.png
+!tests/PdfBuilder.ValidationTests/Baselines/**/
+!tests/PdfBuilder.ValidationTests/Baselines/**/*.png
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt

@@ -560,6 +560,7 @@ namespace PdfBuilder.Writer
             Text = c.Text,
             TextRuns = c.TextRuns.Select(run => run.Clone()).ToList(),
             TextStyle = c.TextStyle?.Clone(),
+            ThemeStyleName = c.ThemeStyleName,
 
             // Typography
             Font = c.Font,

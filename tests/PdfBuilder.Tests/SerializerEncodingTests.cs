@@ -93,12 +93,7 @@ namespace PdfBuilder.Tests
         }
 
         private static PdfDocument CreateDocument(string text)
-        {
-            var document = new PdfDocument();
-            new PdfDocumentBuilder(document)
-                .Compose(composer => composer.Page(page => page.Content(content => content.Text(text))));
-            return document;
-        }
+            => PdfDocument.Create(document => document.Page(page => page.Content().Text(text)));
 
         private static void ConfigureDeterminism(PdfDocument document)
         {

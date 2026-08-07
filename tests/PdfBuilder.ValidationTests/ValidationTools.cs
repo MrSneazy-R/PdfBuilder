@@ -15,7 +15,7 @@ internal static class ValidationTools
             foreach (var directory in directories)
             {
                 var fullPath = Path.Combine(directory, candidate);
-                if (File.Exists(fullPath))
+                if (File.Exists(fullPath) && CanRun(fullPath, executable))
                 {
                     executablePath = fullPath;
                     reason = string.Empty;
@@ -25,7 +25,7 @@ internal static class ValidationTools
         }
 
         executablePath = string.Empty;
-        reason = $"Independent PDF validation skipped locally: '{executable}' was not found on PATH. Install qpdf and Poppler, or run the Linux CI job where they are required.";
+        reason = $"Independent PDF validation skipped locally: '{executable}' was not found or could not be executed from PATH. Install qpdf and Poppler, or run the Linux CI job where they are required.";
         return false;
     }
 
@@ -47,6 +47,21 @@ internal static class ValidationTools
         var stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
         return new ProcessResult(process.ExitCode, stdout, stderr);
+    }
+
+    private static bool CanRun(string executablePath, string executableName)
+    {
+        try
+        {
+            var versionArgument = string.Equals(executableName, "qpdf", StringComparison.OrdinalIgnoreCase)
+                ? "--version"
+                : "-v";
+            return Run(executablePath, versionArgument).ExitCode == 0;
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
     }
 }
 

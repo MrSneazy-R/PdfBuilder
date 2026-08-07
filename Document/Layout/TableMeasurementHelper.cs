@@ -62,19 +62,7 @@ namespace PdfBuilder.Document.Layout
 
         internal static float[] ResolveColumnWidths(TableElement table, int totalCols, float tableWidth)
         {
-            var widths = new float[totalCols];
-            if (table.ColumnWidths != null && table.ColumnWidths.Count == totalCols)
-            {
-                for (int i = 0; i < totalCols; i++)
-                    widths[i] = Math.Max(0f, table.ColumnWidths[i]);
-            }
-            else
-            {
-                float equal = totalCols > 0 ? tableWidth / totalCols : 0f;
-                for (int i = 0; i < totalCols; i++)
-                    widths[i] = Math.Max(0f, equal);
-            }
-            return widths;
+            return TableColumnWidthCalculator.Calculate(table, totalCols, tableWidth);
         }
 
         internal static float[] ComputeRowHeights(TableElement table, float[] colWidths)
@@ -244,7 +232,10 @@ namespace PdfBuilder.Document.Layout
                 SmallCaps = cell.SmallCaps,
                 Underline = cell.Underline,
                 Strikethrough = cell.Strikethrough,
-                Color = ToHex(cell.TextColor)
+                Color = ToHex(cell.TextColor),
+                FallbackFonts = cell.TextStyle?.FallbackFonts == null
+                    ? null
+                    : new List<string>(cell.TextStyle.FallbackFonts)
             };
         }
 
@@ -264,7 +255,8 @@ namespace PdfBuilder.Document.Layout
                 SmallCaps = style.SmallCaps || cell.SmallCaps,
                 Underline = style.Underline || cell.Underline,
                 Strikethrough = style.Strikethrough || cell.Strikethrough,
-                Color = ToHex(style.TextColor)
+                Color = ToHex(style.TextColor),
+                FallbackFonts = inline.FallbackFonts ?? style.FallbackFonts ?? cell.TextStyle?.FallbackFonts
             };
         }
 

@@ -25,5 +25,7 @@ namespace PdfBuilder.Elements
         public float StrokeWidth { get; set; } = 0f;
         public float Opacity { get; set; } = 1f;
         public float[]? DashPattern { get; set; }
+        public float CornerRadius { get; set; }
+        internal string? ExtGStateResourceName { get; set; }
     }
 }

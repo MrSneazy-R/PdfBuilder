@@ -232,13 +232,11 @@ namespace PdfBuilder.Document.Layout
             if (Math.Abs(diff) <= 0.01f)
                 return widths;
 
-            if (widths.Length == 0)
-                return widths;
-
-            int lastIndex = widths.Length - 1;
-            widths[lastIndex] += diff;
-            if (widths[lastIndex] < 0f)
-                widths[lastIndex] = 0f;
+            if (widths.Length > 0)
+            {
+                int last = widths.Length - 1;
+                widths[last] = Math.Max(0f, widths[last] + diff);
+            }
 
             return widths;
         }

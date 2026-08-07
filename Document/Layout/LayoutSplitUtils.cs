@@ -61,7 +61,8 @@ namespace PdfBuilder.Document.Layout
                 KeepWithNext = source.KeepWithNext,
                 AvoidBreakInside = source.AvoidBreakInside,
                 WidowLines = source.WidowLines,
-                OrphanLines = source.OrphanLines
+                OrphanLines = source.OrphanLines,
+                ThemeStyleName = source.ThemeStyleName
             };
 
             if (overrideText != null)
@@ -153,6 +154,8 @@ namespace PdfBuilder.Document.Layout
             };
 
             clone.ColumnWidths.AddRange(source.ColumnWidths);
+            foreach (var definition in source.ColumnDefinitions)
+                clone.ColumnDefinitions.Add(definition.Clone());
 
             foreach (var style in source.ColumnStyles)
             {
@@ -240,6 +243,7 @@ namespace PdfBuilder.Document.Layout
             var clone = new TableCell
             {
                 Text = cell.Text,
+                ThemeStyleName = cell.ThemeStyleName,
                 TextStyle = cell.TextStyle == null ? null : CloneTextStyle(cell.TextStyle),
                 Font = cell.Font,
                 FontSize = cell.FontSize,

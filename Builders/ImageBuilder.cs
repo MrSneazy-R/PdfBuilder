@@ -110,6 +110,7 @@ namespace PdfBuilder.Document
         public ImageBuilder ClipEllipse(EllipseOrientation orientation, float squash = 1f)
         { _img.ClipShape = ImageClipShape.Ellipse; _img.EllipseOrientation = orientation; _img.EllipseSquash = Math.Max(0.01f, squash); return this; }
         // Add to the column and finish
+        [Obsolete("Use IContainer.Image instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB003")]
         public float Add()
         {
             return _column.AddImage(_img);

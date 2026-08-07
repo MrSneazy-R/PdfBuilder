@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Imaging;
@@ -26,9 +27,25 @@ namespace PdfBuilder.Writer
         private readonly Dictionary<string, int> _imagesLegacy = new();
         private readonly Dictionary<float, int> _opacityStatesLegacy = new();
 
-        // New image map: main image object + optional SMask object
-        private readonly Dictionary<string, (int imObj, int? smaskObj)> _imageMap = new();
+        // The hash identifies candidates; byte equality prevents a collision from aliasing two assets.
+        // Each manager is document-scoped, so no caller-owned image data is shared across documents.
+        private readonly Dictionary<string, List<ImageResource>> _imageMap = new(StringComparer.Ordinal);
         private readonly PdfOutputOptions _options;
+        private readonly PdfRenderLimits _renderLimits;
+
+        private sealed class ImageResource
+        {
+            public ImageResource(byte[] content, int imageObjectId, int? softMaskObjectId)
+            {
+                Content = content;
+                ImageObjectId = imageObjectId;
+                SoftMaskObjectId = softMaskObjectId;
+            }
+
+            public byte[] Content { get; }
+            public int ImageObjectId { get; }
+            public int? SoftMaskObjectId { get; }
+        }
 
         public PdfResourceManager()
             : this(null)
@@ -36,8 +53,14 @@ namespace PdfBuilder.Writer
         }
 
         public PdfResourceManager(PdfOutputOptions? options)
+            : this(options, null)
+        {
+        }
+
+        public PdfResourceManager(PdfOutputOptions? options, PdfRenderLimits? renderLimits)
         {
             _options = options ?? new PdfOutputOptions();
+            _renderLimits = renderLimits ?? new PdfRenderLimits();
         }
 
         private readonly struct ExtGStateHandle
@@ -92,15 +115,29 @@ namespace PdfBuilder.Writer
             if (img.ImageData == null || img.ImageData.Length == 0)
                 throw new InvalidDataException("ImageElement.ImageData is empty.");
 
-            string key = !string.IsNullOrWhiteSpace(img.ImageId)
-                ? img.ImageId!
-                : Hash(img.ImageData);
+            var imageInfo = MediaImageDecoders.ReadInfo(img.ImageData, _renderLimits.MaximumImagePixels);
+            _renderLimits.ValidateImagePixels(imageInfo.PixelCount);
+            img.SourcePixelWidth = imageInfo.Width;
+            img.SourcePixelHeight = imageInfo.Height;
+            img.SourceDpiX = imageInfo.DpiX;
+            img.SourceDpiY = imageInfo.DpiY;
 
-            if (!_imageMap.TryGetValue(key, out var ids))
+            string key = Hash(img.ImageData);
+            if (!_imageMap.TryGetValue(key, out var candidates))
             {
-                // Single auto path handles JPEG/PNG/WebP
-                ids = WriteImageAuto(w, img.ImageData);
-                _imageMap[key] = ids;
+                candidates = new List<ImageResource>();
+                _imageMap.Add(key, candidates);
+            }
+
+            var resource = candidates.FirstOrDefault(candidate =>
+                candidate.Content.AsSpan().SequenceEqual(img.ImageData));
+            if (resource == null)
+            {
+                // Keep a private immutable snapshot for collision-safe equality. The original data
+                // may be caller-owned and must not be retained as mutable shared state.
+                var ids = WriteImageAuto(w, img.ImageData);
+                resource = new ImageResource(img.ImageData.ToArray(), ids.imObj, ids.smaskObj);
+                candidates.Add(resource);
             }
 
             // Optional overall opacity (separate from per-pixel alpha)
@@ -112,9 +149,9 @@ namespace PdfBuilder.Writer
                 gsName = handle.ResourceName;
             }
 
-            string name = $"/Im{ids.imObj}";
+            string name = $"/Im{resource.ImageObjectId}";
             img.PdfResourceName = name; // optional debug
-            return (ids.imObj, ids.smaskObj, gsName, name);
+            return (resource.ImageObjectId, resource.SoftMaskObjectId, gsName, name);
         }
 
         /// <summary>Build /XObject entries, e.g. "/Im5 5 0 R /Im9 9 0 R"</summary>
@@ -122,9 +159,9 @@ namespace PdfBuilder.Writer
         {
             if (_imageMap.Count == 0) return string.Empty;
             var sb = new StringBuilder();
-            foreach (var kv in _imageMap)
+            foreach (var resource in _imageMap.Values.SelectMany(value => value).OrderBy(value => value.ImageObjectId))
             {
-                int id = kv.Value.imObj;
+                int id = resource.ImageObjectId;
                 sb.Append($"/Im{id} {id} 0 R ");
             }
             return sb.ToString();
@@ -367,11 +404,7 @@ namespace PdfBuilder.Writer
         // WebP (decode to RGB + optional alpha via WIC; write Flate + /SMask)
         private (int imObj, int? smaskObj) WriteWebpXObject(PdfStreamWriter w, byte[] webp)
         {
-            var info = WebpInspector.GetInfo(webp);
-            if (info.Animated) throw new InvalidDataException("Animated WebP is not supported.");
-
-            var wp = WebpWicDecoder.Decode(webp);
-            return WriteRawRgbWithOptionalAlpha(w, wp.Width, wp.Height, wp.Rgb, wp.Alpha);
+            throw new NotSupportedException("WebP is not supported because PdfBuilder does not provide a tested cross-platform WebP decoder.");
         }
 
         // Auto-detect and write
@@ -386,7 +419,7 @@ namespace PdfBuilder.Writer
             if (WebpInspector.LooksLikeWebp(bytes))
                 return WriteWebpXObject(w, bytes);
 
-            throw new InvalidDataException("Unsupported image format (expect JPEG/PNG/WebP).");
+            throw new InvalidDataException("Unsupported image format. PdfBuilder supports PNG and JPEG.");
         }
 
         // Helper: write RGB + optional alpha as Flate-decoded XObject + SMask
@@ -440,7 +473,7 @@ namespace PdfBuilder.Writer
         }
 
         // ---------- UTILS ----------
-        private static string Hash(byte[] data) => Convert.ToHexString(SHA1.HashData(data));
+        private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data));
 
         private static float Clamp01(float v)
         {

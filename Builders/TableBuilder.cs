@@ -32,6 +32,7 @@ namespace PdfBuilder.Document
         public TableElement Build() => _table;
 
         /// <summary>Finalize and add this table to the column (expects ColumnBuilder.AddTable).</summary>
+        [Obsolete("Use IContainer.Table instead. Legacy builders remain supported during migration.", DiagnosticId = "PDFB002")]
         public float Add()
         {
             return _column.AddTable(_table);

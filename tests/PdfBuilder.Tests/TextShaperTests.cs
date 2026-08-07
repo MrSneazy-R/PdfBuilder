@@ -29,7 +29,7 @@ namespace PdfBuilder.Tests
 
             paragraph.Lines.Select(l => l.Text).Aggregate(string.Empty, (acc, value) => acc + value)
                 .Should().Be(text);
-            paragraph.MaxLineWidth.Should().BeLessOrEqualTo(request.MaxWidth + 0.5f);
+            paragraph.MaxLineWidth.Should().BeLessThanOrEqualTo(request.MaxWidth + 0.5f);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace PdfBuilder.Tests
 
             string recomposed = string.Concat(paragraph.Lines.Select(l => l.Text));
             recomposed.Should().Be(text);
-            paragraph.MaxLineWidth.Should().BeLessOrEqualTo(request.MaxWidth + 0.5f);
+            paragraph.MaxLineWidth.Should().BeLessThanOrEqualTo(request.MaxWidth + 0.5f);
         }
     }
 }

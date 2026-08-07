@@ -14,8 +14,9 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
-  unit-tests:
-    name: ${{ matrix.name }} unit tests
+  build-and-test:
+    name: ${{ matrix.name }} build and test
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -26,67 +27,88 @@ jobs:
             os: ubuntu-latest
           - name: macOS
             os: macos-latest
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Restore solution
-        run: dotnet restore PdfBuilder.sln
-      - name: Build solution
-        run: dotnet build PdfBuilder.sln -c Release --no-restore -warnaserror
-      - name: Run unit tests
-        run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-build --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.name }}-unit-test-results
-          path: TestResults/**/*.trx
-          if-no-files-found: warn
-
-  formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - run: dotnet restore PdfBuilder.sln
-      - run: dotnet format PdfBuilder.sln --verify-no-changes --no-restore
-
-  ubuntu-pdf-validation:
-    name: Ubuntu QPDF and Poppler validation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-      - name: Install independent PDF tools
+      - name: Install PDF validation tools and multilingual fonts
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install --yes qpdf poppler-utils
-      - name: Restore validation tests
-        run: dotnet restore tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj
-      - name: Run independent validation
+          sudo apt-get install --yes fontconfig fonts-noto-core poppler-utils qpdf
+          fc-cache --force
+          fc-match :lang=ar
+      - name: Restore maintained projects
+        run: |
+          dotnet restore PdfBuilder.sln
+          dotnet restore tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj
+          dotnet restore tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj
+          dotnet restore samples/HBSubsetProbe/HBSubsetProbe.csproj
+          dotnet restore samples/SimpleRenderCheck/SimpleRenderCheck.csproj
+          dotnet restore samples/TablePerfSample/TablePerfSample.csproj
+          dotnet restore samples/HelloPdf/HelloPdf.csproj
+          dotnet restore samples/LayoutDiagnostics/LayoutDiagnostics.csproj
+          dotnet restore samples/Invoice/Invoice.csproj
+          dotnet restore samples/MultiPageReport/MultiPageReport.csproj
+          dotnet restore samples/MultiLanguage/MultiLanguage.csproj
+          dotnet restore samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj
+      - name: Verify formatting
+        run: |
+          dotnet format PdfBuilder.sln --verify-no-changes --no-restore
+          dotnet format tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj --verify-no-changes --no-restore
+          dotnet format tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj --verify-no-changes --no-restore
+      - name: Build Debug
+        run: dotnet build PdfBuilder.sln -c Debug --no-restore
+      - name: Build Release (report warnings)
+        run: dotnet build PdfBuilder.sln -c Release --no-restore
+      - name: Build maintained samples
+        run: |
+          dotnet build samples/HBSubsetProbe/HBSubsetProbe.csproj -c Release --no-restore
+          dotnet build samples/SimpleRenderCheck/SimpleRenderCheck.csproj -c Release --no-restore
+          dotnet build samples/TablePerfSample/TablePerfSample.csproj -c Release --no-restore
+          dotnet build samples/HelloPdf/HelloPdf.csproj -c Release --no-restore
+          dotnet build samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-restore
+          dotnet build samples/Invoice/Invoice.csproj -c Release --no-restore
+          dotnet build samples/MultiPageReport/MultiPageReport.csproj -c Release --no-restore
+          dotnet build samples/MultiLanguage/MultiLanguage.csproj -c Release --no-restore
+          dotnet build samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj -c Release --no-restore
+      - name: Run runnable console samples
+        run: |
+          dotnet run --project samples/HelloPdf/HelloPdf.csproj -c Release --no-build
+          dotnet run --project samples/Invoice/Invoice.csproj -c Release --no-build
+          dotnet run --project samples/MultiPageReport/MultiPageReport.csproj -c Release --no-build
+          dotnet run --project samples/MultiLanguage/MultiLanguage.csproj -c Release --no-build
+          dotnet run --project samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-build
+      # The solution deliberately includes the Linux-only independent validation
+      # project so local `dotnet test PdfBuilder.sln` exercises every maintained
+      # project. QPDF and Poppler are required in CI, but only Ubuntu is the
+      # supported independent-validator host. Keep ordinary unit tests required
+      # on every platform rather than misclassifying missing validator tools as
+      # Windows/macOS test failures.
+      - name: Run unit tests
+        run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+      - name: Run independent PDF validation
+        if: runner.os == 'Linux'
         env:
           PDFBUILDER_VISUAL_FAILURE_DIRECTORY: ${{ github.workspace }}/ValidationFailures
         run: dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore --logger "trx;LogFileName=pdf-validation.trx" --results-directory TestResults
-      - name: Upload independent validation artifacts
+      - name: Upload test and visual-regression artefacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ubuntu-pdf-validation-artifacts
+          name: ${{ matrix.name }}-test-results
           path: |
             TestResults/**/*.trx
             ValidationFailures/**/*.png
+            ValidationFailures/**/*.pdf
+            ValidationFailures/**/*.json
           if-no-files-found: warn
 
   package-smoke:
-    name: ${{ matrix.name }} package smoke test
+    name: ${{ matrix.name }} package consumer smoke test
+    needs: build-and-test
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -95,23 +117,22 @@ jobs:
             os: windows-latest
           - name: Ubuntu
             os: ubuntu-latest
-    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Restore
-        run: dotnet restore PdfBuilder.csproj
-      - name: Pack
-        run: dotnet pack PdfBuilder.csproj -c Release --no-restore -o ./artifacts
-      - name: Consume package and render PDF
+      - name: Restore and pack
+        run: |
+          dotnet restore PdfBuilder.sln
+          dotnet pack PdfBuilder.csproj -c Release --no-restore -o ./artifacts
+      - name: Package consumer smoke test
         shell: pwsh
         run: ./eng/Invoke-PackageSmokeTest.ps1 -PackageDirectory ./artifacts
       - name: Upload packages
-        if: matrix.name == 'Windows'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: packages
+          name: ${{ matrix.name }}-packages
           path: artifacts/*.nupkg
           if-no-files-found: error

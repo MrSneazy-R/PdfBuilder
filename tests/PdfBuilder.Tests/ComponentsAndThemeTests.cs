@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Linq;
 using FluentAssertions;
 using PdfBuilder.Document;
-using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Writer;
 using Xunit;
@@ -50,19 +49,19 @@ namespace PdfBuilder.Tests
         [Fact]
         public void Theme_NamedStyleAndColor_AreResolvedWithoutLeaking()
         {
-            var themed = new PdfDocument();
-            new PdfDocumentBuilder(themed)
-                .Theme(theme =>
+            var themed = PdfDocument.Create(document =>
+            {
+                document.Theme(theme =>
                 {
                     theme.Color("Primary", "#163A5F");
                     theme.TextStyle("Heading1", style => style.FontSize(24).Bold().Color("Primary"));
                     theme.Spacing("Section", 16);
-                })
-                .Compose(document => document.Page(page => page.Content(content => content.Text("Invoice", "Heading1"))));
+                });
+                document.Page(page => page.Content().Text("Invoice").Style("Heading1"));
+            });
 
-            var ordinary = new PdfDocument();
-            new PdfDocumentBuilder(ordinary)
-                .Compose(document => document.Page(page => page.Content(content => content.Text("Invoice"))));
+            var ordinary = PdfDocument.Create(document =>
+                document.Page(page => page.Content().Text("Invoice")));
 
             var themedText = themed.Pages.Single().Elements.OfType<TextElement>().Single();
             var ordinaryText = ordinary.Pages.Single().Elements.OfType<TextElement>().Single();
@@ -77,9 +76,8 @@ namespace PdfBuilder.Tests
         [Fact]
         public void ComponentCycle_ThrowsWithComponentPath()
         {
-            var document = new PdfDocument();
-            Action act = () => new PdfDocumentBuilder(document)
-                .Compose(composer => composer.Page(page => page.Content(content => content.Component(new RecursiveComponent()))));
+            Action act = () => PdfDocument.Create(document =>
+                document.Page(page => page.Content().Component(new RecursiveComponent())));
 
             var exception = act.Should().Throw<PdfComponentCompositionException>().Which;
             exception.ComponentPath.Should().Be("RecursiveComponent -> RecursiveComponent");
@@ -88,14 +86,11 @@ namespace PdfBuilder.Tests
 
         private static PdfDocument CreateDocument(IPdfComponent<string> component, string value, int pageCount)
         {
-            var document = new PdfDocument();
-            var builder = new PdfDocumentBuilder(document);
-            builder.Compose(composer =>
+            return PdfDocument.Create(document =>
             {
                 for (int index = 0; index < pageCount; index++)
-                    composer.Page(page => page.Content(content => content.Component(component, value)));
+                    document.Page(page => page.Content().Component(component, value));
             });
-            return document;
         }
 
         private sealed class GreetingComponent : IPdfComponent<string>
@@ -113,8 +108,7 @@ namespace PdfBuilder.Tests
         private sealed class GreetingTemplate : PdfTemplate<GreetingModel>
         {
             public override void Compose(IDocumentDescriptor document, GreetingModel model)
-                => document.Compose(composer => composer.Page(page =>
-                    page.Content(content => content.Component(new GreetingComponent(), model.Name))));
+                => document.Page(page => page.Content().Component(new GreetingComponent(), model.Name));
         }
     }
 }

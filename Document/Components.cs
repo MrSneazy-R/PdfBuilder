@@ -1,6 +1,4 @@
 using System;
-using PdfBuilder.Document.Layout;
-using PdfBuilder.Elements;
 
 namespace PdfBuilder.Document
 {
@@ -17,20 +15,6 @@ namespace PdfBuilder.Document
     {
         /// <summary>Composes this component using the supplied model.</summary>
         void Compose(IContainer container, TModel model);
-    }
-
-    /// <summary>
-    /// Canonical content surface passed to reusable components. A container is scoped to the
-    /// current document and must not be retained after <c>Compose</c> returns.
-    /// </summary>
-    public interface IContainer
-    {
-        IContainer Component(IPdfComponent component);
-        IContainer Component<TModel>(IPdfComponent<TModel> component, TModel model);
-        IContainer Text(string content, Action<TextElement>? configure = null);
-        IContainer Text(string content, string styleName, Action<TextElement>? configure = null);
-        IContainer Column(Action<IContainer> configure, float spacing = 8f);
-        IContainer Padding(float uniform, Action<IContainer> configure);
     }
 
     /// <summary>Thrown when a reusable component cannot be composed safely.</summary>

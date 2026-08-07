@@ -104,6 +104,7 @@ namespace PdfBuilder.Writer
         public static void Append(StringBuilder sb, TableElement table, PdfRenderContext context)
         {
             if (table == null || table.Rows == null || table.Rows.Count == 0) return;
+            TableGridValidator.Validate(table);
             var rows = table.Rows!;
 
             // local helper: a side is "explicit" if caller set color and/or width on that side

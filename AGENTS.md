@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - `Document/`, `Builders/`, `Elements/`, `Writer/`, `Imaging/`, `Encoder/`, `Models/` (e.g., `Writer/Renderers/TextRenderer.cs`, `Writer/PdfStreamWriter.cs`, `Writer/PdfResourceManager.cs`, `Document/PdfDocument.cs`)
-- Entry project: `PdfBuilder.csproj` (targets `net9.0`). Solution: `PdfBuilder.sln`.
+- Entry project: `PdfBuilder.csproj` (targets `net10.0`). Solution: `PdfBuilder.sln`.
 - Assets/samples are git-ignored; add temporary fixtures under `samples/` when needed.
 
 ## Build, Test, and Development Commands
@@ -20,7 +20,7 @@
 - Public API changes require rationale and examples in PR description.
 
 ## Testing Guidelines
-- Tests live under `tests/` with `*.Tests.csproj` targeting `net9.0`.
+- Tests live under `tests/` with `*.Tests.csproj` targeting `net10.0`.
 - Use `xUnit` with `FluentAssertions`. Name tests `ClassName_Scenario_ExpectedBehavior`.
 - Aim for coverage of renderers, **layout utilities**, pagination, and PDF dictionary assembly.
 
@@ -30,7 +30,7 @@
 - PRs must include: purpose, summary of changes, screenshots/PDF samples if output changes, and breaking-change notes.
 
 ## Security & Configuration Tips
-- Requires .NET 9 SDK: verify with `dotnet --version`.
+- Requires the .NET 10 SDK pinned in `global.json`: verify with `dotnet --version`.
 - Imaging may rely on OS codecs (e.g., WIC on Windows). Avoid bundling native binaries.
 - Do not commit secrets or sample PDFs with sensitive data.
 
