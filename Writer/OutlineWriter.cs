@@ -31,9 +31,8 @@ namespace PdfBuilder.Writer
             {
                 var item = items[index];
                 int id = w.BeginObject();
-                string titleEsc = item.Title.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
                 w.WriteLine("<<");
-                w.WriteLine($"/Title ({titleEsc})");
+                w.WriteLine($"/Title {PdfStringEncoder.Encode(item.Title)}");
                 w.WriteLine($"/Parent {topId} 0 R");
                 if (index > 0) w.WriteLine($"/Prev {id - 1} 0 R");
                 if (index < items.Count - 1) w.WriteLine($"/Next {id + 1} 0 R");

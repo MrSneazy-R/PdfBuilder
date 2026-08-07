@@ -9,7 +9,7 @@ namespace PdfBuilder.Document.Layout
     /// <summary>
     /// Fluent wrapper over <see cref="LayoutComponentCollection"/> for more expressive DSL-style content composition.
     /// </summary>
-    public sealed class ContentComposer
+    public sealed class ContentComposer : IContainer
     {
         private readonly LayoutComponentCollection _collection;
 
@@ -21,6 +21,20 @@ namespace PdfBuilder.Document.Layout
         public ContentComposer Component(IMeasurable component)
         {
             _collection.Component(component);
+            return this;
+        }
+
+        public ContentComposer Component(IPdfComponent component)
+        {
+            if (component == null) throw new ArgumentNullException(nameof(component));
+            _collection.Owner.ComposeComponent(component.GetType(), () => component.Compose(this));
+            return this;
+        }
+
+        public ContentComposer Component<TModel>(IPdfComponent<TModel> component, TModel model)
+        {
+            if (component == null) throw new ArgumentNullException(nameof(component));
+            _collection.Owner.ComposeComponent(component.GetType(), () => component.Compose(this, model));
             return this;
         }
 
@@ -42,6 +56,12 @@ namespace PdfBuilder.Document.Layout
         public ContentComposer Text(string content, Action<TextElement>? configure = null)
         {
             _collection.Text(content, configure);
+            return this;
+        }
+
+        public ContentComposer Text(string content, string styleName, Action<TextElement>? configure = null)
+        {
+            _collection.Text(content, styleName, configure);
             return this;
         }
 
@@ -303,6 +323,22 @@ namespace PdfBuilder.Document.Layout
         {
             _collection.Svg(width, height, configure);
             return this;
+        }
+
+        IContainer IContainer.Component(IPdfComponent component) => Component(component);
+        IContainer IContainer.Component<TModel>(IPdfComponent<TModel> component, TModel model) => Component(component, model);
+        IContainer IContainer.Text(string content, Action<TextElement>? configure) => Text(content, configure);
+        IContainer IContainer.Text(string content, string styleName, Action<TextElement>? configure) => Text(content, styleName, configure);
+        IContainer IContainer.Column(Action<IContainer> configure, float spacing)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            return Column(inner => configure(new ContentComposer(inner)), spacing);
+        }
+
+        IContainer IContainer.Padding(float uniform, Action<IContainer> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            return Padding(uniform, inner => configure(inner));
         }
     }
 }

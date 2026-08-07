@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Runtime.InteropServices;
+using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Models;
@@ -95,7 +95,8 @@ namespace PdfBuilder.Tests
             ascii.Should().Contain("/Im");
 
             // Content stream should invoke image draw operator for at least the successfully embedded images
-            var doCount = ascii.Split(" Do ", StringSplitOptions.None).Length - 1;
+            var content = string.Join("\n", PdfContentHelper.ExtractPageContentStreams(bytes));
+            var doCount = content.Split(" Do ", StringSplitOptions.None).Length - 1;
             doCount.Should().BeGreaterOrEqualTo(webpEmbedded ? 3 : 2);
         }
 

@@ -1,15 +1,15 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
 using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
-using PdfBuilder.Writer;
-using Xunit;
 using PdfBuilder.Models;
+using PdfBuilder.Writer;
 using PdfBuilder.Writer.Imaging;
-using System.IO.Compression;
+using Xunit;
 
 namespace PdfBuilder.Tests
 {

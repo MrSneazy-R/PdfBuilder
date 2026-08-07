@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -22,17 +24,12 @@ namespace PdfBuilder.Tests
             var streams = new List<string>();
             if (pdfBytes == null || pdfBytes.Length == 0) return streams;
 
-            string ascii = Encoding.ASCII.GetString(pdfBytes);
-            int cursor = 0;
-            while (true)
+            string pdf = Encoding.Latin1.GetString(pdfBytes);
+            foreach (Match match in Regex.Matches(pdf, @"(?ms)\d+\s+0\s+obj\s*(.*?)endobj"))
             {
-                int streamIndex = ascii.IndexOf("stream\n", cursor, StringComparison.Ordinal);
-                if (streamIndex < 0) break;
-                int endIndex = ascii.IndexOf("\nendstream", streamIndex, StringComparison.Ordinal);
-                if (endIndex < 0) break;
-                int dataStart = streamIndex + "stream\n".Length;
-                streams.Add(ascii.Substring(dataStart, endIndex - dataStart));
-                cursor = endIndex + "\nendstream".Length;
+                string? decoded = DecodeStream(match.Groups[1].Value);
+                if (decoded != null)
+                    streams.Add(decoded);
             }
             return streams;
         }
@@ -75,7 +72,7 @@ namespace PdfBuilder.Tests
             if (pdfBytes == null || pdfBytes.Length == 0)
                 return result;
 
-            string pdf = Encoding.ASCII.GetString(pdfBytes);
+            string pdf = Encoding.Latin1.GetString(pdfBytes);
             var objectMap = new Dictionary<int, string>();
             var objectRegex = new Regex(@"(?ms)(\d+)\s+0\s+obj\s*(.*?)endobj");
             foreach (Match match in objectRegex.Matches(pdf))
@@ -113,9 +110,9 @@ namespace PdfBuilder.Tests
                     if (!objectMap.TryGetValue(contentId, out var contentBody))
                         continue;
 
-                    var streamMatch = Regex.Match(contentBody, @"stream\s*(?<content>.*?)\s*endstream", RegexOptions.Singleline);
-                    if (streamMatch.Success)
-                        result.Add(streamMatch.Groups["content"].Value);
+                    string? decoded = DecodeStream(contentBody);
+                    if (decoded != null)
+                        result.Add(decoded);
                 }
 
                 if (result.Count > 0)
@@ -123,6 +120,39 @@ namespace PdfBuilder.Tests
             }
 
             return result;
+        }
+
+        private static string? DecodeStream(string objectBody)
+        {
+            int marker = objectBody.IndexOf("stream\n", StringComparison.Ordinal);
+            int markerLength = "stream\n".Length;
+            if (marker < 0)
+            {
+                marker = objectBody.IndexOf("stream\r\n", StringComparison.Ordinal);
+                markerLength = "stream\r\n".Length;
+            }
+            if (marker < 0)
+                return null;
+
+            var lengthMatch = Regex.Match(objectBody[..marker], @"/Length\s+(?<length>\d+)");
+            if (!lengthMatch.Success || !int.TryParse(lengthMatch.Groups["length"].Value, out int length))
+                return null;
+
+            int dataStart = marker + markerLength;
+            if (length < 0 || dataStart + length > objectBody.Length)
+                return null;
+
+            byte[] data = Encoding.Latin1.GetBytes(objectBody.Substring(dataStart, length));
+            if (objectBody[..marker].Contains("/Filter /FlateDecode", StringComparison.Ordinal))
+            {
+                using var input = new MemoryStream(data);
+                using var zlib = new ZLibStream(input, CompressionMode.Decompress);
+                using var output = new MemoryStream();
+                zlib.CopyTo(output);
+                data = output.ToArray();
+            }
+
+            return Encoding.Latin1.GetString(data);
         }
     }
 }

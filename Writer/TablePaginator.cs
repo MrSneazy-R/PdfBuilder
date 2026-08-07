@@ -19,6 +19,7 @@ namespace PdfBuilder.Writer
                 Master = CloneMaster(doc.Master) ?? new MasterPageSpec()
             };
             outDoc.OutputOptions.CopyFrom(doc.OutputOptions);
+            outDoc.GenerationOptions.CopyFrom(doc.GenerationOptions);
             outDoc.Metadata.CopyFrom(doc.Metadata);
             outDoc.TextDefaults.CopyFrom(doc.TextDefaults);
             foreach (var page in doc.Pages)

@@ -9,8 +9,8 @@ namespace PdfBuilder.Models
         public string? Keywords { get; set; }
         public string? Creator { get; set; }
         public string? Producer { get; set; }
-        public DateTime? CreatedUtc { get; set; }
-        public DateTime? ModifiedUtc { get; set; }
+        public DateTimeOffset? CreatedUtc { get; set; }
+        public DateTimeOffset? ModifiedUtc { get; set; }
 
         public void CopyFrom(DocumentMetadata other)
         {

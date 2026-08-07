@@ -1,8 +1,8 @@
-﻿using PdfBuilder.Document;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using FluentAssertions;
+using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Elements.Table;
 using Xunit;

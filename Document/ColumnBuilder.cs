@@ -19,7 +19,7 @@ namespace PdfBuilder.Document
         private PdfPage _page;
         private readonly float _defaultSpacing;
         private readonly float _margin;
-        private readonly LayoutOptions _layoutOptions;
+        private readonly LayoutOptions _layoutOptions = new();
         private TextStyleDefaults _textDefaults;
         private readonly Func<PdfPage, FlowColumn[]>? _customColumnFactory;
         private readonly Dictionary<CacheKey, LayoutMeasurement> _measurementCache = new();
@@ -28,6 +28,7 @@ namespace PdfBuilder.Document
         private readonly PaginationRegistry? _pagination;
         private readonly LayoutProfilerSession? _profilerSession;
         private readonly bool _profilerEnabled;
+        private readonly List<Type> _componentPath = new();
 
         // Header/Footer reserved heights
         private readonly Func<PdfPage, HeaderFooterSpec?>? _hfForPage; // optional
@@ -658,6 +659,62 @@ namespace PdfBuilder.Document
         {
             _textDefaults.ApplyTo(element);
             element.FlowDirection = _textDefaults.FlowDirection;
+            element.Color = ResolveThemeColor(element.Color);
+        }
+
+        internal void ApplyNamedTextStyle(TextElement element, string styleName)
+        {
+            if (string.IsNullOrWhiteSpace(styleName))
+                throw new ArgumentException("A named text style is required.", nameof(styleName));
+            if (!_page.Theme.TryGetTextStyle(styleName, out var style))
+                throw new KeyNotFoundException($"Theme text style '{styleName}' is not defined.");
+            style.ApplyTo(element);
+            element.Color = ResolveThemeColor(element.Color);
+        }
+
+        internal string ResolveThemeColor(string value) => _page.Theme.ResolveColor(value);
+
+        internal void ComposeComponent(Type componentType, Action compose)
+        {
+            if (componentType == null) throw new ArgumentNullException(nameof(componentType));
+            if (compose == null) throw new ArgumentNullException(nameof(compose));
+
+            string name = componentType.FullName ?? componentType.Name;
+            int cycleStart = _componentPath.IndexOf(componentType);
+            if (cycleStart >= 0)
+            {
+                string cycle = string.Join(" -> ", _componentPath.Skip(cycleStart).Select(type => type.Name).Append(componentType.Name));
+                throw new PdfComponentCompositionException(
+                    $"Circular PDF component composition detected: {cycle}. Remove the recursive component reference.",
+                    string.Join(" -> ", _componentPath.Select(type => type.Name).Append(componentType.Name)));
+            }
+
+            if (_componentPath.Count >= 64)
+            {
+                string path = string.Join(" -> ", _componentPath.Select(type => type.Name).Append(componentType.Name));
+                throw new PdfComponentCompositionException(
+                    "PDF component nesting exceeded the configured safety limit of 64. Flatten the component hierarchy.",
+                    path);
+            }
+
+            _componentPath.Add(componentType);
+            try
+            {
+                compose();
+            }
+            catch (PdfComponentCompositionException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                string path = string.Join(" -> ", _componentPath.Select(type => type.Name));
+                throw new PdfComponentCompositionException($"Component '{name}' failed while composing at '{path}'.", path, exception);
+            }
+            finally
+            {
+                _componentPath.RemoveAt(_componentPath.Count - 1);
+            }
         }
 
         internal void ApplyRichTextDefaults(RichTextElement element)

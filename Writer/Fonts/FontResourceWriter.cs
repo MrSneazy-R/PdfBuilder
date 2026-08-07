@@ -18,7 +18,7 @@ namespace PdfBuilder.Writer.Fonts
             if (registry == null) throw new ArgumentNullException(nameof(registry));
 
             var resources = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var font in registry.GetFonts())
+            foreach (var font in registry.GetFonts().OrderBy(font => font.ResourceName, StringComparer.Ordinal))
             {
                 if (font.Glyphs.Count == 0)
                     continue;
@@ -90,7 +90,7 @@ namespace PdfBuilder.Writer.Fonts
 
                 int descriptorId = writer.BeginObject();
                 writer.WriteLine("<< /Type /FontDescriptor");
-                writer.WriteLine($" /FontName /{font.BaseFontName}");
+                writer.WriteLine($" /FontName {PdfNameEncoder.Encode(font.BaseFontName)}");
                 writer.WriteLine(" /Flags 32");
                 writer.WriteLine($" /Ascent {ascent.ToString("0", Inv)}");
                 writer.WriteLine($" /Descent {(-descent).ToString("0", Inv)}");
@@ -107,7 +107,7 @@ namespace PdfBuilder.Writer.Fonts
                 int cidFontId = writer.BeginObject();
                 writer.WriteLine("<< /Type /Font");
                 writer.WriteLine(" /Subtype /CIDFontType2");
-                writer.WriteLine($" /BaseFont /{font.BaseFontName}");
+                writer.WriteLine($" /BaseFont {PdfNameEncoder.Encode(font.BaseFontName)}");
                 writer.WriteLine(" /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >>");
                 writer.WriteLine($" /FontDescriptor {descriptorId} 0 R");
                 writer.WriteLine(" /DW 1000");
@@ -124,7 +124,7 @@ namespace PdfBuilder.Writer.Fonts
                 int type0Id = writer.BeginObject();
                 writer.WriteLine("<< /Type /Font");
                 writer.WriteLine(" /Subtype /Type0");
-                writer.WriteLine($" /BaseFont /{font.BaseFontName}");
+                writer.WriteLine($" /BaseFont {PdfNameEncoder.Encode(font.BaseFontName)}");
                 writer.WriteLine(" /Encoding /Identity-H");
                 writer.WriteLine($" /DescendantFonts [{cidFontId} 0 R]");
                 writer.WriteLine($" /ToUnicode {toUnicodeId} 0 R");

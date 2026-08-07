@@ -9,8 +9,8 @@ using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using TableModels = PdfBuilder.Elements.Table;
 using Xunit;
+using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Tests
 {
@@ -164,8 +164,15 @@ namespace PdfBuilder.Tests
             var colors = GetFillColors(stream);
             colors.Should().HaveCount(2);
             colors.Should().OnlyContain(c => c == "0 0 1"); // pattern wraps after the second column
-            stream.Should().Contain("120 12 re f"); // span covers the first two columns
-            stream.Should().Contain("60 12 re f");  // independent third column fill
+            var filledRectangles = GetFilledRectangles(stream);
+            filledRectangles.Should().Contain(rectangle =>
+                Math.Abs(rectangle.X - 40f) <= 0.01f &&
+                Math.Abs(rectangle.Width - 120f) <= 0.01f,
+                "the spanned cell should start at the table origin and cover two 60-point columns");
+            filledRectangles.Should().Contain(rectangle =>
+                Math.Abs(rectangle.X - 160f) <= 0.01f &&
+                Math.Abs(rectangle.Width - 60f) <= 0.01f,
+                "the independent third cell should follow the two-column span");
         }
 
         [Fact]
@@ -347,6 +354,17 @@ namespace PdfBuilder.Tests
             => Regex.Matches(stream, @"([0-9\. ]+) rg")
                     .Select(m => m.Groups[1].Value.Trim())
                     .ToList();
+
+        private static List<(float X, float Y, float Width, float Height)> GetFilledRectangles(string stream)
+            => Regex.Matches(
+                    stream,
+                    @"(?<x>-?\d+(?:\.\d+)?)\s+(?<y>-?\d+(?:\.\d+)?)\s+(?<width>-?\d+(?:\.\d+)?)\s+(?<height>-?\d+(?:\.\d+)?)\s+re\s+f\b")
+                .Select(match => (
+                    float.Parse(match.Groups["x"].Value, CultureInfo.InvariantCulture),
+                    float.Parse(match.Groups["y"].Value, CultureInfo.InvariantCulture),
+                    float.Parse(match.Groups["width"].Value, CultureInfo.InvariantCulture),
+                    float.Parse(match.Groups["height"].Value, CultureInfo.InvariantCulture)))
+                .ToList();
     }
 }
 

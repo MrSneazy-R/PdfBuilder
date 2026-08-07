@@ -22,6 +22,7 @@ namespace PdfBuilder.Models
         public LayoutOptions LayoutOptions { get; internal set; } = new();
 
         public TextStyleDefaults TextDefaults { get; set; } = new TextStyleDefaults();
+        public DocumentTheme Theme { get; internal set; } = new();
         internal PdfDocument? Owner { get; set; }
         internal PaginationRegistry? Pagination { get; set; }
         internal LayoutProfilerSession? ProfilerSession { get; set; }

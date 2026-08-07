@@ -43,8 +43,7 @@ namespace PdfBuilder.Writer
 
                 if (!string.IsNullOrEmpty(a.Url))
                 {
-                    string urlEsc = a.Url.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
-                    sb.Append($"/A << /S /URI /URI ({urlEsc}) >> ");
+                    sb.Append($"/A << /S /URI /URI {PdfStringEncoder.Encode(a.Url)} >> ");
                 }
                 else if (!string.IsNullOrEmpty(a.Anchor))
                 {

@@ -22,7 +22,8 @@ Expected: metadata fields surface in PDF viewers and indexing tools.
 
 PdfOutputOptions (`Models/PdfOutputOptions.cs`)
 -----------------------------------------------
-- `CompressContentStreams` (bool): enable Flate compression.
+- `CompressContentStreams` (bool, default `true`): enable Flate compression.
+- `ReadableContentStreams` (bool): explicitly disable content-stream compression for debugging.
 - `ContentCompressionLevel`, `ImageCompressionLevel`: choose `CompressionLevel`.
 - `UsePngPredictor`: toggles PNG predictor filters for better ratios.
 - Methods: `CopyFrom`, `Clone`.

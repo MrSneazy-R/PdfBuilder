@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
@@ -23,7 +24,7 @@ namespace PdfBuilder.Writer
         public byte[] GenerateBytes(PdfDocument doc)
         {
             using var ms = new MemoryStream();
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTime.UtcNow);
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTimeOffset.Now);
             return ms.ToArray();
         }
 
@@ -33,7 +34,7 @@ namespace PdfBuilder.Writer
             if (destination == null) throw new ArgumentNullException(nameof(destination));
             if (!destination.CanWrite) throw new ArgumentException("Destination stream must be writable.", nameof(destination));
 
-            WriteDocument(doc, destination, DateTime.UtcNow);
+            WriteDocument(doc, destination, DateTimeOffset.Now);
             destination.Flush();
         }
 
@@ -41,7 +42,7 @@ namespace PdfBuilder.Writer
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path must be provided.", nameof(path));
             using var fileStream = File.Create(path);
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTime.UtcNow);
+            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTimeOffset.Now);
         }
 
         public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(PdfDocument doc, int dpi = 144)
@@ -50,7 +51,7 @@ namespace PdfBuilder.Writer
             return new PdfPreviewGenerator().Generate(doc, dpi);
         }
 
-        private void WriteDocument(PdfDocument doc, Stream destination, DateTime nowUtc)
+        private void WriteDocument(PdfDocument doc, Stream destination, DateTimeOffset now)
         {
             if (doc.Pages.Count == 0) throw new InvalidOperationException("Document has no pages.");
 
@@ -58,7 +59,16 @@ namespace PdfBuilder.Writer
             int pageCount = laidOut.Pages.Count;
             if (pageCount == 0) throw new InvalidOperationException("Document has no pages after pagination.");
 
-            HeaderFooterLayoutComposer.Prepare(laidOut, nowUtc);
+            var generationOptions = laidOut.GenerationOptions;
+            var metadata = laidOut.Metadata ?? new DocumentMetadata();
+            DateTimeOffset creationDate = generationOptions.CreationTime
+                ?? metadata.CreatedUtc
+                ?? (generationOptions.Deterministic ? DateTimeOffset.UnixEpoch : now);
+            DateTimeOffset modificationDate = generationOptions.ModificationTime
+                ?? metadata.ModifiedUtc
+                ?? creationDate;
+
+            HeaderFooterLayoutComposer.Prepare(laidOut, creationDate.UtcDateTime);
 
             using var writer = new PdfStreamWriter(destination);
             writer.WriteHeader("1.6");
@@ -66,11 +76,11 @@ namespace PdfBuilder.Writer
             // Fonts (base-14 Type1) ---------------------------------------------------------------
             var baseFonts = CollectBaseFonts(laidOut);
             var fontObjId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            foreach (var baseFont in baseFonts)
+            foreach (var baseFont in baseFonts.OrderBy(name => name, StringComparer.Ordinal))
             {
                 int id = writer.BeginObject();
                 // Base-14 Type1 font with WinAnsiEncoding so 8-bit CP1252 text renders correctly
-                writer.WriteLine($"<< /Type /Font /Subtype /Type1 /BaseFont /{baseFont} /Encoding /WinAnsiEncoding >>");
+                writer.WriteLine($"<< /Type /Font /Subtype /Type1 /BaseFont {PdfNameEncoder.Encode(baseFont)} /Encoding /WinAnsiEncoding >>");
                 writer.EndObject();
                 fontObjId[baseFont] = id;
             }
@@ -107,7 +117,7 @@ namespace PdfBuilder.Writer
                     renderContext,
                     fontObjId,
                     pageImgMap,
-                    nowUtc);
+                    creationDate.UtcDateTime);
 
                 preContent.Add(contentBytes);
                 pageAnnotations.Add(annots);
@@ -247,35 +257,29 @@ namespace PdfBuilder.Writer
             writer.EndObject();
 
             // Info ----------------------------------------------------------------------------------
-            var metadata = laidOut.Metadata ?? new DocumentMetadata();
             int infoId = writer.BeginObject();
             writer.WriteLine("<<");
             if (!string.IsNullOrWhiteSpace(doc.Title))
-                writer.WriteLine($"/Title ({Escape(doc.Title!)})");
+                writer.WriteLine($"/Title {PdfStringEncoder.Encode(doc.Title!)}");
             if (!string.IsNullOrWhiteSpace(metadata.Author))
-                writer.WriteLine($"/Author ({Escape(metadata.Author!)})");
+                writer.WriteLine($"/Author {PdfStringEncoder.Encode(metadata.Author!)}");
             if (!string.IsNullOrWhiteSpace(metadata.Subject))
-                writer.WriteLine($"/Subject ({Escape(metadata.Subject!)})");
+                writer.WriteLine($"/Subject {PdfStringEncoder.Encode(metadata.Subject!)}");
             if (!string.IsNullOrWhiteSpace(metadata.Keywords))
-                writer.WriteLine($"/Keywords ({Escape(metadata.Keywords!)})");
+                writer.WriteLine($"/Keywords {PdfStringEncoder.Encode(metadata.Keywords!)}");
 
             string creator = !string.IsNullOrWhiteSpace(metadata.Creator) ? metadata.Creator! : "PdfBuilder";
             string producer = !string.IsNullOrWhiteSpace(metadata.Producer) ? metadata.Producer! : "PdfBuilder";
-            writer.WriteLine($"/Creator ({Escape(creator)})");
-            writer.WriteLine($"/Producer ({Escape(producer)})");
-
-            DateTime creationDate = metadata.CreatedUtc ?? nowUtc;
-            writer.WriteLine($"/CreationDate {FormatPdfDate(creationDate)}");
-            if (metadata.ModifiedUtc.HasValue)
-                writer.WriteLine($"/ModDate {FormatPdfDate(metadata.ModifiedUtc.Value)}");
-            else if (metadata.CreatedUtc.HasValue)
-                writer.WriteLine($"/ModDate {FormatPdfDate(creationDate)}");
+            writer.WriteLine($"/Creator {PdfStringEncoder.Encode(creator)}");
+            writer.WriteLine($"/Producer {PdfStringEncoder.Encode(producer)}");
+            writer.WriteLine($"/CreationDate {PdfDateEncoder.Encode(creationDate)}");
+            writer.WriteLine($"/ModDate {PdfDateEncoder.Encode(modificationDate)}");
 
             writer.WriteLine(">>");
             writer.EndObject();
 
             // XRef & trailer ------------------------------------------------------------------------
-            writer.WriteXRefAndTrailer(catalogId, infoId);
+            writer.WriteXRefAndTrailer(catalogId, infoId, BuildDocumentId(laidOut, generationOptions));
 
             laidOut.ProfilerSession.Emit(laidOut.LayoutOptions.Profiler);
         }
@@ -459,13 +463,13 @@ namespace PdfBuilder.Writer
 
             if (hasFill)
             {
-                string fillRgb = TryRgb(rect.FillColor) ?? "0 0 0";
+                string fillRgb = TryRgb(rect.FillColor!) ?? "0 0 0";
                 sb.Append($"{fillRgb} rg ");
             }
 
             if (hasStroke)
             {
-                string strokeRgb = TryRgb(rect.StrokeColor) ?? "0 0 0";
+                string strokeRgb = TryRgb(rect.StrokeColor!) ?? "0 0 0";
                 sb.Append($"{strokeRgb} RG {N(rect.StrokeWidth)} w ");
                 if (rect.DashPattern != null && rect.DashPattern.Length > 0)
                 {
@@ -687,16 +691,16 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private static string FormatPdfDate(DateTime value)
+        private static string BuildDocumentId(PdfDocument document, PdfGenerationOptions options)
         {
-            var utc = value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
-            return $"(D:{utc:yyyyMMddHHmmss}Z)";
+            string seed = options.DocumentIdSeed ?? string.Join("|",
+                document.Title ?? string.Empty,
+                document.Metadata.Author ?? string.Empty,
+                document.Metadata.Subject ?? string.Empty,
+                document.Pages.Count.ToString(CultureInfo.InvariantCulture),
+                string.Join(";", document.Pages.Select(page => $"{N(page.Width)}x{N(page.Height)}:{page.Elements.Count}")));
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(seed)));
         }
-
-        private static string Escape(string value) =>
-            string.IsNullOrEmpty(value)
-                ? string.Empty
-                : value.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
 
         private static string? TryRgb(string hex)
         {

@@ -4,7 +4,13 @@ namespace PdfBuilder.Models
 {
     public sealed class PdfOutputOptions
     {
-        public bool CompressContentStreams { get; set; }
+        public bool CompressContentStreams { get; set; } = true;
+
+        public bool ReadableContentStreams
+        {
+            get => !CompressContentStreams;
+            set => CompressContentStreams = !value;
+        }
 
         public CompressionLevel ContentCompressionLevel { get; set; } = CompressionLevel.Optimal;
 

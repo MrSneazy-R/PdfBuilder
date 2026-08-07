@@ -35,7 +35,8 @@ namespace PdfBuilder.Document
         public TextBuilder SmallCaps() { _text.SmallCaps = true; return this; }
         public TextBuilder Monospace() { _text.Monospace = true; return this; }
 
-        public TextBuilder Color(string value) { _text.Color = value; return this; }
+        public TextBuilder Color(string value) { _text.Color = _col.ResolveThemeColor(value); return this; }
+        public TextBuilder Style(string name) { _col.ApplyNamedTextStyle(_text, name); return this; }
         public TextBuilder Opacity(float value) { _text.Opacity = value; return this; }
         public TextBuilder BackgroundColor(string value) { _text.BackgroundColor = value; return this; }
         public TextBuilder DecorationColor(string value) { _text.DecorationColor = value; return this; }

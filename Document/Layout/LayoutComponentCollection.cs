@@ -18,6 +18,7 @@ namespace PdfBuilder.Document.Layout
         }
 
         internal IReadOnlyList<IMeasurable> Components => _components;
+        internal ColumnBuilder Owner => _owner;
 
         internal IMeasurable BuildComposite(Action<LayoutComponentCollection> configure, string? caller = null)
         {
@@ -134,6 +135,20 @@ namespace PdfBuilder.Document.Layout
             _owner.ApplyTextDefaults(element);
             element.FlowDirection = _owner.CurrentFlowDirection;
             configure?.Invoke(element);
+            element.Color = _owner.ResolveThemeColor(element.Color);
+            _components.Add(new TextComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection Text(string content, string styleName, Action<TextElement>? configure = null)
+        {
+            var flow = _owner.GetFlow();
+            var element = new TextElement(content ?? string.Empty, flow.X, flow.Y) { MaxWidth = flow.Width };
+            _owner.ApplyTextDefaults(element);
+            _owner.ApplyNamedTextStyle(element, styleName);
+            element.FlowDirection = _owner.CurrentFlowDirection;
+            configure?.Invoke(element);
+            element.Color = _owner.ResolveThemeColor(element.Color);
             _components.Add(new TextComponent(element, _owner.DefaultSpacing));
             return this;
         }

@@ -76,9 +76,7 @@ namespace PdfBuilder.Writer
                     if (string.IsNullOrWhiteSpace(keyRaw) || string.IsNullOrWhiteSpace(value))
                         continue;
 
-                    string key = keyRaw.Trim();
-                    if (!key.StartsWith("/", StringComparison.Ordinal))
-                        key = "/" + key;
+                    string key = PdfNameEncoder.Encode(keyRaw.Trim());
 
                     sb.Append(' ');
                     sb.Append(key);
@@ -102,7 +100,7 @@ namespace PdfBuilder.Writer
         {
             EnsureNotDisposed();
             if (string.IsNullOrEmpty(data)) return;
-            var bytes = Encoding.ASCII.GetBytes(data);
+            var bytes = Encoding.Latin1.GetBytes(data);
             _stream.Write(bytes, 0, bytes.Length);
         }
 
@@ -126,7 +124,7 @@ namespace PdfBuilder.Writer
         /// Write the xref table and trailer. Pass the root /Catalog object id.
         /// Optionally include an /Info dictionary object id.
         /// </summary>
-        public void WriteXRefAndTrailer(int rootObjectId, int? infoObjectId = null)
+        public void WriteXRefAndTrailer(int rootObjectId, int? infoObjectId = null, string? documentIdHex = null)
         {
             EnsureNotDisposed();
             if (_inObject) throw new InvalidOperationException("Cannot write xref while inside an object.");
@@ -155,6 +153,8 @@ namespace PdfBuilder.Writer
             WriteLine($"/Root {rootObjectId} 0 R");
             if (infoObjectId.HasValue)
                 WriteLine($"/Info {infoObjectId.Value} 0 R");
+            if (!string.IsNullOrWhiteSpace(documentIdHex))
+                WriteLine($"/ID [<{documentIdHex}> <{documentIdHex}>]");
             WriteLine(">>");
             WriteLine("startxref");
             WriteLine(xrefPos.ToString());

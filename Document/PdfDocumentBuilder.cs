@@ -8,7 +8,7 @@ using PdfBuilder.Writer.Fonts;
 
 namespace PdfBuilder.Document
 {
-    public partial class PdfDocumentBuilder
+    public partial class PdfDocumentBuilder : IDocumentDescriptor
     {
         private readonly PdfDocument _doc;
         private HeaderFooterSpec _currentSectionHF;
@@ -96,6 +96,16 @@ namespace PdfBuilder.Document
             return this;
         }
 
+        /// <summary>Configures document-scoped named colors, text styles, and spacing values.</summary>
+        public PdfDocumentBuilder Theme(Action<DocumentThemeBuilder> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(new DocumentThemeBuilder(_doc.Theme));
+            _doc.TextDefaults.CopyFrom(_doc.Theme.DefaultTextStyle);
+            _currentTextDefaults = _doc.TextDefaults.Clone();
+            return this;
+        }
+
         public PdfDocumentBuilder Metadata(Action<DocumentMetadata> configure)
         {
             configure?.Invoke(_doc.Metadata);
@@ -169,10 +179,30 @@ namespace PdfBuilder.Document
             page.MasterOverride = Clone(_currentSectionMaster);
             page.LayoutOptions = _doc.LayoutOptions.Clone();
             page.TextDefaults = _currentTextDefaults.Clone();
+            page.Theme = _doc.Theme.Clone();
+            if (page.Theme.Page.Margin.HasValue)
+            {
+                float margin = Math.Max(0f, page.Theme.Page.Margin.Value);
+                page.MarginTop = page.MarginRight = page.MarginBottom = page.MarginLeft = margin;
+            }
+            if (!string.IsNullOrWhiteSpace(page.Theme.Page.BackgroundColor))
+                page.BackgroundColor = page.Theme.ResolveColor(page.Theme.Page.BackgroundColor!);
             return this;
         }
 
-        internal float GetDefaultContentMargin() => _defaultContentMargin;
+        public PdfDocumentBuilder GenerationOptions(Action<PdfGenerationOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_doc.GenerationOptions);
+            return this;
+        }
+
+        IDocumentDescriptor IDocumentDescriptor.Theme(Action<DocumentThemeBuilder> configure) => Theme(configure);
+        IDocumentDescriptor IDocumentDescriptor.Compose(Action<DocumentComposer> configure) => Compose(configure);
+        IDocumentDescriptor IDocumentDescriptor.Metadata(Action<DocumentMetadata> configure) => Metadata(configure);
+        IDocumentDescriptor IDocumentDescriptor.OutputOptions(Action<PdfOutputOptions> configure) => OutputOptions(configure);
+
+        internal float GetDefaultContentMargin() => _doc.Theme.Page.Margin ?? _defaultContentMargin;
 
         private void ApplyLayoutDebugFromEnvironment()
         {

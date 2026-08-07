@@ -17,9 +17,13 @@ namespace PdfBuilder.Document
 
         public PdfOutputOptions OutputOptions { get; } = new();
 
+        public PdfGenerationOptions GenerationOptions { get; } = new();
+
         public DocumentMetadata Metadata { get; } = new();
 
         public TextStyleDefaults TextDefaults { get; } = new TextStyleDefaults();
+
+        public DocumentTheme Theme { get; internal set; } = new();
 
         public PaginationRegistry Pagination { get; } = new();
 
@@ -39,7 +43,8 @@ namespace PdfBuilder.Document
             var page = new PdfPage(width, height)
             {
                 LayoutOptions = LayoutOptions.Clone(),
-                TextDefaults = TextDefaults.Clone()
+                TextDefaults = TextDefaults.Clone(),
+                Theme = Theme.Clone()
             };
             Pages.Add(page);
             page.Owner = this;

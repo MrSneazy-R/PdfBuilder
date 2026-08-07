@@ -9,9 +9,10 @@ internal static class ValidationTools
             ? new[] { executable, executable + ".exe", executable + ".cmd", executable + ".bat" }
             : new[] { executable };
         var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        var directories = path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var candidate in candidates)
         {
-            foreach (var candidate in candidates)
+            foreach (var directory in directories)
             {
                 var fullPath = Path.Combine(directory, candidate);
                 if (File.Exists(fullPath))
