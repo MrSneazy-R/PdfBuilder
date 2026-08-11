@@ -8,6 +8,12 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Thread-safe `ImageSource` loading from bytes, read-only memory, streams, local files,
+  embedded resources, reusable preloaded instances, and caller-owned lazy factories; DPI-aware
+  intrinsic sizing, crop alignment, quality controls, effective-DPI downsampling, JPEG quality,
+  alpha-aware encoding, EXIF orientation, content-hash deduplication, and still WebP decoding.
+- XML-based SVG sanitisation that prohibits DTDs, active content, event handlers, imported styles,
+  and external network/file references while retaining safe local paint references.
 - A PdfColor-only canonical chart model with line, area, grouped/stacked/100%-stacked bar,
   pie, donut, and scatter series; typed series options; numeric and secondary axes; labels,
   formatters, markers, smoothing, legends, and document-scoped theme palettes.

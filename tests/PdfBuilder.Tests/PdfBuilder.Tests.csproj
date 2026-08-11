@@ -27,6 +27,7 @@
     <Content Include="..\..\Test\TestLogo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="..\..\Test\TestLogo.png" LogicalName="PdfBuilder.Tests.EmbeddedTestLogo.png" />
     <Content Include="..\..\Test\logo.webp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

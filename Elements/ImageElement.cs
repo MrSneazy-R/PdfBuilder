@@ -48,6 +48,7 @@ namespace PdfBuilder.Elements
     {
         // Required: Image Data (raw bytes, or image ID if deduplicating)
         public byte[] ImageData { get; set; }
+        internal ImageSource? Source { get; set; }
         public string? MimeType { get; set; } // "image/png", "image/jpeg", etc.
         public string? ImageId { get; set; } // For deduplication or XObject naming
 
@@ -60,6 +61,12 @@ namespace PdfBuilder.Elements
         public float Opacity { get; set; } = 1.0f;
         internal ImageFit Fit { get; set; } = ImageFit.Stretch;
         internal ImageAlignment Alignment { get; set; } = ImageAlignment.Center;
+        internal ImageQuality Quality { get; set; } = ImageQuality.High;
+        internal bool Downsample { get; set; }
+        internal float MaximumEffectiveDpi { get; set; } = 300f;
+        internal int JpegQuality { get; set; } = 85;
+        internal bool AlphaAwareEncoding { get; set; } = true;
+        internal bool UseIntrinsicDimensions { get; set; }
 
         // Padding & Margin
         public float? MarginTop { get; set; }
@@ -104,6 +111,16 @@ namespace PdfBuilder.Elements
             Width = width;
             Height = height;
         }
+
+        internal ImageElement(ImageSource source, float x, float y, float width, float height) : base(x, y)
+        {
+            Source = source ?? throw new ArgumentNullException(nameof(source));
+            ImageData = Array.Empty<byte>();
+            Width = width;
+            Height = height;
+        }
+
+        internal byte[] ResolveImageData() => Source?.GetBytes() ?? ImageData;
 
         public bool KeepWithNext { get; set; } = false;
         public bool AvoidBreakInside { get; set; } = true;

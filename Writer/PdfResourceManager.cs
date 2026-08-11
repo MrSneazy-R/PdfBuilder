@@ -17,8 +17,8 @@ namespace PdfBuilder.Writer
     /// <summary>
     /// Tracks and writes shared PDF resources (fonts, images, extgstates).
     /// Supports PNG (all types via PngDecoder), JPEG (incl. CMYK/YCCK + ICC),
-    /// and WebP (decoded to RGB + optional SMask via WebpWicDecoder on Windows).
-    /// No third-party libs — only System.* (plus OS WIC for WebP).
+    /// and WebP through the shared cross-platform Skia codec.
+    /// Native PNG and JPEG streams remain untouched unless optimisation is requested.
     /// </summary>
     public class PdfResourceManager
     {
@@ -112,17 +112,20 @@ namespace PdfBuilder.Writer
             EnsureImageXObject(PdfStreamWriter w, ImageElement img)
         {
             if (img == null) throw new ArgumentNullException(nameof(img));
-            if (img.ImageData == null || img.ImageData.Length == 0)
-                throw new InvalidDataException("ImageElement.ImageData is empty.");
+            byte[] sourceData = img.ResolveImageData();
+            if (sourceData.Length == 0)
+                throw new InvalidDataException("ImageElement image source is empty.");
 
-            var imageInfo = MediaImageDecoders.ReadInfo(img.ImageData, _renderLimits.MaximumImagePixels);
+            PreparedImage prepared = SkiaImageOptimiser.Prepare(sourceData, img, _renderLimits.MaximumImagePixels);
+            ImageInfo imageInfo = prepared.SourceInfo;
             _renderLimits.ValidateImagePixels(imageInfo.PixelCount);
-            img.SourcePixelWidth = imageInfo.Width;
-            img.SourcePixelHeight = imageInfo.Height;
-            img.SourceDpiX = imageInfo.DpiX;
-            img.SourceDpiY = imageInfo.DpiY;
+            bool swapsDimensions = imageInfo.Orientation is ImageOrientation.LeftTop or ImageOrientation.RightTop or ImageOrientation.RightBottom or ImageOrientation.LeftBottom;
+            img.SourcePixelWidth = swapsDimensions ? imageInfo.Height : imageInfo.Width;
+            img.SourcePixelHeight = swapsDimensions ? imageInfo.Width : imageInfo.Height;
+            img.SourceDpiX = swapsDimensions ? imageInfo.DpiY : imageInfo.DpiX;
+            img.SourceDpiY = swapsDimensions ? imageInfo.DpiX : imageInfo.DpiY;
 
-            string key = Hash(img.ImageData);
+            string key = Hash(prepared.Data);
             if (!_imageMap.TryGetValue(key, out var candidates))
             {
                 candidates = new List<ImageResource>();
@@ -130,13 +133,13 @@ namespace PdfBuilder.Writer
             }
 
             var resource = candidates.FirstOrDefault(candidate =>
-                candidate.Content.AsSpan().SequenceEqual(img.ImageData));
+                candidate.Content.AsSpan().SequenceEqual(prepared.Data));
             if (resource == null)
             {
                 // Keep a private immutable snapshot for collision-safe equality. The original data
                 // may be caller-owned and must not be retained as mutable shared state.
-                var ids = WriteImageAuto(w, img.ImageData);
-                resource = new ImageResource(img.ImageData.ToArray(), ids.imObj, ids.smaskObj);
+                var ids = WriteImageAuto(w, prepared.Data);
+                resource = new ImageResource(prepared.Data.ToArray(), ids.imObj, ids.smaskObj);
                 candidates.Add(resource);
             }
 
@@ -401,10 +404,12 @@ namespace PdfBuilder.Writer
             return (im, smask);
         }
 
-        // WebP (decode to RGB + optional alpha via WIC; write Flate + /SMask)
+        // WebP fallback (the optimiser normally converts it to PNG or JPEG first).
         private (int imObj, int? smaskObj) WriteWebpXObject(PdfStreamWriter w, byte[] webp)
         {
-            throw new NotSupportedException("WebP is not supported because PdfBuilder does not provide a tested cross-platform WebP decoder.");
+            ImageInfo info = MediaImageDecoders.ReadInfo(webp, _renderLimits.MaximumImagePixels);
+            using DecodedImage decoded = SkiaImageOptimiser.Decode(webp, info, null);
+            return WriteRawRgbWithOptionalAlpha(w, decoded.Info.Width, decoded.Info.Height, decoded.Pixels, decoded.Alpha);
         }
 
         // Auto-detect and write
@@ -419,7 +424,7 @@ namespace PdfBuilder.Writer
             if (WebpInspector.LooksLikeWebp(bytes))
                 return WriteWebpXObject(w, bytes);
 
-            throw new InvalidDataException("Unsupported image format. PdfBuilder supports PNG and JPEG.");
+            throw new InvalidDataException("Unsupported image format. PdfBuilder supports PNG, JPEG, and WebP.");
         }
 
         // Helper: write RGB + optional alpha as Flate-decoded XObject + SMask

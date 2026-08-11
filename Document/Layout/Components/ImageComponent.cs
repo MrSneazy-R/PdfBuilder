@@ -29,6 +29,12 @@ namespace PdfBuilder.Document.Layout.Components
 
             float imageWidth = _element.Width;
             float imageHeight = _element.Height;
+            if (_element.UseIntrinsicDimensions && _element.Source != null)
+            {
+                ImageSourceInfo info = _element.Source.Inspect();
+                imageWidth = info.OriginalWidthPoints;
+                imageHeight = info.OriginalHeightPoints;
+            }
 
             if (_element.MaxWidth.HasValue && imageWidth > _element.MaxWidth.Value && imageWidth > 0f)
             {

@@ -204,9 +204,21 @@ public partial class PdfDocument
         public IImageDescriptor Image(byte[] data, float width, float height)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
+            return Image(ImageSource.FromBytes(data), width, height);
+        }
+        public IImageDescriptor Image(ImageSource source, float width, float height)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
             if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "Image dimensions must be positive.");
             var descriptor = new CanonicalImageDescriptor();
-            _content.Add(composer => composer.Image(data, width, height, descriptor.Apply));
+            _content.Add(composer => composer.Image(source, width, height, descriptor.Apply));
+            return descriptor;
+        }
+        public IImageDescriptor Image(ImageSource source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var descriptor = new CanonicalImageDescriptor();
+            _content.Add(composer => composer.Image(source, descriptor.Apply));
             return descriptor;
         }
         public void Svg(string markup, float width, float height)

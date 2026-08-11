@@ -23,6 +23,10 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ISectionDescriptor),
         typeof(ITableOfContentsDescriptor),
         typeof(IImageDescriptor),
+        typeof(ImageSource),
+        typeof(ImageSourceInfo),
+        typeof(ImageQuality),
+        typeof(ImageCropAlignment),
         typeof(IChartDescriptor),
         typeof(IChartAxisDescriptor),
         typeof(IChartSeriesDescriptor),
@@ -129,6 +133,7 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Api/TableContracts.cs",
             "Document/Api/ChartContracts.cs",
             "Document/Api/MediaContracts.cs",
+            "Document/Api/ImageSource.cs",
             "Document/Api/NavigationContracts.cs"
         ];
         string[] adapterFiles =

@@ -362,6 +362,18 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public ContentComposer Image(ImageSource source, float width, float height, Action<ImageElement>? configure = null)
+        {
+            _collection.Image(source, width, height, configure);
+            return this;
+        }
+
+        public ContentComposer Image(ImageSource source, Action<ImageElement>? configure = null)
+        {
+            _collection.Image(source, configure);
+            return this;
+        }
+
         public ContentComposer Canvas(float width, float height, Action<CanvasBuilder> draw, Action<CanvasElement>? configure = null)
         {
             _collection.Canvas(width, height, draw, configure);

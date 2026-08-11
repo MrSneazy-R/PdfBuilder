@@ -11,6 +11,7 @@ using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Tests;
 
+[Collection("Table performance serial")]
 public sealed class AdvancedTableLayoutTests
 {
     [Fact]
@@ -163,3 +164,6 @@ public sealed class AdvancedTableLayoutTests
         return document;
     }
 }
+
+[CollectionDefinition("Table performance serial", DisableParallelization = true)]
+public sealed class TablePerformanceSerialCollection;

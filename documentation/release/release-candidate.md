@@ -17,9 +17,10 @@ Replace terminal `Add()` calls with the canonical terminal operation, for exampl
 
 ## Supported platforms and formats
 
-The maintained target is .NET 10. CI covers Windows, Ubuntu, and macOS. PNG and JPEG
-are supported across platforms. Inline SVG is sanitised and external resources are
-blocked. WebP fails explicitly where a tested cross-platform decoder is unavailable.
+The maintained target is .NET 10. CI covers Windows, Ubuntu, and macOS. PNG, JPEG, and
+still WebP use the shared Skia pipeline; WebP must not be released until its tests have a
+retained green run on all three platforms. Inline SVG is parsed with DTDs disabled,
+sanitised, and prevented from resolving network or file resources.
 QR Code and Code 128 are supported. The package does not claim PDF/A, PDF/UA,
 encryption, signatures, forms, HTML rendering, or PDF merging support.
 

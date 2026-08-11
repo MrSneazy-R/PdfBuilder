@@ -357,6 +357,8 @@ PdfBuilder.Document.IContainer.FirstPageOnly() -> PdfBuilder.Document.IContainer
 PdfBuilder.Document.IContainer.Grid(System.Action<PdfBuilder.Document.IGridDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Height(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Image(byte[]! data, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IContainer.Image(PdfBuilder.Document.ImageSource! source) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IContainer.Image(PdfBuilder.Document.ImageSource! source, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IContainer.InternalLink(string! text, string! anchorId) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.KeepTogether() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
@@ -410,6 +412,12 @@ PdfBuilder.Document.IGridDescriptor.ColumnSpacing(string! spacingToken) -> void
 PdfBuilder.Document.IGridDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IGridDescriptor.RowSpacing(float value) -> void
 PdfBuilder.Document.IGridDescriptor.RowSpacing(string! spacingToken) -> void
+PdfBuilder.Document.IImageDescriptor.AlphaAwareEncoding(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.CropAlignment(PdfBuilder.Document.ImageCropAlignment alignment) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Downsample(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.JpegQuality(int quality) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.MaximumEffectiveDpi(float dpi) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Quality(PdfBuilder.Document.ImageQuality quality) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.ILayerDescriptor
 PdfBuilder.Document.ILayerDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ILayerDescriptor.Content() -> PdfBuilder.Document.IContainer!
@@ -467,6 +475,36 @@ PdfBuilder.Document.ImageBuilder.ShadowOffsetY(float v) -> PdfBuilder.Document.I
 PdfBuilder.Document.ImageBuilder.Width(float width) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.X(float x) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.Y(float y) -> PdfBuilder.Document.ImageBuilder!
+PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Bottom = 7 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.BottomLeft = 6 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.BottomRight = 8 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Center = 4 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Left = 3 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Right = 5 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Top = 1 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.TopLeft = 0 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.TopRight = 2 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.High = 2 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.Low = 0 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.Medium = 1 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageSource
+PdfBuilder.Document.ImageSource.Inspect() -> PdfBuilder.Document.ImageSourceInfo
+PdfBuilder.Document.ImageSource.Preload() -> PdfBuilder.Document.ImageSource!
+PdfBuilder.Document.ImageSourceInfo
+PdfBuilder.Document.ImageSourceInfo.DpiX.get -> float
+PdfBuilder.Document.ImageSourceInfo.DpiX.init -> void
+PdfBuilder.Document.ImageSourceInfo.DpiY.get -> float
+PdfBuilder.Document.ImageSourceInfo.DpiY.init -> void
+PdfBuilder.Document.ImageSourceInfo.ImageSourceInfo() -> void
+PdfBuilder.Document.ImageSourceInfo.ImageSourceInfo(int PixelWidth, int PixelHeight, float DpiX, float DpiY) -> void
+PdfBuilder.Document.ImageSourceInfo.OriginalHeightPoints.get -> float
+PdfBuilder.Document.ImageSourceInfo.OriginalWidthPoints.get -> float
+PdfBuilder.Document.ImageSourceInfo.PixelHeight.get -> int
+PdfBuilder.Document.ImageSourceInfo.PixelHeight.init -> void
+PdfBuilder.Document.ImageSourceInfo.PixelWidth.get -> int
+PdfBuilder.Document.ImageSourceInfo.PixelWidth.init -> void
 PdfBuilder.Document.IPageDescriptor
 PdfBuilder.Document.IPageDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.ContinuationFooter() -> PdfBuilder.Document.IContainer!
@@ -700,6 +738,8 @@ PdfBuilder.Document.Layout.ContentComposer.Grid(int columns, System.Action<PdfBu
 PdfBuilder.Document.Layout.ContentComposer.Grid(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.GridComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Height(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Image(byte[]! data, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Image(PdfBuilder.Document.ImageSource! source, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Image(PdfBuilder.Document.ImageSource! source, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Layer(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.List(System.Action<ListElement!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.MaxHeight(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -792,6 +832,8 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.GridComponentBuilder.RowGap
 PdfBuilder.Document.Layout.LayoutComponentCollection.Height(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Hyperlink(string! text, string! url, System.Action<PdfBuilder.Models.RichRun!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Image(byte[]! data, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.Image(PdfBuilder.Document.ImageSource! source, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.Image(PdfBuilder.Document.ImageSource! source, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Layer(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder
 PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder.Background(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!
@@ -2878,17 +2920,6 @@ PdfBuilder.Writer.Imaging.WebpInspector.Info.Height -> int
 PdfBuilder.Writer.Imaging.WebpInspector.Info.Info() -> void
 PdfBuilder.Writer.Imaging.WebpInspector.Info.PrimaryChunk -> string!
 PdfBuilder.Writer.Imaging.WebpInspector.Info.Width -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Alpha.get -> byte[]?
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Alpha.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Height.get -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Height.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Result() -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Rgb.get -> byte[]!
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Rgb.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Width.get -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Width.init -> void
 PdfBuilder.Writer.ListRenderer
 PdfBuilder.Writer.MasterRenderer
 PdfBuilder.Writer.PdfContentRenderer
@@ -3080,6 +3111,12 @@ static PdfBuilder.Document.HeaderFooterTokens.PageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.SectionPageCount.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.SectionPageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.Title.get -> string?
+static PdfBuilder.Document.ImageSource.FromBytes(byte[]! data) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromEmbeddedResource(System.Reflection.Assembly! assembly, string! resourceName) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromFile(string! path) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromLazy(System.Func<byte[]!>! byteFactory) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromMemory(System.ReadOnlyMemory<byte> data) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromStream(System.IO.Stream! stream) -> PdfBuilder.Document.ImageSource!
 static PdfBuilder.Document.Layout.LayoutMeasurement.Wrap(float usedWidth = 0, object? metadata = null) -> PdfBuilder.Document.Layout.LayoutMeasurement!
 static PdfBuilder.Document.PageSizes.A3.get -> PdfBuilder.Document.PageSize
 static PdfBuilder.Document.PageSizes.A4.get -> PdfBuilder.Document.PageSize
@@ -3265,7 +3302,6 @@ static PdfBuilder.Writer.Imaging.PngDecoder.Decode(byte[]! data) -> PdfBuilder.W
 static PdfBuilder.Writer.Imaging.PngDecoder.LooksLikePng(System.ReadOnlySpan<byte> data) -> bool
 static PdfBuilder.Writer.Imaging.WebpInspector.GetInfo(byte[]! data) -> PdfBuilder.Writer.Imaging.WebpInspector.Info!
 static PdfBuilder.Writer.Imaging.WebpInspector.LooksLikeWebp(System.ReadOnlySpan<byte> s) -> bool
-static PdfBuilder.Writer.Imaging.WebpWicDecoder.Decode(byte[]! webpBytes) -> PdfBuilder.Writer.Imaging.WebpWicDecoder.Result!
 static PdfBuilder.Writer.ListRenderer.Append(System.Text.StringBuilder! sb, ListElement! list, float pageHeight, PdfBuilder.Writer.PdfRenderContext! context, System.Collections.Generic.List<PdfBuilder.Writer.RichTextRenderer.LinkRect!>! outLinks) -> void
 static PdfBuilder.Writer.MasterRenderer.AppendBackground(System.Text.StringBuilder! sb, PdfBuilder.Models.PdfPage! page, PdfBuilder.Models.MasterPageSpec! master) -> void
 static PdfBuilder.Writer.MasterRenderer.AppendWatermark(System.Text.StringBuilder! sb, PdfBuilder.Models.PdfPage! page, PdfBuilder.Models.WatermarkSpec! wm, PdfBuilder.Writer.PdfRenderContext! context, bool aboveContent) -> void

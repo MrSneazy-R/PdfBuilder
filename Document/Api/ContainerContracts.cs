@@ -115,6 +115,10 @@ public interface IContainer
     void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>
     IImageDescriptor Image(byte[] data, float width, float height);
+    /// <summary>Adds an image from a reusable source with an explicit layout box.</summary>
+    IImageDescriptor Image(ImageSource source, float width, float height);
+    /// <summary>Adds an image at its DPI-aware intrinsic size.</summary>
+    IImageDescriptor Image(ImageSource source);
     /// <summary>Adds sanitised inline SVG markup without exposing image elements.</summary>
     void Svg(string markup, float width, float height);
     /// <summary>Adds a vector QR Code or Code 128 barcode.</summary>

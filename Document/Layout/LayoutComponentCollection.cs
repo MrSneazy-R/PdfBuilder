@@ -565,6 +565,30 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public LayoutComponentCollection Image(ImageSource source, float width, float height, Action<ImageElement>? configure = null)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var flow = _owner.GetFlow();
+            var element = new ImageElement(source, flow.X, flow.Y, Math.Max(0f, width), Math.Max(0f, height));
+            configure?.Invoke(element);
+            element.X = flow.X;
+            element.Y = flow.Y;
+            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection Image(ImageSource source, Action<ImageElement>? configure = null)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var flow = _owner.GetFlow();
+            var element = new ImageElement(source, flow.X, flow.Y, 0f, 0f) { Fit = ImageFit.Original, UseIntrinsicDimensions = true };
+            configure?.Invoke(element);
+            element.X = flow.X;
+            element.Y = flow.Y;
+            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
         public LayoutComponentCollection Canvas(float width, float height, Action<CanvasBuilder> draw, Action<CanvasElement>? configure = null)
         {
             if (draw == null) throw new ArgumentNullException(nameof(draw));

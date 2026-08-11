@@ -62,14 +62,14 @@ public sealed class MediaRenderingTests
     }
 
     [Fact]
-    public void WebP_SupportedOrFailsExplicitlyOnAllPlatforms()
+    public void WebP_RendersThroughCrossPlatformCodec()
     {
         var document = new PdfDocument();
         document.AddPage().AddElement(new ImageElement(Load("logo.webp"), 72, 720, 30, 30));
 
-        document.Invoking(value => new PdfWriter().GenerateBytes(value))
-            .Should().Throw<NotSupportedException>()
-            .WithMessage("*cross-platform WebP decoder*");
+        byte[] pdf = new PdfWriter().GenerateBytes(document);
+
+        Encoding.ASCII.GetString(pdf).Should().Contain("/Subtype /Image");
     }
 
     [Fact]
@@ -94,6 +94,27 @@ public sealed class MediaRenderingTests
         var path = new string('M', 500_001);
         Action create = () => _ = new SvgElement($"<svg><path d='{path}'/></svg>", 0, 0, 40, 40);
         create.Should().Throw<InvalidDataException>().WithMessage("*complexity limit*");
+    }
+
+    [Theory]
+    [InlineData("<svg><rect onload='alert(1)'/></svg>")]
+    [InlineData("<svg><foreignObject><div>unsafe</div></foreignObject></svg>")]
+    [InlineData("<!DOCTYPE svg [<!ENTITY x SYSTEM 'file:///secret'>]><svg>&x;</svg>")]
+    [InlineData("<svg><style>@import 'https://example.test/x.css';</style></svg>")]
+    public void Svg_ActiveContent_IsRejected(string markup)
+    {
+        Action create = () => _ = new SvgElement(markup, 0, 0, 40, 40);
+
+        create.Should().Throw<InvalidDataException>();
+    }
+
+    [Fact]
+    public void Svg_LocalPaintReference_RemainsSupported()
+    {
+        const string svg = "<svg viewBox='0 0 10 10'><defs><linearGradient id='g'><stop offset='0' stop-color='#000'/><stop offset='1' stop-color='#fff'/></linearGradient></defs><rect width='10' height='10' fill='url(#g)'/></svg>";
+        var document = PdfDocument.Create(document => document.Page(page => page.Content().Svg(svg, 40, 40)));
+
+        document.GenerateBytes().Should().NotBeEmpty();
     }
 
     [Fact]

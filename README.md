@@ -71,7 +71,13 @@ Use `Text`, `FontSize`, `Bold`, and `DefaultTextStyle`. Font registration and fa
 
 ## Images and SVG
 
-Use `container.Image` for PNG/JPEG and `container.Svg` for sanitised inline SVG. Do not pass untrusted oversized media; PdfBuilder rejects unsafe data and blocks SVG external resources by default.
+Use `ImageSource` to load PNG, JPEG, or still WebP data from bytes, read-only memory,
+streams, local files, embedded resources, preloaded shared instances, or a caller-owned lazy
+factory. `container.Image(source)` uses DPI-aware intrinsic size; explicit boxes support
+contain, cover, stretch, crop alignment, effective-DPI downsampling, JPEG quality, and
+alpha-aware encoding. Remote URLs remain outside the core API. `container.Svg` accepts
+sanitised inline SVG and blocks scripts, active content, DTDs, event handlers, and network/file
+resources.
 
 ## Headers and footers
 

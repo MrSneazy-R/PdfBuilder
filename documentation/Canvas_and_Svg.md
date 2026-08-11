@@ -3,7 +3,7 @@ Images, Canvas & Svg
 
 Images
 ------
-`ContentComposer.Image(byte[] data, float width, float height, Action<ImageElement>?)` or `ColumnBuilder.Image` adds raster artwork (PNG, JPEG, etc.) that participates in flow layout.
+`ContentComposer.Image(ImageSource source, ...)` adds PNG, JPEG, or still WebP artwork from reusable bytes, memory, streams, files, resources, or lazy factories. The byte-array overload and coordinate-based `ColumnBuilder.Image` remain compatibility conveniences.
 
 API Highlights:
 - Set `width`/`height` to control the rendered size.
