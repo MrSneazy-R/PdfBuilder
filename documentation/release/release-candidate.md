@@ -15,6 +15,8 @@ Replace terminal `Add()` calls with the canonical terminal operation, for exampl
 `container.Text("Hello").Bold()`. See
 [legacy-to-canonical-api.md](../migration/legacy-to-canonical-api.md) for mappings.
 
+The package targets `net8.0` and `net10.0`. Release validation must retain clean consumer runs for both target frameworks and confirm the `.nupkg`/`.snupkg` contain both assemblies, XML documentation, portable PDBs with SourceLink data, and repository metadata.
+
 ## Supported platforms and formats
 
 The maintained target is .NET 10. CI covers Windows, Ubuntu, and macOS. PNG, JPEG, and

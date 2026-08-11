@@ -2,6 +2,8 @@
 
 > **Pre-release:** PdfBuilder `0.1.0-preview.2` is under active production hardening. Validate output against your own documents before production use. It is neither stable nor a 1.0 release candidate.
 
+PdfBuilder supports .NET 8 and .NET 10. Packages include framework-specific assemblies, XML documentation, portable symbols, and SourceLink metadata.
+
 PdfBuilder is a cross-platform .NET PDF library for invoices, statements, operational documents, and reports. It keeps its own PDF writer and layout engine; it is not a wrapper around another PDF generator.
 
 ## Installation

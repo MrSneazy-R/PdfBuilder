@@ -31,7 +31,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Install PDF validation tools and multilingual fonts
         if: runner.os == 'Linux'
         run: |
@@ -61,8 +63,8 @@ jobs:
           dotnet format tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj --verify-no-changes --no-restore
       - name: Build Debug
         run: dotnet build PdfBuilder.sln -c Debug --no-restore
-      - name: Build Release (report warnings)
-        run: dotnet build PdfBuilder.sln -c Release --no-restore
+      - name: Build Release (warnings as errors)
+        run: dotnet build PdfBuilder.sln -c Release --no-restore -warnaserror
       - name: Build maintained samples
         run: |
           dotnet build samples/HBSubsetProbe/HBSubsetProbe.csproj -c Release --no-restore
@@ -124,7 +126,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Restore and pack
         run: |
           dotnet restore PdfBuilder.sln
@@ -132,10 +136,15 @@ jobs:
       - name: Package consumer smoke test
         shell: pwsh
         run: ./eng/Invoke-PackageSmokeTest.ps1 -PackageDirectory ./artifacts
+      - name: Verify package contents, docs, symbols, and repository metadata
+        shell: pwsh
+        run: ./eng/Test-PackageContents.ps1 -PackageDirectory ./artifacts
       - name: Upload packages
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.name }}-packages
-          path: artifacts/*.nupkg
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
           if-no-files-found: error

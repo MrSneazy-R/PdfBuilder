@@ -3,6 +3,8 @@ Document Models
 
 This reference covers supporting models frequently configured when building documents.
 
+The distributed package supports .NET 8 and .NET 10; both target assemblies expose the same declared public API.
+
 DocumentMetadata (`Models/DocumentMetadata.cs`)
 -----------------------------------------------
 - `Author`, `Subject`, `Keywords`, `Creator`, `Producer`: strings written to the PDF info dictionary.

@@ -2,7 +2,10 @@
 param(
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path -LiteralPath $_ -PathType Container })]
-    [string]$PackageDirectory
+    [string]$PackageDirectory,
+
+    [ValidateSet('net8.0', 'net10.0')]
+    [string[]]$Frameworks = @('net8.0', 'net10.0')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -25,13 +28,13 @@ if ([string]::IsNullOrWhiteSpace($version)) {
 }
 
 $packageSource = (Resolve-Path -LiteralPath $PackageDirectory).Path
-$consumerDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "PdfBuilder-package-smoke-$([Guid]::NewGuid().ToString('N'))"
-New-Item -ItemType Directory -Path $consumerDirectory | Out-Null
+$consumerRoot = Join-Path ([System.IO.Path]::GetTempPath()) "PdfBuilder-package-smoke-$([Guid]::NewGuid().ToString('N'))"
+$previousNugetPackages = $env:NUGET_PACKAGES
+New-Item -ItemType Directory -Path $consumerRoot | Out-Null
 
 try {
-    Push-Location $consumerDirectory
-    $env:NUGET_PACKAGES = Join-Path $consumerDirectory '.nuget-packages'
-    $nugetConfig = Join-Path $consumerDirectory 'NuGet.Config'
+    $env:NUGET_PACKAGES = Join-Path $consumerRoot '.nuget-packages'
+    $nugetConfig = Join-Path $consumerRoot 'NuGet.Config'
     @"
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -42,14 +45,20 @@ try {
   </packageSources>
 </configuration>
 "@ | Set-Content -LiteralPath $nugetConfig -Encoding utf8
-    dotnet new console --framework net10.0 --no-restore | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "dotnet new failed with exit code $LASTEXITCODE." }
-    dotnet add package PdfBuilder --version $version --source $packageSource --no-restore | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "dotnet add package failed with exit code $LASTEXITCODE." }
-    dotnet restore --configfile $nugetConfig | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "dotnet restore failed with exit code $LASTEXITCODE." }
 
-    @'
+    foreach ($framework in $Frameworks) {
+        $consumerDirectory = Join-Path $consumerRoot $framework
+        dotnet new console --no-restore --output $consumerDirectory | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "dotnet new for $framework failed with exit code $LASTEXITCODE." }
+
+        $project = Join-Path $consumerDirectory "$framework.csproj"
+        [xml]$projectXml = Get-Content -LiteralPath $project -Raw
+        $projectXml.Project.PropertyGroup.TargetFramework = $framework
+        $projectXml.Save($project)
+        dotnet add $project package PdfBuilder --version $version --source $packageSource --no-restore | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "dotnet add package for $framework failed with exit code $LASTEXITCODE." }
+
+        @'
 using PdfBuilder.Document;
 
 var document = PdfDocument.Create(descriptor =>
@@ -74,12 +83,15 @@ if (!File.Exists(outputPath) || new FileInfo(outputPath).Length == 0)
 }
 
 Console.WriteLine($"Generated {new FileInfo(outputPath).Length} bytes at {outputPath}");
-'@ | Set-Content -LiteralPath Program.cs -Encoding utf8
+'@ | Set-Content -LiteralPath (Join-Path $consumerDirectory 'Program.cs') -Encoding utf8
 
-    dotnet run --configuration Release | Out-Host
-    if ($LASTEXITCODE -ne 0) { throw "dotnet run failed with exit code $LASTEXITCODE." }
+        dotnet restore $project --configfile $nugetConfig | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "dotnet restore for $framework failed with exit code $LASTEXITCODE." }
+        dotnet run --project $project --configuration Release --no-restore | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw "dotnet run for $framework failed with exit code $LASTEXITCODE." }
+    }
 }
 finally {
-    Pop-Location
-    Remove-Item -LiteralPath $consumerDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    $env:NUGET_PACKAGES = $previousNugetPackages
+    Remove-Item -LiteralPath $consumerRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
