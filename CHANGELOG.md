@@ -16,6 +16,11 @@ policy is [Semantic Versioning](https://semver.org/).
   fallback order, strict missing-font failures, size guardrails, retained diagnostics,
   versioned cache keys, and immutable per-document catalogue snapshots.
 
+### Changed
+
+- Split the canonical public contracts and private composition adapters into focused
+  `Document/Api` and `Document/Canonical` source files without changing signatures or output.
+
 ## [0.1.0-preview.2] - 2026-08-11
 
 ### Added
