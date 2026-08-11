@@ -36,7 +36,11 @@ public partial class PdfDocument
         public void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            configure(_document.LayoutOptions.Diagnostics);
+            Layout.PdfDiagnosticsOptions options = _document.LayoutOptions.Diagnostics;
+            configure(options);
+            _document.LayoutOptions.Debug.DrawBoundingBoxes = options.DrawBoundingBoxes;
+            _document.LayoutOptions.Debug.ShowFlowGuides = options.ShowFlowGuides;
+            _document.LayoutOptions.Profiler.Enabled = options.EnableProfiler;
         }
         public void RenderLimits(Action<Layout.PdfRenderLimits> configure)
         {

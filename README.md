@@ -110,6 +110,8 @@ page.Content().DebugLabel("InvoiceTotals").Text("Total");
 
 See [documentation/engineering/LAYOUT-DIAGNOSTICS.md](documentation/engineering/LAYOUT-DIAGNOSTICS.md) and [samples/LayoutDiagnostics](samples/LayoutDiagnostics).
 
+For an interactive, loopback-only development surface, run the [PreviewHost](tools/PdfBuilder.PreviewHost/README.md) with `dotnet watch`. It provides page thumbnails, selected-page previews, hierarchy, traces, timing, visual guides, structured failures, and PDF download without telemetry.
+
 ## Cross-platform requirements
 
 Windows, Ubuntu, and macOS are exercised in CI. Native SkiaSharp and HarfBuzz assets restore from NuGet; no native binaries are committed. Ubuntu CI installs Noto fonts, Poppler, and qpdf for validation.

@@ -3304,10 +3304,16 @@ PdfBuilder.Document.Layout.PdfDiagnosticsOptions
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.PdfDiagnosticsOptions() -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.get -> int
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.ShowFlowGuides.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.ShowFlowGuides.set -> void
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry.PdfLayoutTraceEntry() -> void
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Event.get -> string!

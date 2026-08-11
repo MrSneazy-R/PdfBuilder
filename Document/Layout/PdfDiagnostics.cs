@@ -12,6 +12,15 @@ public sealed class PdfDiagnosticsOptions
     /// <summary>Gets or sets whether caller-provided text is included in trace events. Disabled by default.</summary>
     public bool IncludeTextContent { get; set; }
 
+    /// <summary>Gets or sets whether component measurement bounds are painted into diagnostic output.</summary>
+    public bool DrawBoundingBoxes { get; set; }
+
+    /// <summary>Gets or sets whether page-flow columns and their usable bounds are painted into diagnostic output.</summary>
+    public bool ShowFlowGuides { get; set; }
+
+    /// <summary>Gets or sets whether document-scoped layout timing is collected.</summary>
+    public bool EnableProfiler { get; set; }
+
     /// <summary>Gets or sets the maximum number of placement attempts before a layout failure is reported.</summary>
     public int LayoutIterationLimit { get; set; } = 32;
 
@@ -19,6 +28,9 @@ public sealed class PdfDiagnosticsOptions
     {
         EnableLayoutTrace = EnableLayoutTrace,
         IncludeTextContent = IncludeTextContent,
+        DrawBoundingBoxes = DrawBoundingBoxes,
+        ShowFlowGuides = ShowFlowGuides,
+        EnableProfiler = EnableProfiler,
         LayoutIterationLimit = LayoutIterationLimit
     };
 }

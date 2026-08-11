@@ -76,13 +76,15 @@ namespace PdfBuilder.Writer
             canvas.Clear(ParseColor(page.BackgroundColor) ?? SKColors.White);
 
             canvas.Save();
-            canvas.Scale(scale, -scale);
-            canvas.Translate(0f, -page.Height);
+            canvas.Scale(scale, scale);
+
+            HeaderFooterSpec effectiveHeaderFooter = page.HeaderFooterOverride ?? doc.HeaderFooter;
+            PageContext pageContext = PageContextFactory.Create(page, pageNumber, doc.Pages.Count, effectiveHeaderFooter);
 
             DrawPageBackground(canvas, doc, page);
-            DrawElements(canvas, page.HeaderElements, page);
-            DrawElements(canvas, page.Elements, page);
-            DrawElements(canvas, page.FooterElements, page);
+            DrawElements(canvas, page.HeaderElements, page, pageContext, doc.Pagination);
+            DrawElements(canvas, page.Elements, page, pageContext, doc.Pagination);
+            DrawElements(canvas, page.FooterElements, page, pageContext, doc.Pagination);
 
             canvas.Restore();
 
@@ -102,26 +104,38 @@ namespace PdfBuilder.Writer
             canvas.DrawRect(new SKRect(0f, 0f, page.Width, page.Height), paint);
         }
 
-        private void DrawElements(SKCanvas canvas, IEnumerable<PdfElement> elements, PdfPage page)
+        private void DrawElements(
+            SKCanvas canvas,
+            IEnumerable<PdfElement> elements,
+            PdfPage page,
+            PageContext pageContext,
+            PaginationRegistry pagination)
         {
             if (elements == null)
                 return;
 
-            foreach (var element in elements)
+            foreach (PdfElement element in elements.OrderBy(element => element is DebugRectangleElement ? 1 : 0))
             {
                 switch (element)
                 {
                     case TextElement text:
-                        DrawTextElement(canvas, text);
+                        DrawTextElement(canvas, text, page.Height, pageContext, pagination);
                         break;
                     case ImageElement image:
-                        DrawImageElement(canvas, image);
+                        DrawImageElement(canvas, image, page.Height);
                         break;
                     case ClipGroupElement group:
                         canvas.Save();
-                        canvas.ClipRect(new SKRect(group.X, group.Y, group.X + group.Width, group.Y + group.Height));
-                        DrawElements(canvas, group.Children, page);
+                        canvas.ClipRect(new SKRect(
+                            group.X,
+                            page.Height - group.Y - group.Height,
+                            group.X + group.Width,
+                            page.Height - group.Y));
+                        DrawElements(canvas, group.Children, page, pageContext, pagination);
                         canvas.Restore();
+                        break;
+                    case DebugRectangleElement rectangle:
+                        DrawDebugRectangle(canvas, rectangle, page.Height);
                         break;
                     default:
                         break;
@@ -129,10 +143,56 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private void DrawTextElement(SKCanvas canvas, TextElement element)
+        private static void DrawDebugRectangle(SKCanvas canvas, DebugRectangleElement rectangle, float pageHeight)
+        {
+            if (rectangle.Width <= 0f || rectangle.Height <= 0f)
+                return;
+
+            var rect = new SKRect(
+                rectangle.X,
+                pageHeight - rectangle.Y - rectangle.Height,
+                rectangle.X + rectangle.Width,
+                pageHeight - rectangle.Y);
+            byte alpha = (byte)Math.Round(255f * Math.Clamp(rectangle.Opacity, 0f, 1f));
+
+            if (ParseColor(rectangle.FillColor) is SKColor fill)
+            {
+                using var fillPaint = new SKPaint
+                {
+                    Color = fill.WithAlpha(alpha),
+                    Style = SKPaintStyle.Fill,
+                    IsAntialias = true
+                };
+                canvas.DrawRect(rect, fillPaint);
+            }
+
+            using var strokePaint = new SKPaint
+            {
+                Color = (ParseColor(rectangle.StrokeColor) ?? SKColors.Red).WithAlpha(alpha),
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = Math.Max(0.1f, rectangle.StrokeWidth),
+                IsAntialias = true
+            };
+            if (rectangle.DashPattern is { Length: > 0 })
+                strokePaint.PathEffect = SKPathEffect.CreateDash(rectangle.DashPattern, 0f);
+            canvas.DrawRect(rect, strokePaint);
+        }
+
+        private void DrawTextElement(
+            SKCanvas canvas,
+            TextElement element,
+            float pageHeight,
+            PageContext pageContext,
+            PaginationRegistry pagination)
         {
             if (element == null)
                 return;
+
+            if (element.PageTextTemplate != null || element.PageReferenceAnchorId != null)
+            {
+                DrawResolvedFinalText(canvas, element, pageHeight, pageContext, pagination);
+                return;
+            }
 
             float innerWidth = element.MaxWidth ?? 0f;
             var paragraph = TextElementLayouter.Layout(element, innerWidth);
@@ -165,14 +225,14 @@ namespace PdfBuilder.Writer
             float topY = baselines[0] + lines[0].Ascent + padT;
             float bottomY = baselines[^1] - lines[^1].Descent - padB;
 
-            DrawTextBackground(canvas, element, textBlockWidth, boxWidth, baselines[0], baselines[^1], padL, padR, padT, padB, topY, bottomY);
+            DrawTextBackground(canvas, element, textBlockWidth, boxWidth, baselines[0], baselines[^1], padL, padR, padT, padB, topY, bottomY, pageHeight);
 
             var textColor = ApplyOpacity(ParseColor(element.Color) ?? SKColors.Black, element.Opacity);
 
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
-                float baselineY = baselines[i];
+                float baselineY = pageHeight - baselines[i];
 
                 float effectiveLineWidth = line.Width;
 
@@ -195,7 +255,7 @@ namespace PdfBuilder.Writer
                     if (isRtl)
                         runOriginX -= runAdvance;
 
-                    DrawRun(canvas, run, runOriginX, baselineY, textColor, element.Rotation);
+                    DrawRun(canvas, run, runOriginX, baselineY, textColor, -element.Rotation);
 
                     if (!isRtl)
                         cursorX += runAdvance;
@@ -207,7 +267,46 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private void DrawImageElement(SKCanvas canvas, ImageElement element)
+        private void DrawResolvedFinalText(
+            SKCanvas canvas,
+            TextElement element,
+            float pageHeight,
+            PageContext pageContext,
+            PaginationRegistry pagination)
+        {
+            string measurementText = element.Text;
+            string? pageTemplate = element.PageTextTemplate;
+            string? referenceAnchor = element.PageReferenceAnchorId;
+            ShapedParagraph? measurementLayout = element.ShapedLayout;
+            int measurementStartLine = element.ShapedStartLine;
+            int measurementLineCount = element.ShapedLineCount;
+
+            try
+            {
+                element.Text = pageTemplate != null
+                    ? PageTextFormatter.Resolve(pageTemplate, pageContext)
+                    : pagination.TryGetPageNumber(referenceAnchor!, out int pageNumber)
+                        ? PageReferenceFormatter.Resolve(element.PageReferenceFormat!, pageNumber)
+                        : element.PageReferencePendingText ?? "…";
+                element.PageTextTemplate = null;
+                element.PageReferenceAnchorId = null;
+                element.ShapedLayout = null;
+                element.ShapedStartLine = 0;
+                element.ShapedLineCount = 0;
+                DrawTextElement(canvas, element, pageHeight, pageContext, pagination);
+            }
+            finally
+            {
+                element.Text = measurementText;
+                element.PageTextTemplate = pageTemplate;
+                element.PageReferenceAnchorId = referenceAnchor;
+                element.ShapedLayout = measurementLayout;
+                element.ShapedStartLine = measurementStartLine;
+                element.ShapedLineCount = measurementLineCount;
+            }
+        }
+
+        private void DrawImageElement(SKCanvas canvas, ImageElement element, float pageHeight)
         {
             if (element.ImageData == null || element.ImageData.Length == 0)
                 return;
@@ -219,13 +318,13 @@ namespace PdfBuilder.Writer
             float width = element.Width > 0 ? element.Width : bitmap.Width;
             float height = element.Height > 0 ? element.Height : bitmap.Height;
 
-            var destRect = new SKRect(element.X, element.Y - height, element.X + width, element.Y);
+            var destRect = new SKRect(element.X, pageHeight - element.Y, element.X + width, pageHeight - element.Y + height);
 
             if (Math.Abs(element.Rotation) > 0.0001f)
             {
                 canvas.Save();
                 canvas.Translate(destRect.MidX, destRect.MidY);
-                canvas.RotateDegrees(element.Rotation);
+                canvas.RotateDegrees(-element.Rotation);
                 var rotatedRect = new SKRect(-width / 2f, -height / 2f, width / 2f, height / 2f);
                 using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
                 canvas.DrawBitmap(bitmap, rotatedRect, paint);
@@ -266,7 +365,7 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private void DrawTextBackground(SKCanvas canvas, TextElement element, float textBlockWidth, float boxWidth, float firstBaseline, float lastBaseline, float padL, float padR, float padT, float padB, float topY, float bottomY)
+        private void DrawTextBackground(SKCanvas canvas, TextElement element, float textBlockWidth, float boxWidth, float firstBaseline, float lastBaseline, float padL, float padR, float padT, float padB, float topY, float bottomY, float pageHeight)
         {
             if (string.IsNullOrWhiteSpace(element.BackgroundColor) &&
                 (string.IsNullOrWhiteSpace(element.BackgroundBorderColor) || (element.BackgroundBorderWidth ?? 0f) <= 0f))
@@ -276,8 +375,8 @@ namespace PdfBuilder.Writer
 
             float left = element.X - padL;
             float right = left + boxWidth;
-            float top = topY;
-            float bottom = bottomY;
+            float top = pageHeight - topY;
+            float bottom = pageHeight - bottomY;
             var rect = new SKRect(left, bottom, right, top);
 
             var roundRect = BuildRoundRect(rect, element);
@@ -314,9 +413,9 @@ namespace PdfBuilder.Writer
             if (!element.Underline && !element.Strikethrough && !element.Overline)
                 return;
 
-            float underlineY = baseline - Math.Max(1f, element.FontSize * 0.08f);
-            float strikeY = baseline + element.FontSize * 0.30f;
-            float overlineY = baseline + element.FontSize * 0.90f;
+            float underlineY = baseline + Math.Max(1f, element.FontSize * 0.08f);
+            float strikeY = baseline - element.FontSize * 0.30f;
+            float overlineY = baseline - element.FontSize * 0.90f;
             float strokeWidth = element.DecorationThickness ?? Math.Max(0.7f, element.FontSize * 0.05f);
             var decorationColor = ParseColor(element.DecorationColor) ?? textColor;
             decorationColor = ApplyOpacity(decorationColor, element.Opacity);

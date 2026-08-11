@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added a separate loopback-only preview and diagnostics host with `dotnet watch`, thumbnails, selected-page previews, PDF download, hierarchy/trace/timing panels, structured errors, debug labels, margins, flow guides, and clean/diagnostic render switching without telemetry.
 - Prepared blocked internal pre-release artifacts with canonical maintained samples, packaged third-party notices, CycloneDX SBOM generation, SHA-256 manifests, strict preview-version/tag validation, and an exact-commit evidence checklist; public or 1.0 RC publication remains blocked by retained CI and licence approval.
 - Established a checked-in .NET 10 Windows benchmark baseline for 15 generation scenarios, with deterministic CI gates, isolated scheduled captures, timing comparisons, allocation/output/resource metrics, and retained hardware/runtime metadata.
 - Multi-targeted the package for .NET 8 and .NET 10, with clean consumer checks for both frameworks and package archive validation for assemblies, XML documentation, portable symbols, and repository metadata.

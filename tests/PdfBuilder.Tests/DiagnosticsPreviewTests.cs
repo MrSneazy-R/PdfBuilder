@@ -3,6 +3,7 @@ using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Document.Layout.Components;
 using PdfBuilder.Elements;
+using PdfBuilder.Writer;
 using Xunit;
 
 namespace PdfBuilder.Tests;
@@ -114,6 +115,43 @@ public class DiagnosticsPreviewTests
         preview.ImageData.Should().NotBeEmpty();
         preview.Width.Should().Be((int)document.Pages[0].Width);
         preview.Height.Should().Be((int)document.Pages[0].Height);
+    }
+
+    [Fact]
+    public void CanonicalDiagnostics_EnableVisualGuidesAndProfiler()
+    {
+        var document = PdfDocument.Create(descriptor =>
+        {
+            descriptor.Diagnostics(options =>
+            {
+                options.EnableLayoutTrace = true;
+                options.DrawBoundingBoxes = true;
+                options.ShowFlowGuides = true;
+                options.EnableProfiler = true;
+            });
+            descriptor.Page(page => page.Content().DebugLabel("PreviewPanel").Text("diagnostics"));
+        });
+
+        document.Pages[0].Elements.Should().Contain(element => element is DebugRectangleElement);
+        document.ProfilerSession.Snapshot().Entries.Should().NotBeEmpty();
+        document.LayoutTrace.Entries.Should().Contain(entry => entry.Component == "PreviewPanel");
+    }
+
+    [Fact]
+    public void Preview_RendersDiagnosticRectangles()
+    {
+        var document = new PdfDocument();
+        var page = document.AddPage(100, 100);
+        page.AddElement(new DebugRectangleElement(10, 10, 80, 80)
+        {
+            StrokeColor = "#FF0000",
+            StrokeWidth = 4,
+            Opacity = 1
+        });
+
+        PdfPreviewPage preview = document.GeneratePreviewImages(72).Single();
+
+        preview.ImageData.Should().NotBeEmpty();
     }
 
     [Fact]

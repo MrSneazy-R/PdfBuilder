@@ -775,6 +775,10 @@ namespace PdfBuilder.Writer
                         AppendSolidRect(sb, solidRect);
                         break;
 
+                    case DebugRectangleElement debugRectangle:
+                        AppendDebugRectangle(sb, debugRectangle);
+                        break;
+
                     case ClipGroupElement clipGroup:
                         sb.Append("q ");
                         sb.Append($"{N(clipGroup.X)} {N(clipGroup.Y)} {N(clipGroup.Width)} {N(clipGroup.Height)} re W n\n");
@@ -783,6 +787,31 @@ namespace PdfBuilder.Writer
                         break;
                 }
             }
+        }
+
+        private static void AppendDebugRectangle(StringBuilder sb, DebugRectangleElement rect)
+        {
+            float width = Math.Max(0f, rect.Width);
+            float height = Math.Max(0f, rect.Height);
+            if (width <= 0f || height <= 0f)
+                return;
+
+            string strokeRgb = TryRgb(rect.StrokeColor) ?? "1 0 0";
+            sb.Append($"q {strokeRgb} RG {N(Math.Max(0.1f, rect.StrokeWidth))} w ");
+            if (rect.DashPattern is { Length: > 0 })
+            {
+                sb.Append('[');
+                for (int i = 0; i < rect.DashPattern.Length; i++)
+                {
+                    if (i > 0) sb.Append(' ');
+                    sb.Append(N(rect.DashPattern[i]));
+                }
+                sb.Append("] 0 d ");
+            }
+            if (!string.IsNullOrWhiteSpace(rect.FillColor))
+                sb.Append($"{TryRgb(rect.FillColor) ?? "1 0.9 0.9"} rg ");
+            sb.Append($"{N(rect.X)} {N(rect.Y)} {N(width)} {N(height)} re ");
+            sb.Append(string.IsNullOrWhiteSpace(rect.FillColor) ? "S Q\n" : "B Q\n");
         }
 
         private static HashSet<string> CollectBaseFonts(PdfDocument doc)

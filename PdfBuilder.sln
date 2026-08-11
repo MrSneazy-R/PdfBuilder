@@ -37,6 +37,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TablePerfSample", "samples\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdfBuilder.Benchmarks", "benchmarks\PdfBuilder.Benchmarks\PdfBuilder.Benchmarks.csproj", "{3CEDEFBA-69FE-435E-844A-958D39630F25}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tools", "Tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PdfBuilder.PreviewHost", "tools\PdfBuilder.PreviewHost\PdfBuilder.PreviewHost.csproj", "{65FA2D99-AFFA-4697-B115-37728F043A87}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -95,6 +99,10 @@ Global
 		{3CEDEFBA-69FE-435E-844A-958D39630F25}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3CEDEFBA-69FE-435E-844A-958D39630F25}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3CEDEFBA-69FE-435E-844A-958D39630F25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65FA2D99-AFFA-4697-B115-37728F043A87}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65FA2D99-AFFA-4697-B115-37728F043A87}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65FA2D99-AFFA-4697-B115-37728F043A87}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65FA2D99-AFFA-4697-B115-37728F043A87}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{DB3D152D-6F7B-4B72-A7E6-A1456B0BAC62} = {50E615E6-1CFA-4784-89D1-EFDF9D06D3F8}
@@ -110,6 +118,7 @@ Global
 		{3C419C79-7E7F-407A-BD6D-209E62C9D8E4} = {931C8F4B-3131-4EAE-8F9B-D129F266031D}
 		{BFA3CE21-22B0-4D8B-AD15-35E1B3B6BF75} = {931C8F4B-3131-4EAE-8F9B-D129F266031D}
 		{3CEDEFBA-69FE-435E-844A-958D39630F25} = {B784C2B4-77B3-4D96-9642-BEA913E3D962}
+		{65FA2D99-AFFA-4697-B115-37728F043A87} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
