@@ -26,6 +26,8 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ITableColumnsDescriptor),
         typeof(ITableRowDescriptor),
         typeof(ITableCellDescriptor),
+        typeof(PageContext),
+        typeof(PageTextTokens),
         typeof(PageOrientation),
         typeof(PageSize),
         typeof(PageSizes),

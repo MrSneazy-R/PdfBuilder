@@ -36,7 +36,7 @@ namespace PdfBuilder.Writer
         public byte[] GenerateBytes(PdfDocument doc, CancellationToken cancellationToken)
         {
             using var ms = new MemoryStream();
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTimeOffset.Now, cancellationToken);
+            PrepareAndWriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTimeOffset.Now, cancellationToken);
             if (doc.RenderLimits.MaximumOutputBytes is long maximum && ms.Length > maximum)
                 throw new PdfRenderLimitException(nameof(PdfRenderLimits.MaximumOutputBytes), $"The generated PDF exceeds the configured {maximum} byte limit.");
             return ms.ToArray();
@@ -57,7 +57,7 @@ namespace PdfBuilder.Writer
             if (destination == null) throw new ArgumentNullException(nameof(destination));
             if (!destination.CanWrite) throw new ArgumentException("Destination stream must be writable.", nameof(destination));
 
-            WriteDocument(doc, destination, DateTimeOffset.Now, cancellationToken);
+            PrepareAndWriteDocument(doc, destination, DateTimeOffset.Now, cancellationToken);
             destination.Flush();
         }
 
@@ -74,13 +74,17 @@ namespace PdfBuilder.Writer
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path must be provided.", nameof(path));
             using var fileStream = File.Create(path);
-            WriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTimeOffset.Now, cancellationToken);
+            PrepareAndWriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), fileStream, DateTimeOffset.Now, cancellationToken);
         }
 
         public IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(PdfDocument doc, int dpi = 144)
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
-            return new PdfPreviewGenerator().Generate(doc, dpi);
+            lock (doc.GenerationSyncRoot)
+            {
+                HeaderFooterLayoutComposer.Prepare(doc, ResolveCreationDate(doc, DateTimeOffset.Now).UtcDateTime, CancellationToken.None);
+                return new PdfPreviewGenerator().Generate(doc, dpi);
+            }
         }
 
         /// <summary>Generates selected preview images from the already-resolved document layout.</summary>
@@ -91,10 +95,29 @@ namespace PdfBuilder.Writer
             CancellationToken cancellationToken)
         {
             if (doc == null) throw new ArgumentNullException(nameof(doc));
-            return new PdfPreviewGenerator().Generate(doc, dpi, pageNumbers, cancellationToken);
+            lock (doc.GenerationSyncRoot)
+            {
+                HeaderFooterLayoutComposer.Prepare(doc, ResolveCreationDate(doc, DateTimeOffset.Now).UtcDateTime, cancellationToken);
+                return new PdfPreviewGenerator().Generate(doc, dpi, pageNumbers, cancellationToken);
+            }
         }
 
-        private void WriteDocument(PdfDocument doc, Stream destination, DateTimeOffset now, CancellationToken cancellationToken)
+        private void PrepareAndWriteDocument(PdfDocument doc, Stream destination, DateTimeOffset now, CancellationToken cancellationToken)
+        {
+            lock (doc.GenerationSyncRoot)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                HeaderFooterLayoutComposer.Prepare(doc, ResolveCreationDate(doc, now).UtcDateTime, cancellationToken);
+                WriteResolvedDocument(doc, destination, now, cancellationToken);
+            }
+        }
+
+        private static DateTimeOffset ResolveCreationDate(PdfDocument doc, DateTimeOffset now)
+            => doc.GenerationOptions.CreationTime
+                ?? doc.Metadata.CreatedUtc
+                ?? (doc.GenerationOptions.Deterministic ? DateTimeOffset.UnixEpoch : now);
+
+        private void WriteResolvedDocument(PdfDocument doc, Stream destination, DateTimeOffset now, CancellationToken cancellationToken)
         {
             using var fontSnapshotScope = FontCatalog.EnterSnapshot(doc.FontSnapshot);
             cancellationToken.ThrowIfCancellationRequested();
@@ -115,8 +138,6 @@ namespace PdfBuilder.Writer
             DateTimeOffset modificationDate = generationOptions.ModificationTime
                 ?? metadata.ModifiedUtc
                 ?? creationDate;
-
-            HeaderFooterLayoutComposer.Prepare(laidOut, creationDate.UtcDateTime);
 
             using var writer = new PdfStreamWriter(destination);
             writer.WriteHeader("1.6");
@@ -447,6 +468,7 @@ namespace PdfBuilder.Writer
 
             var effectiveMaster = page.MasterOverride ?? doc.Master;
             var effectiveHeaderFooter = page.HeaderFooterOverride ?? doc.HeaderFooter;
+            var pageContext = PageContextFactory.Create(page, pageIndex1, pageCount, effectiveHeaderFooter);
 
             if (effectiveMaster != null)
             {
@@ -455,9 +477,9 @@ namespace PdfBuilder.Writer
                     MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false);
             }
 
-            RenderElements(page.HeaderElements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
-            RenderElements(page.Elements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
-            RenderElements(page.FooterElements, sb, page, context, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.HeaderElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.Elements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.FooterElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
 
             if (effectiveHeaderFooter != null)
                 HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc);
@@ -593,6 +615,7 @@ namespace PdfBuilder.Writer
             StringBuilder sb,
             PdfPage page,
             PdfRenderContext context,
+            PageContext pageContext,
             Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
             List<AnnotationWriter.LinkAnnot> annotations,
             List<(AnchorElement anchor, float xPdf, float yPdf)> anchorsOnPage,
@@ -604,7 +627,7 @@ namespace PdfBuilder.Writer
                 switch (element)
                 {
                     case TextElement text:
-                        TextRenderer.Append(sb, text, page.Height, context);
+                        TextRenderer.Append(sb, text, page.Height, context, pageContext);
                         break;
 
                     case TableElement table:

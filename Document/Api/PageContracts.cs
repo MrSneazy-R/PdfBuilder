@@ -29,6 +29,56 @@ public interface IPageDescriptor
     void Columns(int count, float gutter = 14f);
 }
 
+/// <summary>Describes immutable values resolved from the final pagination result.</summary>
+public sealed class PageContext
+{
+    internal PageContext(
+        int currentPage,
+        int totalPages,
+        float pageWidth,
+        float pageHeight,
+        float availableContentWidth,
+        float availableContentHeight)
+    {
+        CurrentPage = currentPage;
+        TotalPages = totalPages;
+        PageWidth = pageWidth;
+        PageHeight = pageHeight;
+        AvailableContentWidth = availableContentWidth;
+        AvailableContentHeight = availableContentHeight;
+    }
+
+    /// <summary>Gets the one-based current page number.</summary>
+    public int CurrentPage { get; }
+    /// <summary>Gets the final total page count.</summary>
+    public int TotalPages { get; }
+    /// <summary>Gets whether this is the first page.</summary>
+    public bool IsFirstPage => CurrentPage == 1;
+    /// <summary>Gets whether this is the final page.</summary>
+    public bool IsLastPage => CurrentPage == TotalPages;
+    /// <summary>Gets whether the current one-based page number is odd.</summary>
+    public bool IsOddPage => (CurrentPage & 1) == 1;
+    /// <summary>Gets whether the current one-based page number is even.</summary>
+    public bool IsEvenPage => !IsOddPage;
+    /// <summary>Gets the physical page width in points.</summary>
+    public float PageWidth { get; }
+    /// <summary>Gets the physical page height in points.</summary>
+    public float PageHeight { get; }
+    /// <summary>Gets the usable content width in points after page margins.</summary>
+    public float AvailableContentWidth { get; }
+    /// <summary>Gets the usable content height in points after margins and visible repeated bands.</summary>
+    public float AvailableContentHeight { get; }
+}
+
+/// <summary>Provides canonical placeholders resolved from final pagination.</summary>
+public static class PageTextTokens
+{
+    /// <summary>Represents the one-based current page number.</summary>
+    public const string CurrentPage = "{page}";
+    /// <summary>Represents the final total page count.</summary>
+    public const string TotalPages = "{pages}";
+}
+
 /// <summary>Defines the orientation applied to a page size.</summary>
 public enum PageOrientation { Portrait, Landscape }
 

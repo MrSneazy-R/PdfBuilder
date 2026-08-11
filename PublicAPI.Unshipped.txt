@@ -26,6 +26,8 @@ CanvasElement.Width.get -> float
 CanvasElement.Width.set -> void
 ColumnBreakElement
 ColumnBreakElement.ColumnBreakElement() -> void
+const PdfBuilder.Document.PageTextTokens.CurrentPage = "{page}" -> string!
+const PdfBuilder.Document.PageTextTokens.TotalPages = "{pages}" -> string!
 const PdfBuilder.Models.PdfPage.DefaultHeight = 792 -> float
 const PdfBuilder.Models.PdfPage.DefaultWidth = 612 -> float
 const PdfBuilder.Writer.PdfDefaults.DefaultBorderWidth = 0.5 -> float
@@ -306,6 +308,7 @@ PdfBuilder.Document.IContainer.Padding(float left, float top, float right, float
 PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Padding(string! spacingToken) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.PageBreak() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.PageText(string! template) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.Document.IContainer!>! configure) -> void
 PdfBuilder.Document.IContainer.RichText(System.Action<PdfBuilder.Document.IRichTextDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
@@ -776,6 +779,12 @@ PdfBuilder.Document.Layout.LayoutResultKind
 PdfBuilder.Document.Layout.LayoutResultKind.Full = 0 -> PdfBuilder.Document.Layout.LayoutResultKind
 PdfBuilder.Document.Layout.LayoutResultKind.Partial = 1 -> PdfBuilder.Document.Layout.LayoutResultKind
 PdfBuilder.Document.Layout.LayoutResultKind.Wrap = 2 -> PdfBuilder.Document.Layout.LayoutResultKind
+PdfBuilder.Document.Layout.PdfPaginationStabilizationException
+PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassCount.get -> int
+PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassLimit.get -> int
+PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PdfPaginationStabilizationException(int passCount, int passLimit) -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.set -> void
 PdfBuilder.Document.ListBuilder
 PdfBuilder.Document.ListBuilder.Add() -> float
 PdfBuilder.Document.ListBuilder.BeginNest() -> PdfBuilder.Document.ListBuilder!
@@ -803,6 +812,17 @@ PdfBuilder.Document.PageComposer.HeaderText(string! template, PdfBuilder.Models.
 PdfBuilder.Document.PageComposer.Margin(float value) -> PdfBuilder.Document.PageComposer!
 PdfBuilder.Document.PageComposer.Margins(float left, float top, float right, float bottom) -> PdfBuilder.Document.PageComposer!
 PdfBuilder.Document.PageComposer.PageNumbering(PdfBuilder.Document.PageNumberPlacement placement = PdfBuilder.Document.PageNumberPlacement.FooterRight, string! template = "{page} / {pages}") -> PdfBuilder.Document.PageComposer!
+PdfBuilder.Document.PageContext
+PdfBuilder.Document.PageContext.AvailableContentHeight.get -> float
+PdfBuilder.Document.PageContext.AvailableContentWidth.get -> float
+PdfBuilder.Document.PageContext.CurrentPage.get -> int
+PdfBuilder.Document.PageContext.IsEvenPage.get -> bool
+PdfBuilder.Document.PageContext.IsFirstPage.get -> bool
+PdfBuilder.Document.PageContext.IsLastPage.get -> bool
+PdfBuilder.Document.PageContext.IsOddPage.get -> bool
+PdfBuilder.Document.PageContext.PageHeight.get -> float
+PdfBuilder.Document.PageContext.PageWidth.get -> float
+PdfBuilder.Document.PageContext.TotalPages.get -> int
 PdfBuilder.Document.PageNumberPlacement
 PdfBuilder.Document.PageNumberPlacement.FooterCenter = 4 -> PdfBuilder.Document.PageNumberPlacement
 PdfBuilder.Document.PageNumberPlacement.FooterLeft = 3 -> PdfBuilder.Document.PageNumberPlacement
@@ -822,6 +842,7 @@ PdfBuilder.Document.PageSize.Width.get -> float
 PdfBuilder.Document.PageSize.Width.init -> void
 PdfBuilder.Document.PageSize.WithOrientation(PdfBuilder.Document.PageOrientation orientation) -> PdfBuilder.Document.PageSize
 PdfBuilder.Document.PageSizes
+PdfBuilder.Document.PageTextTokens
 PdfBuilder.Document.PageTheme
 PdfBuilder.Document.PageTheme.BackgroundColor.get -> string?
 PdfBuilder.Document.PageTheme.BackgroundColor.set -> void
@@ -2863,6 +2884,7 @@ SampleDocumentBlueprint.InvoiceSampleData.TaxTotal.init -> void
 SampleDocumentBlueprint.InvoiceSampleData.Total.get -> decimal?
 SampleDocumentBlueprint.InvoiceSampleData.Total.init -> void
 static PdfBuilder.Document.FlowGrid.Create(PdfBuilder.Models.PdfPage! page, float margin, int columns, float gutter, float headerHeight = 0, float footerHeight = 0, float[]? explicitWidths = null) -> PdfBuilder.Document.FlowColumn![]!
+static PdfBuilder.Document.HeaderFooterTokens.Context.get -> PdfBuilder.Document.PageContext!
 static PdfBuilder.Document.HeaderFooterTokens.Document.get -> PdfBuilder.Document.PdfDocument!
 static PdfBuilder.Document.HeaderFooterTokens.NowUtc.get -> System.DateTime
 static PdfBuilder.Document.HeaderFooterTokens.Page.get -> PdfBuilder.Models.PdfPage!

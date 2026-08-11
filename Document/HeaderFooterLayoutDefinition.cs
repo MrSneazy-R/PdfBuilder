@@ -34,8 +34,7 @@ namespace PdfBuilder.Document
     internal readonly record struct HeaderFooterRenderContext(
         PdfDocument Document,
         PdfPage Page,
-        int PageNumber,
-        int PageCount,
+        PageContext PageContext,
         DateTime TimestampUtc);
 
     internal static class HeaderFooterRenderScope
@@ -76,9 +75,12 @@ namespace PdfBuilder.Document
     /// </summary>
     public static class HeaderFooterTokens
     {
-        public static int PageNumber => HeaderFooterRenderScope.Current.PageNumber;
+        /// <summary>Gets the immutable context resolved from final pagination.</summary>
+        public static PageContext Context => HeaderFooterRenderScope.Current.PageContext;
 
-        public static int PageCount => HeaderFooterRenderScope.Current.PageCount;
+        public static int PageNumber => Context.CurrentPage;
+
+        public static int PageCount => Context.TotalPages;
 
         /// <summary>Gets the page number within the current section when a section-specific counter is available.</summary>
         public static int SectionPageNumber => PageNumber;

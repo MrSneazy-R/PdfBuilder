@@ -9,34 +9,44 @@ namespace PdfBuilder.Document
 {
     internal static class HeaderFooterLayoutComposer
     {
-        public static void Prepare(PdfDocument document, DateTime timestampUtc)
+        public static void Prepare(PdfDocument document, DateTime timestampUtc, CancellationToken cancellationToken)
         {
             if (document == null) throw new ArgumentNullException(nameof(document));
 
-            int pageCount = document.Pages.Count;
-            for (int i = 0; i < document.Pages.Count; i++)
+            int pass = 0;
+            while (true)
             {
-                var page = document.Pages[i];
-                var spec = page.HeaderFooterOverride ?? document.HeaderFooter;
-                if (spec == null)
+                cancellationToken.ThrowIfCancellationRequested();
+                document.RenderLimits.ValidatePaginationPass(++pass);
+                int pageCount = document.Pages.Count;
+
+                for (int i = 0; i < pageCount; i++)
                 {
-                    page.SetHeaderElements(Array.Empty<PdfElement>());
-                    page.SetFooterElements(Array.Empty<PdfElement>());
-                    continue;
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var page = document.Pages[i];
+                    var spec = page.HeaderFooterOverride ?? document.HeaderFooter;
+                    if (spec == null)
+                    {
+                        page.SetHeaderElements(Array.Empty<PdfElement>());
+                        page.SetFooterElements(Array.Empty<PdfElement>());
+                        continue;
+                    }
+
+                    var pageContext = PageContextFactory.Create(page, i + 1, pageCount, spec);
+                    var context = new HeaderFooterRenderContext(document, page, pageContext, timestampUtc);
+                    using (HeaderFooterRenderScope.Push(context))
+                    {
+                        page.SetHeaderElements(spec.FirstPageDifferent && pageContext.IsFirstPage
+                            ? Array.Empty<PdfElement>()
+                            : Render(spec.HeaderLayout, isHeader: true, page, spec));
+                        page.SetFooterElements((spec.FirstPageDifferent && pageContext.IsFirstPage) || (spec.HideOnLastPage && pageContext.IsLastPage)
+                            ? Array.Empty<PdfElement>()
+                            : Render(spec.FooterLayout, isHeader: false, page, spec));
+                    }
                 }
 
-                var context = new HeaderFooterRenderContext(document, page, i + 1, pageCount, timestampUtc);
-                using (HeaderFooterRenderScope.Push(context))
-                {
-                    bool isFirst = i == 0;
-                    bool isLast = i == pageCount - 1;
-                    page.SetHeaderElements(spec.FirstPageDifferent && isFirst
-                        ? Array.Empty<PdfElement>()
-                        : Render(spec.HeaderLayout, isHeader: true, page, spec));
-                    page.SetFooterElements((spec.FirstPageDifferent && isFirst) || (spec.HideOnLastPage && isLast)
-                        ? Array.Empty<PdfElement>()
-                        : Render(spec.FooterLayout, isHeader: false, page, spec));
-                }
+                if (document.Pages.Count == pageCount)
+                    return;
             }
         }
 

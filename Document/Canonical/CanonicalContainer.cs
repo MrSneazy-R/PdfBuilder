@@ -94,6 +94,23 @@ public partial class PdfDocument
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
+        public ITextDescriptor PageText(string template)
+        {
+            if (string.IsNullOrEmpty(template)) throw new ArgumentException("A page-text template is required.", nameof(template));
+            if (!PageTextFormatter.ContainsToken(template))
+                throw new ArgumentException("Page text must contain PageTextTokens.CurrentPage or PageTextTokens.TotalPages.", nameof(template));
+
+            var descriptor = new CanonicalTextStyle();
+            string measurementText = PageTextFormatter.CreateConservativeMeasurementText(template);
+            _content.Add(composer => composer.Text(measurementText, element =>
+            {
+                descriptor.Apply(element);
+                element.PageTextTemplate = template;
+                element.Wrapping = TextWrapping.NoWrap;
+                element.MaximumLines = 1;
+            }));
+            return descriptor;
+        }
         public void RichText(Action<IRichTextDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -135,6 +152,7 @@ public partial class PdfDocument
             configure(descriptor);
             _content.Add(composer => composer.Table(descriptor.Build()));
         }
+        [Obsolete("Use PageText with PageTextTokens for final-pagination values.")]
         public ITextDescriptor Text(Func<string> text)
         {
             if (text == null) throw new ArgumentNullException(nameof(text));

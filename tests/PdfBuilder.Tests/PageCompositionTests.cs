@@ -54,7 +54,7 @@ public sealed class PageCompositionTests
     {
         var document = PdfDocument.Create(descriptor => descriptor.Page(page =>
         {
-            page.Footer().Text(() => $"{HeaderFooterTokens.PageNumber} / {HeaderFooterTokens.PageCount}");
+            page.Footer().PageText($"{PageTextTokens.CurrentPage} / {PageTextTokens.TotalPages}");
             page.Content().Text("Body");
         }));
 

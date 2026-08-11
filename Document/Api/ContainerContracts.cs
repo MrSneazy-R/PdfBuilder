@@ -81,6 +81,8 @@ public interface IContainer
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
+    /// <summary>Adds text containing final-pagination tokens such as current page and total pages.</summary>
+    ITextDescriptor PageText(string template);
     /// <summary>Adds a rich-text paragraph with independently styled spans.</summary>
     void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>
@@ -94,6 +96,7 @@ public interface IContainer
     /// <summary>Adds a flowing table that participates in normal layout and pagination.</summary>
     void Table(Action<ITableDescriptor> configure);
     /// <summary>Adds text resolved when the container is rendered.</summary>
+    [Obsolete("Use PageText with PageTextTokens for final-pagination values.")]
     ITextDescriptor Text(Func<string> text);
     /// <summary>Adds a vertical column.</summary>
     void Column(Action<IColumnDescriptor> configure);
