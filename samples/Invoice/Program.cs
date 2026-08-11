@@ -75,38 +75,42 @@ public sealed class InvoiceTemplate : PdfTemplate<Invoice>
             page.Size(PageSizes.A4);
             page.Header().Component(_sellerHeader, model.Seller);
             page.Footer().Text("Page {page} of {pages}");
-            page.Content().Column(column =>
+            var content = page.Content();
+            content.Column(column =>
             {
                 column.Spacing("Section");
                 column.Item().Text($"Invoice {model.Number}").Style("Heading1");
                 column.Item().Component(_customerAddress, model.Customer);
-                column.Item().Table(table =>
+            });
+            content.Table(table =>
+            {
+                table.Columns(columns =>
                 {
-                    table.Columns(columns =>
-                    {
-                        columns.RelativeColumn();
-                        columns.ConstantColumn(60);
-                        columns.ConstantColumn(80);
-                    });
-                    table.CellPadding(5);
-                    table.Border(0.75f, "Border");
-                    table.HeaderBackground("HeaderBackground");
-                    table.Header(header =>
-                    {
-                        header.Cell().Text("Description").Style("TableHeader");
-                        header.Cell().AlignRight().Text("Qty").Style("TableHeader");
-                        header.Cell().AlignRight().Text("Amount").Style("TableHeader");
-                    });
-                    foreach (var line in model.Lines)
-                    {
-                        table.Row(row =>
-                        {
-                            row.Cell().Text(line.Description);
-                            row.Cell().AlignRight().Text(line.Quantity, "N0");
-                            row.Cell().AlignRight().Text(line.Quantity * line.UnitPrice, "C2");
-                        });
-                    }
+                    columns.RelativeColumn();
+                    columns.ConstantColumn(60);
+                    columns.ConstantColumn(80);
                 });
+                table.CellPadding(5);
+                table.Border(0.75f, "Border");
+                table.HeaderBackground("HeaderBackground");
+                table.Header(header =>
+                {
+                    header.Cell().Text("Description").Style("TableHeader");
+                    header.Cell().AlignRight().Text("Qty").Style("TableHeader");
+                    header.Cell().AlignRight().Text("Amount").Style("TableHeader");
+                });
+                foreach (var line in model.Lines)
+                {
+                    table.Row(row =>
+                    {
+                        row.Cell().Text(line.Description);
+                        row.Cell().AlignRight().Text(line.Quantity, "N0");
+                        row.Cell().AlignRight().Text(line.Quantity * line.UnitPrice, "C2");
+                    });
+                }
+            });
+            content.Column(column =>
+            {
                 column.Item().Component(_invoiceTotals, model);
                 column.Item().Padding("Compact").Background("Surface").Border(0.5f, "Border")
                     .Text("Terms: payment is due within 30 days.");
