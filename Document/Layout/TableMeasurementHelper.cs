@@ -164,13 +164,16 @@ namespace PdfBuilder.Document.Layout
                 return cell.CachedContentHeight;
             }
 
-            if (cell.ContentFactory != null)
+            if (cell.PreparedSplitContent && cell.MeasuredContent != null && cell.MeasuredContentLayout != null)
+                return cell.CachedContentHeight;
+
+            if (cell.ContentFactory != null || cell.ContinuationContent != null)
             {
                 PdfPage measurePage = page ?? new PdfPage(Math.Max(1f, cellWidth), 1_000_000f);
                 LayoutOptions measureOptions = options ?? measurePage.LayoutOptions;
                 var column = new FlowColumn(0, 0f, usable, 0f, -1_000_000f);
                 var context = new LayoutMeasureContext(measurePage, column, measureOptions);
-                var component = cell.ContentFactory();
+                var component = cell.ContinuationContent ?? cell.ContentFactory!();
                 LayoutMeasurement measurement = component.Measure(context);
                 if (measurement.IsWrap || measurement.Remainder != null)
                 {

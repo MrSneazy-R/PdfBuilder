@@ -79,6 +79,28 @@ public sealed class DocumentationTests
             .And.NotContain("AddElement");
     }
 
+    [Fact]
+    public void InvoiceSample_SatisfiesPhaseTwoExitGateWithoutRawTables()
+    {
+        string sample = File.ReadAllText(FindRepositoryFile("samples/Invoice/Program.cs"));
+
+        sample.Should().Contain("PdfTemplate<Invoice>")
+            .And.Contain(".Component(")
+            .And.Contain("theme.Spacing(")
+            .And.Contain(".RichText(")
+            .And.Contain(".Column(")
+            .And.Contain(".RepeatHeaders(")
+            .And.Contain(".RepeatFooters(")
+            .And.Contain(".ColumnSpan(")
+            .And.Contain(".AllowSplit(")
+            .And.Contain("InvoiceFormatting.Currency")
+            .And.Contain(":dd MMM yyyy");
+        sample.Should().NotContain("new TableElement")
+            .And.NotContain("TableBuilder")
+            .And.NotContain("TableCell")
+            .And.NotContain("TableRow");
+    }
+
     [Theory]
     [InlineData("samples/HelloPdf/HelloPdf.csproj")]
     [InlineData("samples/Invoice/Invoice.csproj")]

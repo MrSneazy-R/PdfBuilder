@@ -75,6 +75,7 @@ namespace PdfBuilder.Elements
         public bool RepeatHeaders { get; set; } = true;
         public int MinRowsAtPageStart { get; set; } = 1;  // orphan control
         public int MinRowsAtPageEnd { get; set; } = 1;    // widow control
+        internal bool AllowRowSplitting { get; set; }
 
         // Content area vertical bounds (PDF coordinates: origin at bottom-left; your builder supplies top/bottom Y)
         public float? PageTopY { get; set; } = null;      // e.g., top Y of content region
@@ -139,6 +140,7 @@ namespace PdfBuilder.Elements
         internal bool IsFooter { get; set; }
         internal int? ExplicitRowIndex { get; set; }
         internal int? BandIndex { get; set; }
+        internal bool? AllowSplit { get; set; }
 
         // Pagination hints
         public bool KeepWithNext { get; set; } = false;
@@ -168,6 +170,8 @@ namespace PdfBuilder.Elements
         internal Func<Document.Layout.IMeasurable>? ContentFactory { get; set; }
         internal Document.Layout.IMeasurable? MeasuredContent { get; set; }
         internal Document.Layout.LayoutMeasurement? MeasuredContentLayout { get; set; }
+        internal Document.Layout.IMeasurable? ContinuationContent { get; set; }
+        internal bool PreparedSplitContent { get; set; }
 
         // Typography
         public string Font { get; set; } = "Helvetica";
@@ -240,7 +244,7 @@ namespace PdfBuilder.Elements
         internal RichTextLayoutResult? CachedLayout { get; set; }
         internal float CachedLayoutWidth { get; set; } = -1f;
         internal float CachedContentHeight { get; set; }
-        internal bool HasContainerContent => ContentBuilder != null || ContentFactory != null;
+        internal bool HasContainerContent => ContentBuilder != null || ContentFactory != null || ContinuationContent != null || PreparedSplitContent;
     }
 }
 

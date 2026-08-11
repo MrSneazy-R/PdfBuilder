@@ -212,6 +212,7 @@ namespace PdfBuilder.Document.Layout
                 RepeatHeaders = source.RepeatHeaders,
                 MinRowsAtPageStart = source.MinRowsAtPageStart,
                 MinRowsAtPageEnd = source.MinRowsAtPageEnd,
+                AllowRowSplitting = source.AllowRowSplitting,
                 PageTopY = source.PageTopY,
                 PageBottomY = source.PageBottomY,
                 OnPageBreak = source.OnPageBreak,
@@ -301,6 +302,7 @@ namespace PdfBuilder.Document.Layout
                 IsFooter = row.IsFooter,
                 ExplicitRowIndex = row.ExplicitRowIndex,
                 BandIndex = row.BandIndex,
+                AllowSplit = row.AllowSplit,
                 KeepWithNext = row.KeepWithNext,
                 ThickTopBorder = row.ThickTopBorder,
                 ThickBottomBorder = row.ThickBottomBorder,
@@ -371,10 +373,14 @@ namespace PdfBuilder.Document.Layout
                 ExplicitColumnIndex = cell.ExplicitColumnIndex,
                 ContentBuilder = cell.ContentBuilder,
                 ContentFactory = cell.ContentFactory,
+                ContinuationContent = cell.ContinuationContent,
+                PreparedSplitContent = cell.PreparedSplitContent,
                 TextRuns = cell.TextRuns?.Select(CloneInlineRun).ToList() ?? new List<TableModels.InlineRun>(),
+                MeasuredContent = cell.PreparedSplitContent ? cell.MeasuredContent : null,
+                MeasuredContentLayout = cell.PreparedSplitContent ? cell.MeasuredContentLayout : null,
                 CachedLayout = cell.HasContainerContent ? null : cell.CachedLayout,
                 CachedLayoutWidth = cell.CachedLayoutWidth,
-                CachedContentHeight = cell.HasContainerContent ? 0f : cell.CachedContentHeight
+                CachedContentHeight = cell.PreparedSplitContent ? cell.CachedContentHeight : cell.HasContainerContent ? 0f : cell.CachedContentHeight
             };
 
             return clone;

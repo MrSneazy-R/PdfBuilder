@@ -10,17 +10,19 @@ internal sealed class TableComponent : IMeasurable
     private readonly TableElement _workingTable;
     private readonly TableElement _rootTable;
     private readonly bool _isContinuation;
+    private readonly SplitProgressState _splitProgress;
 
     public TableComponent(TableElement table)
-        : this(table ?? throw new ArgumentNullException(nameof(table)), table, isContinuation: false)
+        : this(table ?? throw new ArgumentNullException(nameof(table)), table, isContinuation: false, new SplitProgressState())
     {
     }
 
-    private TableComponent(TableElement workingTable, TableElement rootTable, bool isContinuation)
+    private TableComponent(TableElement workingTable, TableElement rootTable, bool isContinuation, SplitProgressState splitProgress)
     {
         _workingTable = workingTable;
         _rootTable = rootTable;
         _isContinuation = isContinuation;
+        _splitProgress = splitProgress;
     }
 
     public LayoutMeasurement Measure(LayoutMeasureContext context)
@@ -43,17 +45,15 @@ internal sealed class TableComponent : IMeasurable
         float[] footerHeights = footers.Count > 0 ? MeasureRows(footers, width, context).RowHeights : Array.Empty<float>();
         float[] bodyHeights = body.Count > 0 ? MeasureRows(body, width, context).RowHeights : Array.Empty<float>();
 
-        float pageContentHeight = context.Column.TopY - context.Column.BottomY;
-        if (headerHeights.Concat(footerHeights).Concat(bodyHeights).Any(height => height > pageContentHeight + Epsilon))
-        {
-            throw new InvalidOperationException(
-                "A table row is larger than the available page height and row splitting is not enabled.");
-        }
-
         float headerHeight = Sum(headerHeights);
         float footerHeight = Sum(footerHeights);
         float bodyHeight = Sum(bodyHeights);
         float completeHeight = captionHeight + headerHeight + bodyHeight + footerHeight;
+        float pageContentHeight = context.Column.TopY - context.Column.BottomY;
+        float maximumBodyHeight = Math.Max(0f, pageContentHeight - captionHeight - headerHeight - footerHeight);
+        ValidateOversizedRows(headers, headerHeights, pageContentHeight, "header");
+        ValidateOversizedRows(footers, footerHeights, pageContentHeight, "footer");
+        ValidateBodySplitPolicies(body, bodyHeights, maximumBodyHeight);
 
         if (completeHeight <= context.AvailableHeight + Epsilon)
             return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
@@ -67,7 +67,27 @@ internal sealed class TableComponent : IMeasurable
 
         int rowsTaken = FindRowsToTake(body, bodyHeights, context.AvailableHeight - reserved);
         if (rowsTaken <= 0)
+        {
+            if (body.Count > 0 && bodyHeights[0] > maximumBodyHeight + Epsilon && IsRowSplittable(body[0]))
+            {
+                if (!IsFullPage(context))
+                    return LayoutMeasurement.Wrap(width);
+                return SplitFirstBodyRow(
+                    context,
+                    width,
+                    segmentHeaders,
+                    footers,
+                    body,
+                    context.AvailableHeight - reserved,
+                    captionHeight,
+                    headerHeight,
+                    footerHeight);
+            }
+
+            if (captionHeight > 0f)
+                return LayoutMeasurement.Wrap(width);
             return WrapOrThrow(context, width, "Table widow/orphan or keep-with-next constraints prevent a valid page break.");
+        }
 
         if (rowsTaken >= body.Count)
             return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
@@ -80,15 +100,7 @@ internal sealed class TableComponent : IMeasurable
         TableElement segment = BuildSegment(segmentHeaders, segmentBody, segmentFooter, width, includeCaption: captionHeight > 0f);
         TableComponent remainder = CreateRemainder(body.Skip(rowsTaken).ToList(), rowsTaken);
 
-        return new LayoutMeasurement(
-            marginTop: 0f,
-            contentHeight: segmentHeight,
-            marginBottom: 0f,
-            usedWidth: width,
-            metadata: new TableLayoutMetadata(segment, width),
-            avoidBreakInside: _workingTable.AvoidBreakInside,
-            result: LayoutResultKind.Partial,
-            remainder: remainder);
+        return PartialMeasurement(width, segmentHeight, segment, remainder);
     }
 
     public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
@@ -119,6 +131,17 @@ internal sealed class TableComponent : IMeasurable
             avoidBreakInside: _workingTable.AvoidBreakInside,
             result: LayoutResultKind.Full,
             remainder: null);
+
+    private LayoutMeasurement PartialMeasurement(float width, float height, TableElement element, TableComponent remainder)
+        => new(
+            marginTop: 0f,
+            contentHeight: height,
+            marginBottom: 0f,
+            usedWidth: width,
+            metadata: new TableLayoutMetadata(element, width),
+            avoidBreakInside: _workingTable.AvoidBreakInside,
+            result: LayoutResultKind.Partial,
+            remainder: remainder);
 
     private LayoutMeasurement WrapOrThrow(LayoutMeasureContext context, float width, string message)
     {
@@ -208,7 +231,244 @@ internal sealed class TableComponent : IMeasurable
         remainderTable.RowBandOffset = _workingTable.RowBandOffset + rowsConsumed;
         remainderTable.TableWidth = _workingTable.TableWidth;
         remainderTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
-        return new TableComponent(remainderTable, _rootTable, isContinuation: true);
+        return new TableComponent(remainderTable, _rootTable, isContinuation: true, _splitProgress);
+    }
+
+    private LayoutMeasurement SplitFirstBodyRow(
+        LayoutMeasureContext context,
+        float width,
+        IReadOnlyList<TableRow> headers,
+        IReadOnlyList<TableRow> footers,
+        IReadOnlyList<TableRow> body,
+        float availableBodyHeight,
+        float captionHeight,
+        float headerHeight,
+        float footerHeight)
+    {
+        int rowIndex = body[0].BandIndex ?? _workingTable.RowBandOffset;
+        SplitRowResult split = SplitRow(body[0], rowIndex, availableBodyHeight, context);
+        if (!split.MadeProgress)
+        {
+            RecordZeroProgress(context, rowIndex);
+            return LayoutMeasurement.Wrap(width);
+        }
+
+        _splitProgress.ZeroProgressAttempts = 0;
+        var remaining = new List<TableRow>();
+        if (split.Remainder != null) remaining.Add(split.Remainder);
+        remaining.AddRange(body.Skip(1));
+
+        bool hasRemainder = remaining.Count > 0;
+        bool repeatFooter = !hasRemainder
+            || _rootTable.FooterRepeatMode == TableFooterRepeatMode.EveryPage
+            || (_rootTable.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
+        IReadOnlyList<TableRow> segmentFooter = repeatFooter ? footers : Array.Empty<TableRow>();
+        float segmentHeight = captionHeight + headerHeight + split.Height + (repeatFooter ? footerHeight : 0f);
+        TableElement segment = BuildSegment(headers, [split.Segment], segmentFooter, width, includeCaption: captionHeight > 0f);
+
+        if (!hasRemainder)
+            return FullMeasurement(width, segmentHeight, segment);
+
+        TableComponent remainder = CreateRemainder(remaining, split.Remainder == null ? 1 : 0);
+        return PartialMeasurement(width, segmentHeight, segment, remainder);
+    }
+
+    private SplitRowResult SplitRow(TableRow source, int rowIndex, float availableHeight, LayoutMeasureContext context)
+    {
+        if (source.RowHeight.HasValue)
+            throw SplitFailure(rowIndex, null, "fixed-row-height", "Remove the exact row height before enabling row continuation.");
+        if (source.Cells.Any(cell => cell.RowSpan > 1))
+            throw SplitFailure(rowIndex, null, "row-span", "Rows containing RowSpan greater than one cannot be split. Restructure the span or keep the row atomic.");
+
+        TableRow segment = CloneSingleRow(source);
+        TableRow remainder = CloneSingleRow(source);
+        float[] widths = _rootTable.ResolvedColumnWidths ?? throw new InvalidOperationException("Resolved table columns are unavailable.");
+        int column = 0;
+        float segmentHeight = 0f;
+        bool hasRemainder = false;
+        bool madeProgress = false;
+
+        for (int cellIndex = 0; cellIndex < source.Cells.Count; cellIndex++)
+        {
+            TableCell sourceCell = source.Cells[cellIndex];
+            TableCell segmentCell = segment.Cells[cellIndex];
+            TableCell remainderCell = remainder.Cells[cellIndex];
+            int span = Math.Max(1, sourceCell.ColSpan);
+            float cellWidth = Sum(widths.Skip(column).Take(span));
+            column += span;
+
+            float uniform = sourceCell.Padding ?? _rootTable.CellPadding;
+            float left = sourceCell.PaddingLeft ?? uniform;
+            float top = sourceCell.PaddingTop ?? uniform;
+            float right = sourceCell.PaddingRight ?? uniform;
+            float bottom = sourceCell.PaddingBottom ?? uniform;
+            float innerHeight = Math.Max(0f, availableHeight - top - bottom);
+            IMeasurable? component = sourceCell.ContinuationContent ?? sourceCell.ContentFactory?.Invoke();
+
+            if (component == null)
+            {
+                if (!string.IsNullOrEmpty(sourceCell.Text) || sourceCell.TextRuns.Count > 0)
+                    throw SplitFailure(rowIndex, column - span, "legacy-cell-content", "Only canonical container content can participate in controlled row continuation.");
+                ClearCellContent(remainderCell);
+                continue;
+            }
+
+            var flow = new FlowColumn(0, 0f, Math.Max(0f, cellWidth - left - right), 0f, -innerHeight);
+            var measurement = component.Measure(new LayoutMeasureContext(context.Page, flow, context.Options));
+            if (measurement.IsWrap)
+                throw SplitFailure(rowIndex, column - span, "unsplittable-content", "The cell contains content that cannot split within one usable page. Resize it or keep the row atomic.");
+            if (measurement.ReservedHeight > innerHeight + Epsilon)
+                throw SplitFailure(rowIndex, column - span, "invalid-measurement", "The cell reported a split segment taller than the offered continuation area.");
+
+            segmentCell.PreparedSplitContent = true;
+            segmentCell.MeasuredContent = component;
+            segmentCell.MeasuredContentLayout = measurement;
+            segmentCell.CachedContentHeight = measurement.ReservedHeight + top + bottom;
+            segmentHeight = Math.Max(segmentHeight, segmentCell.CachedContentHeight);
+            madeProgress |= measurement.ReservedHeight > Epsilon;
+
+            if (measurement.Remainder != null)
+            {
+                if (!measurement.IsPartial)
+                    throw SplitFailure(rowIndex, column - span, "invalid-remainder", "The cell returned a remainder without a partial measurement result.");
+                remainderCell.ContinuationContent = measurement.Remainder;
+                remainderCell.PreparedSplitContent = false;
+                remainderCell.MeasuredContent = null;
+                remainderCell.MeasuredContentLayout = null;
+                remainderCell.CachedContentHeight = 0f;
+                hasRemainder = true;
+            }
+            else
+            {
+                ClearCellContent(remainderCell);
+            }
+        }
+
+        if (!madeProgress && hasRemainder)
+            return new SplitRowResult(segment, remainder, 0f, MadeProgress: false);
+
+        if (!hasRemainder)
+            return new SplitRowResult(segment, null, segmentHeight, MadeProgress: true);
+
+        ApplyContinuationEdges(segment, isTopSegment: true, _rootTable.CellPadding);
+        ApplyContinuationEdges(remainder, isTopSegment: false, _rootTable.CellPadding);
+        segmentHeight = segment.Cells.Max(cell => cell.CachedContentHeight);
+        segment.RowHeight = Math.Max(Epsilon, segmentHeight);
+        remainder.RowHeight = null;
+        return new SplitRowResult(segment, remainder, segmentHeight, MadeProgress: true);
+    }
+
+    private static TableRow CloneSingleRow(TableRow row)
+    {
+        var table = new TableElement();
+        table.Rows.Add(row);
+        return LayoutSplitUtils.CloneTable(table).Rows.Single();
+    }
+
+    private void ValidateOversizedRows(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float maximumHeight, string group)
+    {
+        for (int index = 0; index < heights.Count; index++)
+        {
+            if (heights[index] > maximumHeight + Epsilon)
+                throw SplitFailure(index, null, $"oversized-{group}", $"Table {group} rows cannot split. Reduce the repeated group content or page reservations.");
+        }
+    }
+
+    private void ValidateBodySplitPolicies(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float maximumHeight)
+    {
+        for (int index = 0; index < heights.Count; index++)
+        {
+            if (heights[index] <= maximumHeight + Epsilon)
+                continue;
+            int bodyIndex = rows[index].BandIndex ?? _workingTable.RowBandOffset + index;
+            if (!IsRowSplittable(rows[index]))
+                throw SplitFailure(bodyIndex, null, "row-splitting-disabled", "Enable table.AllowRowSplitting() or row.AllowSplit() for oversized canonical container content.");
+            if (rows[index].RowHeight.HasValue)
+                throw SplitFailure(bodyIndex, null, "fixed-row-height", "An oversized exact row height cannot be split. Remove Height(...) or reduce it.");
+            if (rows[index].Cells.Any(cell => cell.RowSpan > 1))
+                throw SplitFailure(bodyIndex, null, "row-span", "Rows containing RowSpan greater than one cannot be split.");
+        }
+    }
+
+    private bool IsRowSplittable(TableRow row) => row.AllowSplit ?? _rootTable.AllowRowSplitting;
+
+    private PdfTableRowSplitException SplitFailure(int rowIndex, int? columnIndex, string reason, string action)
+        => new(rowIndex, columnIndex, reason, $"Table body row {rowIndex} cannot continue ({reason}). {action}");
+
+    private void RecordZeroProgress(LayoutMeasureContext context, int rowIndex)
+    {
+        _splitProgress.ZeroProgressAttempts++;
+        int configured = context.Page.Owner == null
+            ? context.Options.Diagnostics.LayoutIterationLimit
+            : Math.Min(context.Page.Owner.RenderLimits.MaximumLayoutIterations, context.Options.Diagnostics.LayoutIterationLimit);
+        int limit = Math.Max(1, configured);
+        if (_splitProgress.ZeroProgressAttempts > limit)
+        {
+            throw new PdfRenderLimitException(
+                nameof(PdfRenderLimits.MaximumLayoutIterations),
+                $"Table row {rowIndex} made zero progress during {_splitProgress.ZeroProgressAttempts} continuation attempts, exceeding the configured limit of {limit}.");
+        }
+    }
+
+    private static bool IsFullPage(LayoutMeasureContext context)
+        => context.AvailableHeight + Epsilon >= context.Column.TopY - context.Column.BottomY;
+
+    private static void ApplyContinuationEdges(TableRow row, bool isTopSegment, float tablePadding)
+    {
+        foreach (TableCell cell in row.Cells)
+        {
+            MaterializePadding(cell, tablePadding);
+            MaterializeCornerRadii(cell);
+            if (isTopSegment)
+            {
+                cell.PaddingBottom = 0f;
+                cell.BorderBottom = false;
+                cell.CornerRadiusBottomLeft = 0f;
+                cell.CornerRadiusBottomRight = 0f;
+            }
+            else
+            {
+                cell.PaddingTop = 0f;
+                cell.BorderTop = false;
+                cell.CornerRadiusTopLeft = 0f;
+                cell.CornerRadiusTopRight = 0f;
+            }
+            if (cell.PreparedSplitContent && cell.MeasuredContentLayout != null)
+                cell.CachedContentHeight = cell.MeasuredContentLayout.ReservedHeight + (cell.PaddingTop ?? 0f) + (cell.PaddingBottom ?? 0f);
+        }
+    }
+
+    private static void MaterializePadding(TableCell cell, float tablePadding)
+    {
+        float uniform = cell.Padding ?? tablePadding;
+        cell.PaddingLeft ??= uniform;
+        cell.PaddingTop ??= uniform;
+        cell.PaddingRight ??= uniform;
+        cell.PaddingBottom ??= uniform;
+        cell.Padding = null;
+    }
+
+    private static void MaterializeCornerRadii(TableCell cell)
+    {
+        float uniform = cell.CornerRadius;
+        if (cell.CornerRadiusTopLeft <= 0f) cell.CornerRadiusTopLeft = uniform;
+        if (cell.CornerRadiusTopRight <= 0f) cell.CornerRadiusTopRight = uniform;
+        if (cell.CornerRadiusBottomRight <= 0f) cell.CornerRadiusBottomRight = uniform;
+        if (cell.CornerRadiusBottomLeft <= 0f) cell.CornerRadiusBottomLeft = uniform;
+        cell.CornerRadius = 0f;
+    }
+
+    private static void ClearCellContent(TableCell cell)
+    {
+        cell.Text = string.Empty;
+        cell.TextRuns.Clear();
+        cell.ContentBuilder = null;
+        cell.ContentFactory = null;
+        cell.ContinuationContent = null;
+        cell.PreparedSplitContent = false;
+        cell.MeasuredContent = null;
+        cell.MeasuredContentLayout = null;
+        cell.CachedContentHeight = 0f;
     }
 
     private TableMeasurementHelper.TableMetrics MeasureRows(IReadOnlyList<TableRow> rows, float width, LayoutMeasureContext context)
@@ -251,4 +511,11 @@ internal sealed class TableComponent : IMeasurable
         public TableElement Element { get; }
         public float Width { get; }
     }
+
+    private sealed class SplitProgressState
+    {
+        public int ZeroProgressAttempts { get; set; }
+    }
+
+    private sealed record SplitRowResult(TableRow Segment, TableRow? Remainder, float Height, bool MadeProgress);
 }

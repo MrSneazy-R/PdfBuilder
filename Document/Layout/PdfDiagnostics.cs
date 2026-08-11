@@ -188,6 +188,25 @@ public sealed class PdfRenderLimitException : PdfCompositionException
     public string LimitName { get; }
 }
 
+/// <summary>Raised when an opted-in table row cannot be continued safely.</summary>
+public sealed class PdfTableRowSplitException : PdfCompositionException
+{
+    internal PdfTableRowSplitException(int rowIndex, int? columnIndex, string reason, string message)
+        : base(message)
+    {
+        RowIndex = rowIndex;
+        ColumnIndex = columnIndex;
+        Reason = reason;
+    }
+
+    /// <summary>Gets the zero-based body-row index.</summary>
+    public int RowIndex { get; }
+    /// <summary>Gets the zero-based logical column when one cell caused the failure.</summary>
+    public int? ColumnIndex { get; }
+    /// <summary>Gets the stable machine-readable failure reason.</summary>
+    public string Reason { get; }
+}
+
 /// <summary>Configurable safeguards for hostile or accidentally excessive document inputs.</summary>
 public sealed class PdfRenderLimits
 {

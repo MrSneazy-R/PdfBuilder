@@ -113,7 +113,7 @@ namespace PdfBuilder.Document.Layout.Components
 
             rt.X = contentLeft;
             rt.Y = context.ContentTop;
-            rt.MaxWidth ??= metadata.InnerWidth + metadata.PaddingLeft + metadata.PaddingRight;
+            rt.MaxWidth = metadata.InnerWidth + metadata.PaddingLeft + metadata.PaddingRight;
             rt.PaddingLeft = metadata.PaddingLeft;
             rt.PaddingRight = metadata.PaddingRight;
             rt.PaddingTop = metadata.PaddingTop;
