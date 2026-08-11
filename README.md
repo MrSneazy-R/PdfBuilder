@@ -118,7 +118,7 @@ Windows, Ubuntu, and macOS are exercised in CI. Native SkiaSharp and HarfBuzz as
 
 ## Limitations
 
-This pre-release does not claim PDF/A or PDF/UA conformance and does not support encryption, signatures, forms, attachments, HTML rendering, remote images, or browser SVG.
+This pre-release does not claim PDF/A or PDF/UA conformance. The core package does not edit existing PDFs and does not support encryption, signatures, forms, attachments, HTML rendering, remote images, or browser SVG; authorised existing-PDF operations, encryption, and attachments live in the optional `PdfBuilder.Operations` package.
 
 ## Security considerations
 
@@ -129,6 +129,8 @@ Treat PDFs and media as untrusted inputs. Enforce application-level size limits,
 Pre-release versions may add or refine APIs. Deprecated legacy APIs remain functional with `PDFB00x` migration warnings until an announced major release. **No public NuGet publishing is enabled until the repository owner approves a licence.** Local/private packages remain supported.
 
 Runtime dependency notices are retained in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). This notice does not grant a licence for PdfBuilder itself.
+
+Authorised operations on existing local PDFs are isolated in the optional [PdfBuilder.Operations package](src/PdfBuilder.Operations/README.md). The core package does not invoke qpdf or depend on it.
 
 ## Migration
 

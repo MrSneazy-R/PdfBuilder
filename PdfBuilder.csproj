@@ -64,6 +64,8 @@
     <None Include="benchmarks\**\*.cs" />
     <Compile Remove="tools\**\*.cs" />
     <None Include="tools\**\*.cs" />
+    <Compile Remove="src\**\*.cs" />
+    <None Include="src\**\*.cs" />
   </ItemGroup>
 
 </Project>

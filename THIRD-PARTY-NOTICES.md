@@ -2,6 +2,8 @@
 
 PdfBuilder depends on the following third-party packages at runtime. Versions are pinned in `Directory.Packages.props`; the package-specific licence files and notices distributed by their authors remain authoritative.
 
+`PdfBuilder.Operations` can invoke a separately installed qpdf executable. qpdf is not bundled in either package; deployments must review and comply with the licence of the qpdf build they install.
+
 | Package | Version | Licence | Project |
 | --- | --- | --- | --- |
 | SkiaSharp | 2.88.9 | MIT | https://github.com/mono/SkiaSharp |
