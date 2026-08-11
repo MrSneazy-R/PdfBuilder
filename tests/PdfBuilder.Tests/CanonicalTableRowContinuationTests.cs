@@ -29,8 +29,12 @@ public sealed class CanonicalTableRowContinuationTests
     [Fact]
     public void Table_OptInRichTextRow_GeneratesDeterministically()
     {
-        byte[] first = CreateSplitDocument().GenerateBytes();
-        byte[] second = CreateSplitDocument().GenerateBytes();
+        PdfDocument firstDocument = CreateSplitDocument();
+        PdfDocument secondDocument = CreateSplitDocument();
+        MakeDeterministic(firstDocument);
+        MakeDeterministic(secondDocument);
+        byte[] first = firstDocument.GenerateBytes();
+        byte[] second = secondDocument.GenerateBytes();
 
         second.Should().Equal(first);
     }
@@ -267,6 +271,13 @@ public sealed class CanonicalTableRowContinuationTests
 
     private static int CountOccurrences(string value, string marker)
         => value.Split(marker, StringSplitOptions.None).Length - 1;
+
+    private static void MakeDeterministic(PdfDocument document)
+    {
+        document.GenerationOptions.Deterministic = true;
+        document.GenerationOptions.CreationTime = DateTimeOffset.UnixEpoch;
+        document.GenerationOptions.ModificationTime = DateTimeOffset.UnixEpoch;
+    }
 
     private static readonly byte[] TestImage = Convert.FromBase64String(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
