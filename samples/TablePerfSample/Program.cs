@@ -144,7 +144,7 @@ internal static class Program
             table.Rows.Add(row);
         }
 
-        page.Elements.Add(table);
+        page.AddElement(table);
         return doc;
     }
 }

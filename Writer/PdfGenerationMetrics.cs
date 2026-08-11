@@ -1,12 +1,18 @@
-namespace PdfBuilder.Writer;
+namespace PdfBuilder.Models;
 
-/// <summary>
-/// Internal generation diagnostics used by stress tests and engineering measurements.
-/// A writer instance owns one metrics object; it is never shared between documents.
-/// </summary>
-internal sealed class PdfGenerationMetrics
+/// <summary>Read-only diagnostics captured for the most recent PDF generation.</summary>
+public sealed class PdfGenerationMetrics
 {
-    public int PagesPlanned { get; set; }
-    public int PageContentStreamsWritten { get; set; }
-    public int MaximumRetainedPageContentStreams { get; set; }
+    internal PdfGenerationMetrics() { }
+    public int PagesPlanned { get; internal set; }
+    public int PageContentStreamsWritten { get; internal set; }
+    public int MaximumRetainedPageContentStreams { get; internal set; }
+    public int ObjectsWritten { get; internal set; }
+    public int BaseFontResources { get; internal set; }
+    public int EmbeddedFontResources { get; internal set; }
+    public int ImageReferences { get; internal set; }
+    public int UniqueImageResources { get; internal set; }
+    public int ExtGStateResources { get; internal set; }
+    public long OutputBytes { get; internal set; }
+    public TimeSpan Elapsed { get; internal set; }
 }

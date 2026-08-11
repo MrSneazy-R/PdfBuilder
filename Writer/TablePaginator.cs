@@ -25,7 +25,7 @@ namespace PdfBuilder.Writer
             foreach (var page in doc.Pages)
             {
                 var splitPages = PaginatePage(page);
-                outDoc.Pages.AddRange(splitPages);
+                outDoc.PageList.AddRange(splitPages);
             }
             return outDoc;
         }

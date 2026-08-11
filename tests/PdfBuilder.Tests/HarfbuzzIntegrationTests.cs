@@ -265,7 +265,7 @@ namespace PdfBuilder.Tests
                 });
             }
 
-            page.Elements.Add(table);
+            page.AddElement(table);
             return doc;
         }
 

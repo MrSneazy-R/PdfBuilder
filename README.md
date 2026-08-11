@@ -127,3 +127,5 @@ Pre-release versions may add or refine APIs. Deprecated legacy APIs remain funct
 ## Migration
 
 See [legacy-to-canonical-api.md](documentation/migration/legacy-to-canonical-api.md). Every maintained sample uses the canonical API; legacy `Add()` finalisers are compatibility-only.
+
+Output can be selected coherently with `Debug`, `Balanced`, `SmallFile`, `PrintQuality`, or `Deterministic` presets. PDF version, BCP 47 document language, explicit stable identifiers, validated custom XMP, generation metrics, and bounded output size are configurable without bypassing the central serializer. See [Output hardening](documentation/Output_Hardening.md).

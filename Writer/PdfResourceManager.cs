@@ -116,7 +116,26 @@ namespace PdfBuilder.Writer
             if (sourceData.Length == 0)
                 throw new InvalidDataException("ImageElement image source is empty.");
 
-            PreparedImage prepared = SkiaImageOptimiser.Prepare(sourceData, img, _renderLimits.MaximumImagePixels);
+            bool originalDownsample = img.Downsample;
+            float originalMaximumDpi = img.MaximumEffectiveDpi;
+            int originalJpegQuality = img.JpegQuality;
+            if (_options.DownsampleImages && !img.Downsample)
+            {
+                img.Downsample = true;
+                img.MaximumEffectiveDpi = _options.MaximumImageDpi;
+                img.JpegQuality = _options.JpegQuality;
+            }
+            PreparedImage prepared;
+            try
+            {
+                prepared = SkiaImageOptimiser.Prepare(sourceData, img, _renderLimits.MaximumImagePixels);
+            }
+            finally
+            {
+                img.Downsample = originalDownsample;
+                img.MaximumEffectiveDpi = originalMaximumDpi;
+                img.JpegQuality = originalJpegQuality;
+            }
             ImageInfo imageInfo = prepared.SourceInfo;
             _renderLimits.ValidateImagePixels(imageInfo.PixelCount);
             bool swapsDimensions = imageInfo.Orientation is ImageOrientation.LeftTop or ImageOrientation.RightTop or ImageOrientation.RightBottom or ImageOrientation.LeftBottom;
@@ -175,10 +194,13 @@ namespace PdfBuilder.Writer
         {
             if (_extGStates.Count == 0) return string.Empty;
             var sb = new StringBuilder();
-            foreach (var entry in _extGStates.Values)
+            foreach (var entry in _extGStates.Values.OrderBy(value => value.ResourceName, StringComparer.Ordinal))
                 sb.Append($"{entry.ResourceName} {entry.ObjectId} 0 R ");
             return sb.ToString();
         }
+
+        internal int UniqueImageCount => _imageMap.Values.Sum(resources => resources.Count);
+        internal int ExtGStateCount => _extGStates.Count;
 
         private ExtGStateHandle EnsureImageOpacityExtGState(float opacity, PdfStreamWriter w)
         {

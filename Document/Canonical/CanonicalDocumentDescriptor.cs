@@ -16,6 +16,17 @@ public partial class PdfDocument
             configure(_document.Metadata);
             _document.Title = _document.Metadata.Title;
         }
+        public void OutputPreset(PdfOutputPreset preset) => _document.ApplyOutputPreset(preset);
+        public void Output(Action<PdfOutputOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.OutputOptions);
+        }
+        public void Generation(Action<PdfGenerationOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.GenerationOptions);
+        }
         public void Theme(Action<DocumentThemeBuilder> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -49,7 +60,7 @@ public partial class PdfDocument
                 if (_compositionState.UsesPageAwareVisibility)
                     _document.RenderLimits.ValidatePaginationPass(++pass, _compositionState.DiagnosticPaths);
 
-                _document.Pages.Clear();
+                _document.PageList.Clear();
                 _document.LayoutTrace.Clear();
                 _document.CompositionTotalPagesHint = totalPagesHint;
                 foreach (CanonicalPageDescriptor page in _pages)

@@ -150,6 +150,13 @@ namespace PdfBuilder.Document
             return this;
         }
 
+        /// <summary>Applies a coherent output preset.</summary>
+        public PdfDocumentBuilder OutputPreset(PdfOutputPreset preset)
+        {
+            _doc.ApplyOutputPreset(preset);
+            return this;
+        }
+
         public PdfDocumentBuilder EnablePageNumbers(PageNumberPlacement placement = PageNumberPlacement.FooterRight, string template = "{page} / {pages}")
         {
             ApplyPageNumberTemplate(_doc.HeaderFooter, placement, template);

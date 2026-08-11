@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -24,7 +25,8 @@ namespace PdfBuilder.Writer
         private static readonly IFormatProvider Inv = CultureInfo.InvariantCulture;
         private static string N(double v) => v.ToString("0.###", Inv);
 
-        internal PdfGenerationMetrics? LastGenerationMetrics { get; private set; }
+        /// <summary>Gets read-only diagnostics for the most recent generation performed by this writer.</summary>
+        public PdfGenerationMetrics? LastGenerationMetrics { get; private set; }
 
         /// <summary>Generates a PDF into a newly allocated byte array.</summary>
         /// <param name="doc">The document to generate.</param>
@@ -37,8 +39,6 @@ namespace PdfBuilder.Writer
         {
             using var ms = new MemoryStream();
             PrepareAndWriteDocument(doc ?? throw new ArgumentNullException(nameof(doc)), ms, DateTimeOffset.Now, cancellationToken);
-            if (doc.RenderLimits.MaximumOutputBytes is long maximum && ms.Length > maximum)
-                throw new PdfRenderLimitException(nameof(PdfRenderLimits.MaximumOutputBytes), $"The generated PDF exceeds the configured {maximum} byte limit.");
             return ms.ToArray();
         }
 
@@ -106,9 +106,19 @@ namespace PdfBuilder.Writer
         {
             lock (doc.GenerationSyncRoot)
             {
+                var stopwatch = Stopwatch.StartNew();
                 cancellationToken.ThrowIfCancellationRequested();
                 HeaderFooterLayoutComposer.Prepare(doc, ResolveCreationDate(doc, now).UtcDateTime, cancellationToken);
-                WriteResolvedDocument(doc, destination, now, cancellationToken);
+                using var tracking = new PdfWriteTrackingStream(destination, doc.RenderLimits.MaximumOutputBytes);
+                WriteResolvedDocument(doc, tracking, now, cancellationToken);
+                tracking.Flush();
+                stopwatch.Stop();
+                if (LastGenerationMetrics != null)
+                {
+                    LastGenerationMetrics.OutputBytes = tracking.BytesWritten;
+                    LastGenerationMetrics.Elapsed = stopwatch.Elapsed;
+                    doc.LastGenerationMetrics = LastGenerationMetrics;
+                }
             }
         }
 
@@ -132,6 +142,10 @@ namespace PdfBuilder.Writer
 
             var generationOptions = laidOut.GenerationOptions;
             var metadata = laidOut.Metadata ?? new DocumentMetadata();
+            generationOptions.Validate();
+            metadata.Validate(doc.RenderLimits.MaximumMetadataCharacters, doc.RenderLimits.MaximumXmpBytes);
+            var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
+            outputOptions.Validate();
             DateTimeOffset creationDate = generationOptions.CreationTime
                 ?? metadata.CreatedUtc
                 ?? (generationOptions.Deterministic ? DateTimeOffset.UnixEpoch : now);
@@ -140,7 +154,7 @@ namespace PdfBuilder.Writer
                 ?? creationDate;
 
             using var writer = new PdfStreamWriter(destination);
-            writer.WriteHeader("1.6");
+            writer.WriteHeader(outputOptions.VersionToken);
 
             // Fonts (base-14 Type1) ---------------------------------------------------------------
             var baseFonts = CollectBaseFonts(laidOut);
@@ -153,14 +167,13 @@ namespace PdfBuilder.Writer
                 writer.EndObject();
                 fontObjId[baseFont] = id;
             }
+            metrics.BaseFontResources = fontObjId.Count;
             string baseFontRes = string.Join(" ", fontObjId.Select(kv => $"/F{kv.Value} {kv.Value} 0 R"));
 
             var embeddedFonts = new EmbeddedFontRegistry();
             var renderContext = new PdfRenderContext(fontObjId, embeddedFonts, laidOut.Pagination);
 
             // Images / ExtGState -----------------------------------------------------------------
-            var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
-
             var resources = new PdfResourceManager(outputOptions, doc.RenderLimits);
             var imageResourceMap = PreRegisterImages(laidOut, resources, writer, cancellationToken);
             PreRegisterWatermarks(laidOut, resources, writer);
@@ -199,7 +212,13 @@ namespace PdfBuilder.Writer
             RecordBrokenNavigationDiagnostics(laidOut, pageAnnotations, anchorLookup);
 
             var embeddedFontResources = FontResourceWriter.WriteEmbeddedFonts(writer, embeddedFonts);
-            string embeddedFontRes = string.Join(" ", embeddedFontResources.Select(kv => $"{kv.Key} {kv.Value} 0 R"));
+            metrics.EmbeddedFontResources = embeddedFontResources.Count;
+            metrics.ImageReferences = imageResourceMap.Count;
+            metrics.UniqueImageResources = resources.UniqueImageCount;
+            metrics.ExtGStateResources = resources.ExtGStateCount;
+            string embeddedFontRes = string.Join(" ", embeddedFontResources
+                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .Select(kv => $"{kv.Key} {kv.Value} 0 R"));
             string fontRes = CombineFontResources(baseFontRes, embeddedFontRes);
 
             // Page object references are reserved before /Pages is written. This is deliberately
@@ -321,19 +340,36 @@ namespace PdfBuilder.Writer
                 ? OutlineWriter.WriteOutlinesTree(writer, outlineItems, 0)
                 : 0;
 
+            int xmpMetadataId = 0;
+            if (!string.IsNullOrWhiteSpace(metadata.CustomXmp))
+            {
+                xmpMetadataId = writer.BeginObject();
+                writer.WriteStream(
+                    Encoding.UTF8.GetBytes(metadata.CustomXmp!),
+                    ("Type", "/Metadata"),
+                    ("Subtype", "/XML"));
+                writer.EndObject();
+            }
+
             // Catalog -------------------------------------------------------------------------------
             int catalogId = writer.BeginObject();
+            writer.WriteLine("<<");
+            writer.WriteLine($" /Type /Catalog /Pages {pagesObjId} 0 R");
             if (outlinesId != 0)
-                writer.WriteLine($"<< /Type /Catalog /Pages {pagesObjId} 0 R /Outlines {outlinesId} 0 R >>");
-            else
-                writer.WriteLine($"<< /Type /Catalog /Pages {pagesObjId} 0 R >>");
+                writer.WriteLine($" /Outlines {outlinesId} 0 R");
+            if (!string.IsNullOrWhiteSpace(metadata.Language))
+                writer.WriteLine($" /Lang {PdfStringEncoder.Encode(metadata.Language!)}");
+            if (xmpMetadataId != 0)
+                writer.WriteLine($" /Metadata {xmpMetadataId} 0 R");
+            writer.WriteLine(">>");
             writer.EndObject();
 
             // Info ----------------------------------------------------------------------------------
             int infoId = writer.BeginObject();
             writer.WriteLine("<<");
-            if (!string.IsNullOrWhiteSpace(doc.Title))
-                writer.WriteLine($"/Title {PdfStringEncoder.Encode(doc.Title!)}");
+            string? documentTitle = !string.IsNullOrWhiteSpace(doc.Title) ? doc.Title : metadata.Title;
+            if (!string.IsNullOrWhiteSpace(documentTitle))
+                writer.WriteLine($"/Title {PdfStringEncoder.Encode(documentTitle!)}");
             if (!string.IsNullOrWhiteSpace(metadata.Author))
                 writer.WriteLine($"/Author {PdfStringEncoder.Encode(metadata.Author!)}");
             if (!string.IsNullOrWhiteSpace(metadata.Subject))
@@ -353,6 +389,8 @@ namespace PdfBuilder.Writer
 
             // XRef & trailer ------------------------------------------------------------------------
             writer.WriteXRefAndTrailer(catalogId, infoId, BuildDocumentId(laidOut, generationOptions));
+
+            metrics.ObjectsWritten = writer.ObjectCount;
 
             laidOut.ProfilerSession.Emit(laidOut.LayoutOptions.Profiler);
         }
@@ -868,6 +906,8 @@ namespace PdfBuilder.Writer
 
         private static string BuildDocumentId(PdfDocument document, PdfGenerationOptions options)
         {
+            if (!string.IsNullOrWhiteSpace(options.DocumentIdentifier))
+                return options.DocumentIdentifier.Trim().ToUpperInvariant();
             string seed = options.DocumentIdSeed ?? string.Join("|",
                 document.Title ?? string.Empty,
                 document.Metadata.Author ?? string.Empty,

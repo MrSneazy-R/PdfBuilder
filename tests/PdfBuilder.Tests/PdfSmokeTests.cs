@@ -14,8 +14,6 @@ namespace PdfBuilder.Tests
     {
         private static byte[] BuildPdfBytes(Action<ColumnBuilder> draw, bool readableContentStreams = false)
         {
-            var doc = new PdfDocument();
-            doc.OutputOptions.ReadableContentStreams = readableContentStreams;
             var page = PdfPage.Letter();
 
             // Use page builder to layout into a single column with 40pt margin
@@ -24,7 +22,8 @@ namespace PdfBuilder.Tests
                 .Content(col => draw(col))
                 .Build();
 
-            doc.Pages.Add(page);
+            var doc = new PdfDocument(new List<PdfPage> { page });
+            doc.OutputOptions.ReadableContentStreams = readableContentStreams;
 
             var writer = new PdfWriter();
             return writer.GenerateBytes(doc);

@@ -160,7 +160,7 @@ public sealed class AdvancedTableLayoutTests
         var page = document.AddPage();
         var table = new TableElement(page.MarginLeft, page.Height - page.MarginTop - 40) { TableWidth = 200, CellPadding = 0 };
         configure(table);
-        page.Elements.Add(table);
+        page.AddElement(table);
         return document;
     }
 }

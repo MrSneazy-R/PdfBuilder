@@ -8,6 +8,15 @@ public interface IDocumentDescriptor
     /// <summary>Configures document metadata.</summary>
     void Metadata(Action<DocumentMetadata> configure);
 
+    /// <summary>Applies a coherent output preset.</summary>
+    void OutputPreset(PdfOutputPreset preset);
+
+    /// <summary>Configures PDF output encoding and version options.</summary>
+    void Output(Action<PdfOutputOptions> configure);
+
+    /// <summary>Configures deterministic generation and document identity.</summary>
+    void Generation(Action<PdfGenerationOptions> configure);
+
     /// <summary>Configures document-scoped colors, text styles, and spacing tokens.</summary>
     void Theme(Action<DocumentThemeBuilder> configure);
 

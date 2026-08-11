@@ -11,6 +11,7 @@ API Surface
 - `void GenerateStream(PdfDocument doc, Stream destination)`: write directly to an existing stream (e.g., ASP.NET response).
 - `void Save(PdfDocument doc, string path)`: convenience wrapper that writes to disk.
 - `IReadOnlyList<PdfPreviewPage> GeneratePreviewImages(PdfDocument doc, int dpi = 144)`: rasterize each page (SkiaSharp-based) for quick previews.
+- `LastGenerationMetrics`: read-only counts and elapsed/output measurements from the latest successful generation.
 
 Expectations & Preconditions
 ----------------------------
@@ -18,6 +19,7 @@ Expectations & Preconditions
 - Flowing tables are resolved while the document is composed. The writer serializes that resolved layout and does not clone or repaginate tables immediately before rendering.
 - Fonts collected from text runs are registered before encoding. Embedded fonts are included when required, while base-14 fonts use WinAnsi encoding for compatibility.
 - Outlines and link annotations are emitted when anchors or rich text links are present.
+- `PdfRenderLimits.MaximumOutputBytes` applies during byte-array, stream, and file writes, so oversized output terminates before unbounded buffering.
 
 Example
 -------

@@ -47,7 +47,7 @@ internal static class Program
             FontSize = 12f
         };
 
-        page.Elements.Add(text);
+        page.AddElement(text);
         return doc;
     }
 }

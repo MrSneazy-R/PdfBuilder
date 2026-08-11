@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added `Debug`, `Balanced`, `SmallFile`, `PrintQuality`, and `Deterministic` output presets while preserving compressed-by-default and readable-debug output.
+- Added PDF 1.4 through 2.0 header selection, document language, validated custom XMP, and an explicit stable trailer identifier.
+- Exposed read-only generation metrics and enforced output-size limits for byte-array, stream, and file generation.
+- Changed `PdfDocument.Pages` and `PdfPage.Elements` to read-only views. Obsolete `MutablePages` (`PDFB008`) and `MutableElements` (`PDFB009`) shims retain an explicit migration path for legacy direct mutation.
+- Strengthened deterministic resource ordering and resource-rich output regression coverage.
+
 All notable changes to PdfBuilder are documented in this file. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the intended versioning
 policy is [Semantic Versioning](https://semver.org/).

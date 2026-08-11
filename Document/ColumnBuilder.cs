@@ -332,7 +332,7 @@ namespace PdfBuilder.Document
         public ColumnBuilder Underline(float x, float? y, float width)
         {
             float useY = y ?? CurrentColumn.Y;
-            _page.Elements.Add(new UnderlineElement(x, useY)
+            _page.AddElement(new UnderlineElement(x, useY)
             {
                 Width = width,
                 Thickness = 1,

@@ -445,7 +445,10 @@ PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDe
 PdfBuilder.Document.IContainer.Text(System.Func<string!>! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
+PdfBuilder.Document.IDocumentDescriptor.Generation(System.Action<PdfBuilder.Models.PdfGenerationOptions!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.Output(System.Action<PdfBuilder.Models.PdfOutputOptions!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.OutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> void
 PdfBuilder.Document.IDocumentDescriptor.Page(System.Action<PdfBuilder.Document.IPageDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor
 PdfBuilder.Document.IChartDescriptor.Bars(string! name, System.Collections.Generic.IEnumerable<float>! values, PdfBuilder.Models.PdfColor color) -> void
@@ -1066,8 +1069,12 @@ PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.set -> void
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumMetadataCharacters.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumMetadataCharacters.set -> void
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumXmpBytes.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumXmpBytes.set -> void
 PdfBuilder.Document.Layout.PdfTableRowSplitException
 PdfBuilder.Document.Layout.PdfTableRowSplitException.ColumnIndex.get -> int?
 PdfBuilder.Document.Layout.PdfTableRowSplitException.Reason.get -> string!
@@ -1143,18 +1150,21 @@ PdfBuilder.Document.PdfComponentCompositionException
 PdfBuilder.Document.PdfComponentCompositionException.ComponentPath.get -> string!
 PdfBuilder.Document.PdfDocument
 PdfBuilder.Document.PdfDocument.AddPage(float width = 612, float height = 792) -> PdfBuilder.Models.PdfPage!
+PdfBuilder.Document.PdfDocument.ApplyOutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> void
 PdfBuilder.Document.PdfDocument.Generate(System.IO.Stream! destination) -> void
 PdfBuilder.Document.PdfDocument.GenerateBytes() -> byte[]!
 PdfBuilder.Document.PdfDocument.GenerationOptions.get -> PdfBuilder.Models.PdfGenerationOptions!
 PdfBuilder.Document.PdfDocument.HeaderFooter.get -> PdfBuilder.Models.HeaderFooterSpec!
 PdfBuilder.Document.PdfDocument.HeaderFooter.set -> void
+PdfBuilder.Document.PdfDocument.LastGenerationMetrics.get -> PdfBuilder.Models.PdfGenerationMetrics?
 PdfBuilder.Document.PdfDocument.LayoutOptions.get -> PdfBuilder.Document.Layout.LayoutOptions!
 PdfBuilder.Document.PdfDocument.Master.get -> PdfBuilder.Models.MasterPageSpec!
 PdfBuilder.Document.PdfDocument.Master.set -> void
 PdfBuilder.Document.PdfDocument.Metadata.get -> PdfBuilder.Models.DocumentMetadata!
+PdfBuilder.Document.PdfDocument.MutablePages.get -> System.Collections.Generic.IList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.NavigationDiagnostics.get -> PdfBuilder.Document.PdfNavigationDiagnostics!
 PdfBuilder.Document.PdfDocument.OutputOptions.get -> PdfBuilder.Models.PdfOutputOptions!
-PdfBuilder.Document.PdfDocument.Pages.get -> System.Collections.Generic.List<PdfBuilder.Models.PdfPage!>!
+PdfBuilder.Document.PdfDocument.Pages.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.Pagination.get -> PdfBuilder.Document.PaginationRegistry!
 PdfBuilder.Document.PdfDocument.PdfDocument() -> void
 PdfBuilder.Document.PdfDocument.PdfDocument(System.Collections.Generic.List<PdfBuilder.Models.PdfPage!>! pages) -> void
@@ -1181,6 +1191,7 @@ PdfBuilder.Document.PdfDocumentBuilder.LayoutDebug(System.Action<PdfBuilder.Docu
 PdfBuilder.Document.PdfDocumentBuilder.Master(System.Action<PdfBuilder.Models.MasterPageSpec!>! cfg) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.OutputOptions(System.Action<PdfBuilder.Models.PdfOutputOptions!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
+PdfBuilder.Document.PdfDocumentBuilder.OutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.PdfDocumentBuilder(PdfBuilder.Document.PdfDocument! doc) -> void
 PdfBuilder.Document.PdfDocumentBuilder.Profiler(System.Action<PdfBuilder.Document.Layout.LayoutProfilerConfig!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.SetFooter(string! text) -> PdfBuilder.Document.PdfDocumentBuilder!
@@ -2660,9 +2671,13 @@ PdfBuilder.Models.DocumentMetadata.CreatedUtc.get -> System.DateTimeOffset?
 PdfBuilder.Models.DocumentMetadata.CreatedUtc.set -> void
 PdfBuilder.Models.DocumentMetadata.Creator.get -> string?
 PdfBuilder.Models.DocumentMetadata.Creator.set -> void
+PdfBuilder.Models.DocumentMetadata.CustomXmp.get -> string?
+PdfBuilder.Models.DocumentMetadata.CustomXmp.set -> void
 PdfBuilder.Models.DocumentMetadata.DocumentMetadata() -> void
 PdfBuilder.Models.DocumentMetadata.Keywords.get -> string?
 PdfBuilder.Models.DocumentMetadata.Keywords.set -> void
+PdfBuilder.Models.DocumentMetadata.Language.get -> string?
+PdfBuilder.Models.DocumentMetadata.Language.set -> void
 PdfBuilder.Models.DocumentMetadata.ModifiedUtc.get -> System.DateTimeOffset?
 PdfBuilder.Models.DocumentMetadata.ModifiedUtc.set -> void
 PdfBuilder.Models.DocumentMetadata.Producer.get -> string?
@@ -2671,6 +2686,7 @@ PdfBuilder.Models.DocumentMetadata.Subject.get -> string?
 PdfBuilder.Models.DocumentMetadata.Subject.set -> void
 PdfBuilder.Models.DocumentMetadata.Title.get -> string?
 PdfBuilder.Models.DocumentMetadata.Title.set -> void
+PdfBuilder.Models.DocumentMetadata.Validate() -> void
 PdfBuilder.Models.FlowDirection
 PdfBuilder.Models.FlowDirection.LeftToRight = 0 -> PdfBuilder.Models.FlowDirection
 PdfBuilder.Models.FlowDirection.RightToLeft = 1 -> PdfBuilder.Models.FlowDirection
@@ -2742,37 +2758,66 @@ PdfBuilder.Models.PdfColor.Blue.init -> void
 PdfBuilder.Models.PdfColor.Green.init -> void
 PdfBuilder.Models.PdfColor.PdfColor() -> void
 PdfBuilder.Models.PdfColor.Red.init -> void
+PdfBuilder.Models.PdfGenerationMetrics
+PdfBuilder.Models.PdfGenerationMetrics.BaseFontResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.Elapsed.get -> System.TimeSpan
+PdfBuilder.Models.PdfGenerationMetrics.EmbeddedFontResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ExtGStateResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ImageReferences.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.MaximumRetainedPageContentStreams.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ObjectsWritten.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.OutputBytes.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.PageContentStreamsWritten.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.PagesPlanned.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.UniqueImageResources.get -> int
 PdfBuilder.Models.PdfGenerationOptions
 PdfBuilder.Models.PdfGenerationOptions.CreationTime.get -> System.DateTimeOffset?
 PdfBuilder.Models.PdfGenerationOptions.CreationTime.set -> void
 PdfBuilder.Models.PdfGenerationOptions.Deterministic.get -> bool
 PdfBuilder.Models.PdfGenerationOptions.Deterministic.set -> void
+PdfBuilder.Models.PdfGenerationOptions.DocumentIdentifier.get -> string?
+PdfBuilder.Models.PdfGenerationOptions.DocumentIdentifier.set -> void
 PdfBuilder.Models.PdfGenerationOptions.DocumentIdSeed.get -> string?
 PdfBuilder.Models.PdfGenerationOptions.DocumentIdSeed.set -> void
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.get -> System.DateTimeOffset?
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.set -> void
 PdfBuilder.Models.PdfGenerationOptions.PdfGenerationOptions() -> void
 PdfBuilder.Models.PdfOutputOptions
+PdfBuilder.Models.PdfOutputOptions.ApplyPreset(PdfBuilder.Models.PdfOutputPreset preset) -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.Clone() -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.CompressContentStreams.get -> bool
 PdfBuilder.Models.PdfOutputOptions.CompressContentStreams.set -> void
 PdfBuilder.Models.PdfOutputOptions.ContentCompressionLevel.get -> System.IO.Compression.CompressionLevel
 PdfBuilder.Models.PdfOutputOptions.ContentCompressionLevel.set -> void
 PdfBuilder.Models.PdfOutputOptions.CopyFrom(PdfBuilder.Models.PdfOutputOptions! other) -> void
+PdfBuilder.Models.PdfOutputOptions.DownsampleImages.get -> bool
+PdfBuilder.Models.PdfOutputOptions.DownsampleImages.set -> void
 PdfBuilder.Models.PdfOutputOptions.ImageCompressionLevel.get -> System.IO.Compression.CompressionLevel
 PdfBuilder.Models.PdfOutputOptions.ImageCompressionLevel.set -> void
+PdfBuilder.Models.PdfOutputOptions.JpegQuality.get -> int
+PdfBuilder.Models.PdfOutputOptions.JpegQuality.set -> void
+PdfBuilder.Models.PdfOutputOptions.MaximumImageDpi.get -> float
+PdfBuilder.Models.PdfOutputOptions.MaximumImageDpi.set -> void
 PdfBuilder.Models.PdfOutputOptions.PdfOutputOptions() -> void
+PdfBuilder.Models.PdfOutputOptions.PdfVersion.get -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfOutputOptions.PdfVersion.set -> void
 PdfBuilder.Models.PdfOutputOptions.ReadableContentStreams.get -> bool
 PdfBuilder.Models.PdfOutputOptions.ReadableContentStreams.set -> void
 PdfBuilder.Models.PdfOutputOptions.UsePngPredictor.get -> bool
 PdfBuilder.Models.PdfOutputOptions.UsePngPredictor.set -> void
+PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Balanced = 1 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Debug = 0 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Deterministic = 4 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.PrintQuality = 3 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.SmallFile = 2 -> PdfBuilder.Models.PdfOutputPreset
 PdfBuilder.Models.PdfPage
 PdfBuilder.Models.PdfPage.AddElement(PdfBuilder.Document.PdfElement! element) -> void
 PdfBuilder.Models.PdfPage.BackgroundColor.get -> string?
 PdfBuilder.Models.PdfPage.BackgroundColor.set -> void
 PdfBuilder.Models.PdfPage.Columns.get -> PdfBuilder.Models.ColumnLayoutSpec?
 PdfBuilder.Models.PdfPage.Columns.set -> void
-PdfBuilder.Models.PdfPage.Elements.get -> System.Collections.Generic.List<PdfBuilder.Document.PdfElement!>!
+PdfBuilder.Models.PdfPage.Elements.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Document.PdfElement!>!
 PdfBuilder.Models.PdfPage.HeaderFooterOverride.get -> PdfBuilder.Models.HeaderFooterSpec?
 PdfBuilder.Models.PdfPage.HeaderFooterOverride.set -> void
 PdfBuilder.Models.PdfPage.Height.get -> float
@@ -2787,11 +2832,18 @@ PdfBuilder.Models.PdfPage.MarginTop.get -> float
 PdfBuilder.Models.PdfPage.MarginTop.set -> void
 PdfBuilder.Models.PdfPage.MasterOverride.get -> PdfBuilder.Models.MasterPageSpec?
 PdfBuilder.Models.PdfPage.MasterOverride.set -> void
+PdfBuilder.Models.PdfPage.MutableElements.get -> System.Collections.Generic.IList<PdfBuilder.Document.PdfElement!>!
 PdfBuilder.Models.PdfPage.PdfPage(float width, float height) -> void
 PdfBuilder.Models.PdfPage.TextDefaults.get -> PdfBuilder.Models.TextStyleDefaults!
 PdfBuilder.Models.PdfPage.TextDefaults.set -> void
 PdfBuilder.Models.PdfPage.Theme.get -> PdfBuilder.Document.DocumentTheme!
 PdfBuilder.Models.PdfPage.Width.get -> float
+PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf14 = 0 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf15 = 1 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf16 = 2 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf17 = 3 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf20 = 4 -> PdfBuilder.Models.PdfVersion
 PdfBuilder.Models.RichRun
 PdfBuilder.Models.RichRun.BackgroundColor.get -> string?
 PdfBuilder.Models.RichRun.BackgroundColor.set -> void
@@ -3058,6 +3110,7 @@ PdfBuilder.Writer.PdfWriter
 PdfBuilder.Writer.PdfWriter.GenerateBytes(PdfBuilder.Document.PdfDocument! doc) -> byte[]!
 PdfBuilder.Writer.PdfWriter.GeneratePreviewImages(PdfBuilder.Document.PdfDocument! doc, int dpi = 144) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
 PdfBuilder.Writer.PdfWriter.GenerateStream(PdfBuilder.Document.PdfDocument! doc, System.IO.Stream! destination) -> void
+PdfBuilder.Writer.PdfWriter.LastGenerationMetrics.get -> PdfBuilder.Models.PdfGenerationMetrics?
 PdfBuilder.Writer.PdfWriter.PdfWriter() -> void
 PdfBuilder.Writer.PdfWriter.Save(PdfBuilder.Document.PdfDocument! doc, string! path) -> void
 PdfBuilder.Writer.RichTextRenderer

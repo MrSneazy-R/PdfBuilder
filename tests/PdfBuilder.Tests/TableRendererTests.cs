@@ -352,7 +352,7 @@ namespace PdfBuilder.Tests
             if (table.ColumnWidths == null || table.ColumnWidths.Count == 0)
                 table.ColumnWidths = new List<float> { table.TableWidth ?? 200 };
 
-            page.Elements.Add(table);
+            page.AddElement(table);
             return doc;
         }
 

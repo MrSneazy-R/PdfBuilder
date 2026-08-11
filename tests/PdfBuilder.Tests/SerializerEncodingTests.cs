@@ -75,7 +75,7 @@ namespace PdfBuilder.Tests
             document.Title = "\u5317\u4EAC\u8FD0\u8F93";
             document.Metadata.Author = "Jos\u00E9";
             const string uri = "https://example.com/a(b)\\c?q=S\u00E3o%20Paulo/\u5317\u4EAC";
-            document.Pages[0].Elements.Add(new LinkRectElement(40, 700, 100, 20) { Url = uri });
+            document.Pages[0].AddElement(new LinkRectElement(40, 700, 100, 20) { Url = uri });
 
             string pdf = Encoding.Latin1.GetString(new PdfWriter().GenerateBytes(document));
             pdf.Should().Contain($"/Title {PdfStringEncoder.Encode(document.Title)}");
@@ -95,8 +95,8 @@ namespace PdfBuilder.Tests
             document.Metadata.Author = author;
             document.Metadata.Subject = string.Empty;
             document.Metadata.Keywords = "a\tb\rc\n";
-            document.Pages[0].Elements.Add(new AnchorElement("edge", 40, 700) { Title = outline });
-            document.Pages[0].Elements.Add(new LinkRectElement(40, 680, 100, 20) { Url = uri });
+            document.Pages[0].AddElement(new AnchorElement("edge", 40, 700) { Title = outline });
+            document.Pages[0].AddElement(new LinkRectElement(40, 680, 100, 20) { Url = uri });
 
             string pdf = Encoding.Latin1.GetString(new PdfWriter().GenerateBytes(document));
 
@@ -200,8 +200,8 @@ namespace PdfBuilder.Tests
                     });
                 }));
             });
-            document.Pages[0].Elements.Add(new AnchorElement("resource", 40, 700) { Title = "Resource section" });
-            document.Pages[0].Elements.Add(new LinkRectElement(40, 660, 100, 20) { Url = "https://example.test/resource" });
+            document.Pages[0].AddElement(new AnchorElement("resource", 40, 700) { Title = "Resource section" });
+            document.Pages[0].AddElement(new LinkRectElement(40, 660, 100, 20) { Url = "https://example.test/resource" });
             return document;
         }
 
