@@ -156,7 +156,7 @@ namespace PdfBuilder.Writer
             string baseFontRes = string.Join(" ", fontObjId.Select(kv => $"/F{kv.Value} {kv.Value} 0 R"));
 
             var embeddedFonts = new EmbeddedFontRegistry();
-            var renderContext = new PdfRenderContext(fontObjId, embeddedFonts);
+            var renderContext = new PdfRenderContext(fontObjId, embeddedFonts, laidOut.Pagination);
 
             // Images / ExtGState -----------------------------------------------------------------
             var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
@@ -172,8 +172,9 @@ namespace PdfBuilder.Writer
             // Render solely to collect font glyphs plus navigation metadata. Content bytes are
             // deliberately discarded here; the write pass below produces one page at a time.
             var pageAnnotations = new List<List<AnnotationWriter.LinkAnnot>>(pageCount);
-            var pageAnchors = new List<List<(AnchorElement anchor, float xPdf, float yPdf)>>(pageCount);
-            var anchorLookup = new Dictionary<string, (int pageIndex, float xPdf, float yPdf)>(StringComparer.Ordinal);
+            var (anchorLookup, pageAnchors) = CollectNavigationAnchors(laidOut);
+            laidOut.Pagination?.ApplyPageLookup(anchorLookup);
+            laidOut.NavigationDiagnostics.Clear();
 
             for (int i = 0; i < pageCount; i++)
             {
@@ -181,7 +182,7 @@ namespace PdfBuilder.Writer
                 var page = laidOut.Pages[i];
                 var pageImgMap = BuildPageImageMap(page, imageResourceMap);
 
-                var (contentBytes, annots, anchors) = BuildContentStream(
+                var (contentBytes, annots, _) = BuildContentStream(
                     laidOut,
                     page,
                     i + 1,
@@ -193,16 +194,9 @@ namespace PdfBuilder.Writer
                     cancellationToken);
 
                 pageAnnotations.Add(annots);
-                pageAnchors.Add(anchors);
-
-                foreach (var (anchor, xPdf, yPdf) in anchors)
-                {
-                    if (!string.IsNullOrWhiteSpace(anchor.Id))
-                        anchorLookup[anchor.Id] = (i, xPdf, yPdf);
-                }
             }
 
-            laidOut.Pagination?.ApplyPageLookup(anchorLookup);
+            RecordBrokenNavigationDiagnostics(laidOut, pageAnnotations, anchorLookup);
 
             var embeddedFontResources = FontResourceWriter.WriteEmbeddedFonts(writer, embeddedFonts);
             string embeddedFontRes = string.Join(" ", embeddedFontResources.Select(kv => $"{kv.Key} {kv.Value} 0 R"));
@@ -502,7 +496,7 @@ namespace PdfBuilder.Writer
                     Y1 = y1,
                     X2 = rect.X2,
                     Y2 = y2,
-                    Url = rect.Url,
+                    Url = rect.Url == null ? null : NavigationUriPolicy.ValidateExternal(rect.Url),
                     Anchor = rect.Anchor
                 };
             }
@@ -522,7 +516,7 @@ namespace PdfBuilder.Writer
                 X2 = Math.Max(x1, x2),
                 Y1 = bottom,
                 Y2 = top,
-                Url = linkRect.Url,
+                Url = linkRect.Url == null ? null : NavigationUriPolicy.ValidateExternal(linkRect.Url),
                 Anchor = linkRect.Anchor
             };
         }
@@ -608,6 +602,61 @@ namespace PdfBuilder.Writer
                 yield return element;
             foreach (var element in page.FooterElements)
                 yield return element;
+        }
+
+        private static (
+            Dictionary<string, (int pageIndex, float xPdf, float yPdf)> Lookup,
+            List<List<(AnchorElement anchor, float xPdf, float yPdf)>> PageAnchors)
+            CollectNavigationAnchors(PdfDocument document)
+        {
+            var lookup = new Dictionary<string, (int pageIndex, float xPdf, float yPdf)>(StringComparer.Ordinal);
+            var pageAnchors = new List<List<(AnchorElement anchor, float xPdf, float yPdf)>>(document.Pages.Count);
+
+            for (int pageIndex = 0; pageIndex < document.Pages.Count; pageIndex++)
+            {
+                var anchors = new List<(AnchorElement anchor, float xPdf, float yPdf)>();
+                foreach (AnchorElement anchor in EnumerateAllElements(document.Pages[pageIndex]).OfType<AnchorElement>())
+                {
+                    if (string.IsNullOrWhiteSpace(anchor.Id))
+                        throw new PdfNavigationException("A rendered navigation anchor has an empty id.");
+                    if (!lookup.TryAdd(anchor.Id, (pageIndex, anchor.X, anchor.Y)))
+                        throw new PdfNavigationException($"Duplicate rendered navigation anchor id '{anchor.Id}'. Anchor ids must be unique within a document.");
+                    anchors.Add((anchor, anchor.X, anchor.Y));
+                }
+                pageAnchors.Add(anchors);
+            }
+
+            return (lookup, pageAnchors);
+        }
+
+        private static void RecordBrokenNavigationDiagnostics(
+            PdfDocument document,
+            IEnumerable<IEnumerable<AnnotationWriter.LinkAnnot>> pageAnnotations,
+            IReadOnlyDictionary<string, (int pageIndex, float xPdf, float yPdf)> anchorLookup)
+        {
+            var missing = new HashSet<string>(StringComparer.Ordinal);
+            foreach (AnnotationWriter.LinkAnnot annotation in pageAnnotations.SelectMany(page => page))
+            {
+                if (!string.IsNullOrWhiteSpace(annotation.Anchor) && !anchorLookup.ContainsKey(annotation.Anchor))
+                    missing.Add(annotation.Anchor);
+            }
+
+            foreach (TextElement reference in document.Pages
+                .SelectMany(EnumerateAllElements)
+                .OfType<TextElement>()
+                .Where(element => !string.IsNullOrWhiteSpace(element.PageReferenceAnchorId)))
+            {
+                if (!anchorLookup.ContainsKey(reference.PageReferenceAnchorId!))
+                    missing.Add(reference.PageReferenceAnchorId!);
+            }
+
+            foreach (string target in missing.OrderBy(value => value, StringComparer.Ordinal))
+            {
+                document.NavigationDiagnostics.Add(
+                    "PDFNAV001",
+                    $"Internal navigation target '{target}' was not found. The link was omitted and page references retain their pending text.",
+                    target);
+            }
         }
 
         private static void RenderElements(

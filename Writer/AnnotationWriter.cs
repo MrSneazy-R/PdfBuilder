@@ -34,6 +34,16 @@ namespace PdfBuilder.Writer
 
             foreach (var a in annots)
             {
+                int internalPageId = 0;
+                Dest internalDestination = default;
+                if (!string.IsNullOrEmpty(a.Anchor))
+                {
+                    internalPageId = pageRefIdByAnchor(a.Anchor);
+                    if (internalPageId == 0)
+                        continue;
+                    internalDestination = destByAnchor(a.Anchor);
+                }
+
                 int id = w.BeginObject();
                 var sb = new StringBuilder();
                 sb.Append("<< /Type /Annot /Subtype /Link ");
@@ -47,14 +57,9 @@ namespace PdfBuilder.Writer
                 }
                 else if (!string.IsNullOrEmpty(a.Anchor))
                 {
-                    int pageId = pageRefIdByAnchor(a.Anchor);
-                    var dest = destByAnchor(a.Anchor);
-                    if (pageId != 0)
-                    {
-                        sb.AppendFormat(CultureInfo.InvariantCulture,
-                            "/Dest [{0} 0 R /XYZ {1:0.###} {2:0.###} null] ",
-                            pageId, dest.X, dest.Y);
-                    }
+                    sb.AppendFormat(CultureInfo.InvariantCulture,
+                        "/Dest [{0} 0 R /XYZ {1:0.###} {2:0.###} null] ",
+                        internalPageId, internalDestination.X, internalDestination.Y);
                 }
 
                 sb.Append(">>");

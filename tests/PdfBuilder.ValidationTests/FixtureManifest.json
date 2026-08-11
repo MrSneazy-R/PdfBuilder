@@ -8,5 +8,6 @@
   { "name": "links-and-outline", "coverage": "External hyperlink, internal anchor and outline", "pageCount": 1, "textMarkers": [ "Introduction", "OpenAI" ], "visual": false },
   { "name": "header-footer", "coverage": "Header and footer", "pageCount": 1, "textMarkers": [ "Validation header", "Validation footer", "Body content" ], "visual": true },
   { "name": "multilingual-latin", "coverage": "Sanitised French and Spanish Latin text", "pageCount": 1, "textMarkers": [ "Résumé", "Español" ], "visual": false }
-  ,{ "name": "layout-primitives", "coverage": "Canonical padding, decoration, grid and row layout", "pageCount": 1, "textMarkers": [ "Canonical composition API", "Grid one", "Relative" ], "visual": true }
+  ,{ "name": "layout-primitives", "coverage": "Canonical padding, decoration, grid and row layout", "pageCount": 1, "textMarkers": [ "Canonical composition API", "Grid one", "Relative" ], "visual": true },
+  { "name": "canonical-navigation", "coverage": "Forward TOC, outlines, internal links, external links and page references", "pageCount": 3, "textMarkers": [ "Navigation contents", "Introduction body", "Details body", "page 2", "page 3" ], "visual": false }
 ]

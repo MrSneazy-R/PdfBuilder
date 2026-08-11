@@ -24,6 +24,7 @@ internal static class ValidationFixtureFactory
             "header-footer" => HeaderFooter(),
             "multilingual-latin" => MultilingualLatin(),
             "layout-primitives" => LayoutPrimitives(),
+            "canonical-navigation" => CanonicalNavigation(),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown validation fixture.")
         };
 
@@ -164,6 +165,21 @@ internal static class ValidationFixtureFactory
             column.Item().Row(row => { row.ConstantItem(80).Text("Fixed"); row.RelativeItem().Text("Relative"); row.AutoItem().Text("Auto"); });
         });
     }));
+
+    private static PdfDocument CanonicalNavigation() => PdfDocument.Create(document =>
+    {
+        document.Page(page =>
+        {
+            page.Content().Text("Navigation contents").Bold();
+            page.Content().TableOfContents(options => options.PageNumberFormat("page {0}"));
+            page.Content().InternalLink("Jump to details", "details").Underline();
+            page.Content().ExternalLink("Project website", "https://example.com/pdfbuilder").Underline();
+        });
+        document.Page(page => page.Content().Section("introduction", "Introduction", section =>
+            section.Text("Introduction body")));
+        document.Page(page => page.Content().Section("details", "Details", section =>
+            section.Text("Details body"), options => options.Level(2)));
+    });
 
     private static byte[] CreatePng()
     {

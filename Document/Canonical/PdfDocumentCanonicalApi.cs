@@ -12,7 +12,11 @@ public partial class PdfDocument
         if (configure == null) throw new ArgumentNullException(nameof(configure));
         var document = new PdfDocument();
         using (PdfBuilder.Fonts.FontCatalog.EnterSnapshot(document.FontSnapshot))
-            configure(new CanonicalDocumentDescriptor(document));
+        {
+            var descriptor = new CanonicalDocumentDescriptor(document);
+            configure(descriptor);
+            descriptor.Build();
+        }
         return document;
     }
 

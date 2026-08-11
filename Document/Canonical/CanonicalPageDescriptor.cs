@@ -22,10 +22,10 @@ public partial class PdfDocument
         public CanonicalPageDescriptor(PdfDocument document)
         {
             _document = document;
-            _content = new CanonicalContainer(document.Theme);
-            _header = new CanonicalContainer(document.Theme);
-            _footer = new CanonicalContainer(document.Theme);
-            _background = new CanonicalContainer(document.Theme);
+            _content = new CanonicalContainer(document.Theme, pagination: document.Pagination);
+            _header = new CanonicalContainer(document.Theme, pagination: document.Pagination);
+            _footer = new CanonicalContainer(document.Theme, pagination: document.Pagination);
+            _background = new CanonicalContainer(document.Theme, pagination: document.Pagination);
 
             if (document.Theme.Page.Margin.HasValue)
                 _left = _top = _right = _bottom = document.Theme.Page.Margin.Value;

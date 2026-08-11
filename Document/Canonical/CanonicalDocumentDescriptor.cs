@@ -7,6 +7,7 @@ public partial class PdfDocument
     private sealed class CanonicalDocumentDescriptor : IDocumentDescriptor
     {
         private readonly PdfDocument _document;
+        private readonly List<CanonicalPageDescriptor> _pages = new();
         public CanonicalDocumentDescriptor(PdfDocument document) => _document = document;
         public void Metadata(Action<DocumentMetadata> configure)
         {
@@ -30,7 +31,13 @@ public partial class PdfDocument
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var descriptor = new CanonicalPageDescriptor(_document);
             configure(descriptor);
-            descriptor.Build();
+            _pages.Add(descriptor);
+        }
+
+        internal void Build()
+        {
+            foreach (CanonicalPageDescriptor page in _pages)
+                page.Build();
         }
     }
 }

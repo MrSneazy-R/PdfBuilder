@@ -36,6 +36,9 @@ namespace PdfBuilder.Document
         /// <summary>Gets configurable rendering safeguards for this document.</summary>
         public PdfRenderLimits RenderLimits { get; } = new();
 
+        /// <summary>Gets document-scoped diagnostics for unresolved navigation targets.</summary>
+        public PdfNavigationDiagnostics NavigationDiagnostics { get; } = new();
+
         internal FontCatalogSnapshot FontSnapshot { get; } = FontCatalog.CaptureSnapshot();
         internal object GenerationSyncRoot { get; } = new();
 

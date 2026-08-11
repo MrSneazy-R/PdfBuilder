@@ -20,6 +20,8 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ITextStyleDescriptor),
         typeof(ITextDescriptor),
         typeof(IRichTextDescriptor),
+        typeof(ISectionDescriptor),
+        typeof(ITableOfContentsDescriptor),
         typeof(IImageDescriptor),
         typeof(IChartDescriptor),
         typeof(ITableDescriptor),
@@ -28,6 +30,9 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ITableCellDescriptor),
         typeof(PageContext),
         typeof(PageTextTokens),
+        typeof(PdfNavigationDiagnostic),
+        typeof(PdfNavigationDiagnostics),
+        typeof(PdfNavigationException),
         typeof(PageOrientation),
         typeof(PageSize),
         typeof(PageSizes),
@@ -84,7 +89,9 @@ public sealed class CanonicalApiArchitectureTests
             "CanonicalStackDescriptor",
             "CanonicalLayerDescriptor",
             "CanonicalTextStyle",
-            "CanonicalRichTextDescriptor"
+            "CanonicalRichTextDescriptor",
+            "CanonicalSectionDescriptor",
+            "CanonicalTableOfContentsDescriptor"
         ];
 
         Dictionary<string, Type> nestedTypes = typeof(PdfDocument)
@@ -109,7 +116,8 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Api/TextContracts.cs",
             "Document/Api/TableContracts.cs",
             "Document/Api/ChartContracts.cs",
-            "Document/Api/MediaContracts.cs"
+            "Document/Api/MediaContracts.cs",
+            "Document/Api/NavigationContracts.cs"
         ];
         string[] adapterFiles =
         [
@@ -120,7 +128,8 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Canonical/CanonicalTextDescriptor.cs",
             "Document/Canonical/CanonicalTableDescriptor.cs",
             "Document/Canonical/CanonicalChartDescriptor.cs",
-            "Document/Canonical/CanonicalMediaDescriptor.cs"
+            "Document/Canonical/CanonicalMediaDescriptor.cs",
+            "Document/Canonical/CanonicalNavigationDescriptor.cs"
         ];
 
         File.Exists(Path.Combine(FindRepositoryRoot(), "Document/CanonicalDocumentApi.cs")).Should().BeFalse();

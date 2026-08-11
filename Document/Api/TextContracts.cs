@@ -73,4 +73,8 @@ public interface IRichTextDescriptor
     ITextDescriptor DefaultStyle();
     /// <summary>Adds an independently styled span.</summary>
     ITextDescriptor Span(string text);
+    /// <summary>Adds an independently styled span linked to an allowed external URI.</summary>
+    ITextDescriptor ExternalLink(string text, string uri);
+    /// <summary>Adds an independently styled span linked to an internal anchor.</summary>
+    ITextDescriptor InternalLink(string text, string anchorId);
 }

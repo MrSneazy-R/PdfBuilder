@@ -93,6 +93,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal LayoutComponentCollection NavigationAnchor(string id, string? title, int level)
+        {
+            _components.Add(new NavigationAnchorComponent(id, title, level));
+            return this;
+        }
+
         internal LayoutComponentCollection EnsureSpace(float minimumHeight, Action<LayoutComponentCollection> configure)
         {
             if (minimumHeight < 0f || float.IsNaN(minimumHeight) || float.IsInfinity(minimumHeight)) throw new ArgumentOutOfRangeException(nameof(minimumHeight));

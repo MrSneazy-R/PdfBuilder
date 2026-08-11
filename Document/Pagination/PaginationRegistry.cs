@@ -13,6 +13,8 @@ namespace PdfBuilder.Document
         private readonly List<PageReference> _references = new();
         private readonly List<int> _counters = new();
         private readonly Dictionary<string, int> _anchorCounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _anchorIds = new(StringComparer.Ordinal);
+        private Dictionary<string, int> _pageNumbers = new(StringComparer.Ordinal);
 
         public IReadOnlyList<SectionEntry> Sections => _sections;
 
@@ -30,8 +32,17 @@ namespace PdfBuilder.Document
             return baseId;
         }
 
-        internal SectionEntry RegisterSection(string title, int level, string anchorId, bool includeInToc)
+        internal void RegisterAnchor(string anchorId)
         {
+            if (string.IsNullOrWhiteSpace(anchorId))
+                throw new ArgumentException("An anchor id is required.", nameof(anchorId));
+            if (!_anchorIds.Add(anchorId))
+                throw new PdfNavigationException($"Duplicate navigation anchor id '{anchorId}'. Anchor ids must be unique within a document.");
+        }
+
+        internal SectionEntry RegisterSection(string title, int level, string anchorId, bool includeInToc, bool numbered = true)
+        {
+            RegisterAnchor(anchorId);
             level = Math.Max(1, level);
             while (_counters.Count < level)
                 _counters.Add(0);
@@ -47,7 +58,7 @@ namespace PdfBuilder.Document
                 parts.Add(value.ToString());
             }
 
-            string number = string.Join(".", parts);
+            string number = numbered ? string.Join(".", parts) : string.Empty;
             var entry = new SectionEntry(title, level, number, anchorId, includeInToc);
             _sections.Add(entry);
             return entry;
@@ -67,6 +78,8 @@ namespace PdfBuilder.Document
             if (anchorLookup == null)
                 return;
 
+            _pageNumbers = anchorLookup.ToDictionary(pair => pair.Key, pair => pair.Value.pageIndex + 1, StringComparer.Ordinal);
+
             foreach (var section in _sections)
             {
                 if (anchorLookup.TryGetValue(section.AnchorId, out var info))
@@ -83,6 +96,9 @@ namespace PdfBuilder.Document
                     : reference.PendingText;
             }
         }
+
+        internal bool TryGetPageNumber(string anchorId, out int pageNumber)
+            => _pageNumbers.TryGetValue(anchorId, out pageNumber);
 
         private static string Slugify(string value)
         {
@@ -142,7 +158,7 @@ namespace PdfBuilder.Document
         public float IndentPerLevel { get; set; } = 12f;
         public float PageNumberColumnWidth { get; set; } = 48f;
         public string PageNumberFormat { get; set; } = "{0}";
-        public string PendingPageText { get; set; } = "â€¦";
+        public string PendingPageText { get; set; } = "…";
         public string NumberSeparator { get; set; } = " ";
     }
 }

@@ -67,6 +67,9 @@ namespace PdfBuilder.Document.Layout
                 WidowLines = source.WidowLines,
                 OrphanLines = source.OrphanLines,
                 PageTextTemplate = source.PageTextTemplate,
+                PageReferenceAnchorId = source.PageReferenceAnchorId,
+                PageReferenceFormat = source.PageReferenceFormat,
+                PageReferencePendingText = source.PageReferencePendingText,
                 ThemeStyleName = source.ThemeStyleName,
                 CanonicalStyleOverrides = source.CanonicalStyleOverrides?.Clone()
             };
