@@ -98,6 +98,26 @@ PdfBuilder.Document.CanvasSize.Height.get -> float
 PdfBuilder.Document.CanvasSize.Height.init -> void
 PdfBuilder.Document.CanvasSize.Width.get -> float
 PdfBuilder.Document.CanvasSize.Width.init -> void
+PdfBuilder.Document.ChartBoxGroup
+PdfBuilder.Document.ChartBoxGroup.CategoryIndex.get -> int
+PdfBuilder.Document.ChartBoxGroup.CategoryIndex.init -> void
+PdfBuilder.Document.ChartBoxGroup.ChartBoxGroup() -> void
+PdfBuilder.Document.ChartBoxGroup.ChartBoxGroup(int CategoryIndex, System.Collections.Generic.IReadOnlyList<float>! Values) -> void
+PdfBuilder.Document.ChartBoxGroup.Values.get -> System.Collections.Generic.IReadOnlyList<float>!
+PdfBuilder.Document.ChartBoxGroup.Values.init -> void
+PdfBuilder.Document.ChartBubblePoint
+PdfBuilder.Document.ChartBubblePoint.ChartBubblePoint() -> void
+PdfBuilder.Document.ChartBubblePoint.ChartBubblePoint(float X, float Y, float Size, string? Label = null, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartBubblePoint.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartBubblePoint.Fill.init -> void
+PdfBuilder.Document.ChartBubblePoint.Label.get -> string?
+PdfBuilder.Document.ChartBubblePoint.Label.init -> void
+PdfBuilder.Document.ChartBubblePoint.Size.get -> float
+PdfBuilder.Document.ChartBubblePoint.Size.init -> void
+PdfBuilder.Document.ChartBubblePoint.X.get -> float
+PdfBuilder.Document.ChartBubblePoint.X.init -> void
+PdfBuilder.Document.ChartBubblePoint.Y.get -> float
+PdfBuilder.Document.ChartBubblePoint.Y.init -> void
 PdfBuilder.Document.ChartBuilder
 PdfBuilder.Document.ChartBuilder.Add() -> float
 PdfBuilder.Document.ChartBuilder.AddBars(string! name, System.Drawing.Color fill, System.Drawing.Color stroke, float strokeW, params float[]! values) -> PdfBuilder.Document.ChartBuilder!
@@ -194,6 +214,61 @@ PdfBuilder.Document.ChartBuilder.Width(float w) -> PdfBuilder.Document.ChartBuil
 PdfBuilder.Document.ChartBuilder.X(float x) -> PdfBuilder.Document.ChartBuilder!
 PdfBuilder.Document.ChartBuilder.XLabelRotation(float deg) -> PdfBuilder.Document.ChartBuilder!
 PdfBuilder.Document.ChartBuilder.Y(float y) -> PdfBuilder.Document.ChartBuilder!
+PdfBuilder.Document.ChartBulletRange
+PdfBuilder.Document.ChartBulletRange.ChartBulletRange() -> void
+PdfBuilder.Document.ChartBulletRange.ChartBulletRange(float Start, float End, PdfBuilder.Models.PdfColor Fill) -> void
+PdfBuilder.Document.ChartBulletRange.End.get -> float
+PdfBuilder.Document.ChartBulletRange.End.init -> void
+PdfBuilder.Document.ChartBulletRange.Fill.get -> PdfBuilder.Models.PdfColor
+PdfBuilder.Document.ChartBulletRange.Fill.init -> void
+PdfBuilder.Document.ChartBulletRange.Start.get -> float
+PdfBuilder.Document.ChartBulletRange.Start.init -> void
+PdfBuilder.Document.ChartCandlestickValue
+PdfBuilder.Document.ChartCandlestickValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartCandlestickValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartCandlestickValue.ChartCandlestickValue() -> void
+PdfBuilder.Document.ChartCandlestickValue.ChartCandlestickValue(int CategoryIndex, float Open, float High, float Low, float Close) -> void
+PdfBuilder.Document.ChartCandlestickValue.Close.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Close.init -> void
+PdfBuilder.Document.ChartCandlestickValue.High.get -> float
+PdfBuilder.Document.ChartCandlestickValue.High.init -> void
+PdfBuilder.Document.ChartCandlestickValue.Low.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Low.init -> void
+PdfBuilder.Document.ChartCandlestickValue.Open.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Open.init -> void
+PdfBuilder.Document.ChartErrorValue
+PdfBuilder.Document.ChartErrorValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartErrorValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartErrorValue.ChartErrorValue() -> void
+PdfBuilder.Document.ChartErrorValue.ChartErrorValue(int CategoryIndex, float Value, float ErrorMinus, float ErrorPlus) -> void
+PdfBuilder.Document.ChartErrorValue.ErrorMinus.get -> float
+PdfBuilder.Document.ChartErrorValue.ErrorMinus.init -> void
+PdfBuilder.Document.ChartErrorValue.ErrorPlus.get -> float
+PdfBuilder.Document.ChartErrorValue.ErrorPlus.init -> void
+PdfBuilder.Document.ChartErrorValue.Value.get -> float
+PdfBuilder.Document.ChartErrorValue.Value.init -> void
+PdfBuilder.Document.ChartFunnelValue
+PdfBuilder.Document.ChartFunnelValue.ChartFunnelValue() -> void
+PdfBuilder.Document.ChartFunnelValue.ChartFunnelValue(string! Stage, float Value, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartFunnelValue.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartFunnelValue.Fill.init -> void
+PdfBuilder.Document.ChartFunnelValue.Stage.get -> string!
+PdfBuilder.Document.ChartFunnelValue.Stage.init -> void
+PdfBuilder.Document.ChartFunnelValue.Value.get -> float
+PdfBuilder.Document.ChartFunnelValue.Value.init -> void
+PdfBuilder.Document.ChartGanttTask
+PdfBuilder.Document.ChartGanttTask.CategoryIndex.get -> int
+PdfBuilder.Document.ChartGanttTask.CategoryIndex.init -> void
+PdfBuilder.Document.ChartGanttTask.ChartGanttTask() -> void
+PdfBuilder.Document.ChartGanttTask.ChartGanttTask(int CategoryIndex, float Start, float End, string! Label, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartGanttTask.End.get -> float
+PdfBuilder.Document.ChartGanttTask.End.init -> void
+PdfBuilder.Document.ChartGanttTask.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartGanttTask.Fill.init -> void
+PdfBuilder.Document.ChartGanttTask.Label.get -> string!
+PdfBuilder.Document.ChartGanttTask.Label.init -> void
+PdfBuilder.Document.ChartGanttTask.Start.get -> float
+PdfBuilder.Document.ChartGanttTask.Start.init -> void
 PdfBuilder.Document.ChartLegendPosition
 PdfBuilder.Document.ChartLegendPosition.Below = 3 -> PdfBuilder.Document.ChartLegendPosition
 PdfBuilder.Document.ChartLegendPosition.Hidden = 0 -> PdfBuilder.Document.ChartLegendPosition
@@ -214,6 +289,15 @@ PdfBuilder.Document.ChartPoint.X.get -> float
 PdfBuilder.Document.ChartPoint.X.init -> void
 PdfBuilder.Document.ChartPoint.Y.get -> float
 PdfBuilder.Document.ChartPoint.Y.init -> void
+PdfBuilder.Document.ChartRangeValue
+PdfBuilder.Document.ChartRangeValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartRangeValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartRangeValue.ChartRangeValue() -> void
+PdfBuilder.Document.ChartRangeValue.ChartRangeValue(int CategoryIndex, float Low, float High) -> void
+PdfBuilder.Document.ChartRangeValue.High.get -> float
+PdfBuilder.Document.ChartRangeValue.High.init -> void
+PdfBuilder.Document.ChartRangeValue.Low.get -> float
+PdfBuilder.Document.ChartRangeValue.Low.init -> void
 PdfBuilder.Document.ChartValue
 PdfBuilder.Document.ChartValue.Category.get -> string!
 PdfBuilder.Document.ChartValue.Category.init -> void
@@ -221,6 +305,13 @@ PdfBuilder.Document.ChartValue.ChartValue() -> void
 PdfBuilder.Document.ChartValue.ChartValue(string! Category, float Value) -> void
 PdfBuilder.Document.ChartValue.Value.get -> float
 PdfBuilder.Document.ChartValue.Value.init -> void
+PdfBuilder.Document.ChartWaterfallValue
+PdfBuilder.Document.ChartWaterfallValue.ChartWaterfallValue() -> void
+PdfBuilder.Document.ChartWaterfallValue.ChartWaterfallValue(float Delta, bool IsTotal = false) -> void
+PdfBuilder.Document.ChartWaterfallValue.Delta.get -> float
+PdfBuilder.Document.ChartWaterfallValue.Delta.init -> void
+PdfBuilder.Document.ChartWaterfallValue.IsTotal.get -> bool
+PdfBuilder.Document.ChartWaterfallValue.IsTotal.init -> void
 PdfBuilder.Document.ColumnBuilder
 PdfBuilder.Document.ColumnBuilder.ActivateColumn(int index, bool reset = false) -> PdfBuilder.Document.FlowColumn!
 PdfBuilder.Document.ColumnBuilder.Anchor(string! id) -> PdfBuilder.Document.AnchorBuilder!
@@ -308,11 +399,24 @@ PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Center = 1 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Left = 0 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Right = 2 -> PdfBuilder.Document.HorizontalAlign
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor.SecondaryAxis(bool enabled = true) -> void
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor.Stroke(PdfBuilder.Models.PdfColor color, float width = 0.5) -> void
 PdfBuilder.Document.IAreaChartSeriesDescriptor
 PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
 PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(string! themeColor) -> void
 PdfBuilder.Document.IBarChartSeriesDescriptor
 PdfBuilder.Document.IBarChartSeriesDescriptor.Gap(float ratio) -> void
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor.BoxWidth(float ratio) -> void
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IBubbleChartSeriesDescriptor
+PdfBuilder.Document.IBubbleChartSeriesDescriptor.Radius(float minimum, float maximum) -> void
+PdfBuilder.Document.IBulletChartSeriesDescriptor
+PdfBuilder.Document.IBulletChartSeriesDescriptor.TargetStyle(PdfBuilder.Models.PdfColor color, float width = 1) -> void
+PdfBuilder.Document.IBulletChartSeriesDescriptor.ValueColor(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.ICandlestickChartSeriesDescriptor
+PdfBuilder.Document.ICandlestickChartSeriesDescriptor.Colors(PdfBuilder.Models.PdfColor up, PdfBuilder.Models.PdfColor down, PdfBuilder.Models.PdfColor wick) -> void
 PdfBuilder.Document.ICanvasDescriptor
 PdfBuilder.Document.ICanvasDescriptor.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.ICanvasDescriptor!
 PdfBuilder.Document.ICanvasDescriptor.ClipRectangle(float x, float y, float width, float height) -> PdfBuilder.Document.ICanvasDescriptor!
@@ -349,19 +453,32 @@ PdfBuilder.Document.IChartAxisDescriptor.Format(System.Func<float, string!>! for
 PdfBuilder.Document.IChartAxisDescriptor.Range(float? minimum = null, float? maximum = null) -> void
 PdfBuilder.Document.IChartAxisDescriptor.Ticks(int desiredCount) -> void
 PdfBuilder.Document.IChartDescriptor.Area(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IAreaChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.BoxPlot(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBoxGroup>! groups) -> PdfBuilder.Document.IBoxPlotChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Bubble(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBubblePoint>! points) -> PdfBuilder.Document.IBubbleChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Bullet(string! name, float value, float target, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBulletRange>! ranges) -> PdfBuilder.Document.IBulletChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Candlestick(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartCandlestickValue>! values) -> PdfBuilder.Document.ICandlestickChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.Categories(params string![]! values) -> void
 PdfBuilder.Document.IChartDescriptor.Donut(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartValue>! values, float innerRatio = 0.6) -> PdfBuilder.Document.IPieChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.ErrorBars(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartErrorValue>! values) -> PdfBuilder.Document.IErrorBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Funnel(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartFunnelValue>! stages) -> PdfBuilder.Document.IFunnelChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Gantt(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartGanttTask>! tasks) -> PdfBuilder.Document.IGanttChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.GroupedBars(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Heatmap(string! name, float[,]! values) -> PdfBuilder.Document.IHeatmapChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Histogram(string! name, System.Collections.Generic.IEnumerable<float>! samples) -> PdfBuilder.Document.IHistogramChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.LabelStyle(System.Action<PdfBuilder.Document.ITextStyleDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor.Legend(PdfBuilder.Document.ChartLegendPosition position = PdfBuilder.Document.ChartLegendPosition.TopRight) -> void
 PdfBuilder.Document.IChartDescriptor.Line(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.ILineChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.Palette(params PdfBuilder.Models.PdfColor[]! colors) -> void
 PdfBuilder.Document.IChartDescriptor.Palette(params string![]! themeColors) -> void
+PdfBuilder.Document.IChartDescriptor.Pareto(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IParetoChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.Pie(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartValue>! values) -> PdfBuilder.Document.IPieChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Radar(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IRadarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.RangeArea(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartRangeValue>! values) -> PdfBuilder.Document.IRangeAreaChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.Scatter(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartPoint>! points) -> PdfBuilder.Document.IScatterChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.SecondaryYAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor.Stacked100Bars(string! name, System.Collections.Generic.IEnumerable<float>! values, string! stack = "default") -> PdfBuilder.Document.IBarChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.StackedBars(string! name, System.Collections.Generic.IEnumerable<float>! values, string! stack = "default") -> PdfBuilder.Document.IBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Waterfall(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartWaterfallValue>! values) -> PdfBuilder.Document.IWaterfallChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.XAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor.YAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartSeriesDescriptor
@@ -457,6 +574,13 @@ PdfBuilder.Document.IChartDescriptor.Size(float width, float height) -> void
 PdfBuilder.Document.IChartDescriptor.Title(string! value) -> void
 PdfBuilder.Document.IDocumentDescriptor.RenderLimits(System.Action<PdfBuilder.Document.Layout.PdfRenderLimits!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Theme(System.Action<PdfBuilder.Document.DocumentThemeBuilder!>! configure) -> void
+PdfBuilder.Document.IErrorBarChartSeriesDescriptor
+PdfBuilder.Document.IErrorBarChartSeriesDescriptor.CapWidth(float points) -> void
+PdfBuilder.Document.IFunnelChartSeriesDescriptor
+PdfBuilder.Document.IFunnelChartSeriesDescriptor.Gap(float points) -> void
+PdfBuilder.Document.IFunnelChartSeriesDescriptor.Tapered(bool enabled = true) -> void
+PdfBuilder.Document.IGanttChartSeriesDescriptor
+PdfBuilder.Document.IGanttChartSeriesDescriptor.Geometry(float rowGap, float barHeightRatio) -> void
 PdfBuilder.Document.IGridDescriptor
 PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
 PdfBuilder.Document.IGridDescriptor.ColumnSpacing(float value) -> void
@@ -464,6 +588,13 @@ PdfBuilder.Document.IGridDescriptor.ColumnSpacing(string! spacingToken) -> void
 PdfBuilder.Document.IGridDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IGridDescriptor.RowSpacing(float value) -> void
 PdfBuilder.Document.IGridDescriptor.RowSpacing(string! spacingToken) -> void
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor.ColorScale(System.Func<float, PdfBuilder.Models.PdfColor>! scale) -> void
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor.Range(float? minimum = null, float? maximum = null) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Bins(int count) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Gap(float ratio) -> void
 PdfBuilder.Document.IImageDescriptor.AlphaAwareEncoding(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IImageDescriptor.CropAlignment(PdfBuilder.Document.ImageCropAlignment alignment) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IImageDescriptor.Downsample(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
@@ -574,6 +705,9 @@ PdfBuilder.Document.IPageDescriptor.Margin(float left, float top, float right, f
 PdfBuilder.Document.IPageDescriptor.Margin(float value) -> void
 PdfBuilder.Document.IPageDescriptor.Orientation(PdfBuilder.Document.PageOrientation orientation) -> void
 PdfBuilder.Document.IPageDescriptor.Size(PdfBuilder.Document.PageSize size) -> void
+PdfBuilder.Document.IParetoChartSeriesDescriptor
+PdfBuilder.Document.IParetoChartSeriesDescriptor.BarColor(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IParetoChartSeriesDescriptor.CumulativeStyle(PdfBuilder.Models.PdfColor color, float width = 1) -> void
 PdfBuilder.Document.IPdfComponent
 PdfBuilder.Document.IPdfComponent.Compose(PdfBuilder.Document.IContainer! container) -> void
 PdfBuilder.Document.IPdfComponent<TModel>
@@ -583,6 +717,12 @@ PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params PdfBuilder.Models.Pd
 PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params string![]! themeColors) -> void
 PdfBuilder.Document.IPieChartSeriesDescriptor.Labels(System.Func<PdfBuilder.Document.ChartValue, string!>? formatter = null, bool outside = true) -> void
 PdfBuilder.Document.IPieChartSeriesDescriptor.StartAngle(float degrees) -> void
+PdfBuilder.Document.IRadarChartSeriesDescriptor
+PdfBuilder.Document.IRadarChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IRadarChartSeriesDescriptor.Range(float? minimum = null, float? maximum = null) -> void
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor.Smooth(bool enabled = true, float tension = 0.45) -> void
 PdfBuilder.Document.IRichTextDescriptor
 PdfBuilder.Document.IRichTextDescriptor.DefaultStyle() -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IRichTextDescriptor.ExternalLink(string! text, string! uri) -> PdfBuilder.Document.ITextDescriptor!
@@ -713,6 +853,8 @@ PdfBuilder.Document.ITextStyleDescriptor.Superscript() -> PdfBuilder.Document.IT
 PdfBuilder.Document.ITextStyleDescriptor.Underline() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.WordSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.Wrap() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.IWaterfallChartSeriesDescriptor
+PdfBuilder.Document.IWaterfallChartSeriesDescriptor.Colors(PdfBuilder.Models.PdfColor positive, PdfBuilder.Models.PdfColor negative, PdfBuilder.Models.PdfColor total) -> void
 PdfBuilder.Document.Layout.CanvasBuilder
 PdfBuilder.Document.Layout.CanvasBuilder.AvoidBreakInside(bool value = true) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.Layout.CanvasBuilder!

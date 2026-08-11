@@ -47,7 +47,7 @@ internal static class ProductionFixtureFactory
             column.Item().Text("All values are deterministic demonstration data.");
             column.Item().Chart(chart =>
             {
-                chart.Size(500, 210);
+                chart.Size(500, 180);
                 chart.Title("Quarterly throughput");
                 chart.Categories("Q1", "Q2", "Q3", "Q4");
                 chart.Legend(ChartLegendPosition.TopRight);
@@ -56,7 +56,7 @@ internal static class ProductionFixtureFactory
             });
             column.Item().Chart(chart =>
             {
-                chart.Size(500, 190);
+                chart.Size(500, 150);
                 chart.Title("Synthetic portfolio mix");
                 chart.Donut("Mix", new[]
                 {
@@ -64,6 +64,17 @@ internal static class ProductionFixtureFactory
                     new ChartValue("Projects", 31),
                     new ChartValue("Support", 17)
                 }).Colors("Brand", "Accent", "Muted");
+            });
+            column.Item().Chart(chart =>
+            {
+                chart.Size(500, 100);
+                chart.Title("Service target");
+                chart.Bullet("On-time delivery", 94, 96, new[]
+                {
+                    new ChartBulletRange(0, 85, PdfColor.Parse("#E8E8E8")),
+                    new ChartBulletRange(85, 95, PdfColor.Parse("#D6E4F0")),
+                    new ChartBulletRange(95, 100, PdfColor.Parse("#C9E5D1"))
+                }).ValueColor(PdfColor.Parse("#2F6B9A"));
             });
         });
     });

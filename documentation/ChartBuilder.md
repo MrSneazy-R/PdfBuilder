@@ -3,7 +3,23 @@ ChartBuilder
 
 Purpose
 -------
-`ChartBuilder` produces rich charts (cartesian, pie/donut, scatter, bubble, range, histogram, box plot, heatmap, radar, funnel, candlestick, bullet, Pareto, Gantt) by configuring a `ChartElement`. Obtain an instance from `ColumnBuilder.Chart(x, y, width, height)` or equivalent helpers.
+The preferred `IContainer.Chart(...)` API produces core and advanced vector charts without exposing `ChartElement` or `System.Drawing`. Core series are line, area, grouped/stacked/100%-stacked bar, pie, donut, and scatter. Typed advanced descriptors cover bubble, waterfall, radar, funnel, Gantt, candlestick, bullet/KPI, Pareto, range area, error bars, histogram, box plot, and heatmap.
+
+```csharp
+column.Item().Chart(chart =>
+{
+    chart.Size(480, 220);
+    chart.Categories("Q1", "Q2", "Q3", "Q4");
+    chart.Pareto("Defects", new[] { 42f, 24f, 11f, 5f })
+        .CumulativeStyle(PdfColor.Parse("#C53030"), 1.5f);
+});
+```
+
+All data is materialised and checked for finite values during composition. Invalid OHLC ranges, negative error extents, overlapping bullet ranges, and other series-specific errors fail before output. Core and advanced series cannot currently be mixed in the same chart; use adjacent chart containers. Theme palettes and `PdfColor` remain the public colour path.
+
+Legacy builder
+--------------
+`ChartBuilder` remains available as a compatibility adapter for applications using raw `ChartElement` types. Obtain it from `ColumnBuilder.Chart(x, y, width, height)` or equivalent legacy helpers.
 
 Common Configuration
 --------------------
