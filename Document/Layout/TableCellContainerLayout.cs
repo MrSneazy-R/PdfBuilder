@@ -22,45 +22,58 @@ internal static class TableCellContainerLayout
         for (int rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
         {
             TableRow row = table.Rows[rowIndex];
-            float cellX = table.X;
-            int columnIndex = 0;
-            while (columnIndex < totalColumns && covered.Contains((rowIndex, columnIndex)))
+            IDisposable? semanticScope = null;
+            if (row.SemanticDescriptor != null && page.Owner?.Tagging.Enabled == true)
             {
-                cellX += columnWidths[columnIndex];
-                columnIndex++;
+                PdfSemanticNode node = page.Owner.SemanticRegistry.GetOrCreate(row.SemanticDescriptor);
+                semanticScope = page.Owner.SemanticRegistry.Enter(node.Id);
             }
-
-            foreach (TableCell cell in row.Cells)
+            try
             {
+                float cellX = table.X;
+                int columnIndex = 0;
                 while (columnIndex < totalColumns && covered.Contains((rowIndex, columnIndex)))
                 {
                     cellX += columnWidths[columnIndex];
                     columnIndex++;
                 }
 
-                int columnSpan = Math.Max(1, cell.ColSpan);
-                int rowSpan = Math.Max(1, cell.RowSpan);
-                float cellWidth = Sum(columnWidths, columnIndex, columnSpan);
-                float cellHeight = Sum(rowHeights, rowIndex, rowSpan);
-
-                if (cell.MeasuredContent != null && cell.MeasuredContentLayout != null)
-                    AddContentGroup(page, options, table, cell, cellX, rowTop, cellWidth, cellHeight);
-
-                if (rowSpan > 1 || columnSpan > 1)
+                foreach (TableCell cell in row.Cells)
                 {
-                    for (int rowOffset = 0; rowOffset < rowSpan; rowOffset++)
-                        for (int columnOffset = 0; columnOffset < columnSpan; columnOffset++)
-                        {
-                            if (rowOffset != 0 || columnOffset != 0)
-                                covered.Add((rowIndex + rowOffset, columnIndex + columnOffset));
-                        }
+                    while (columnIndex < totalColumns && covered.Contains((rowIndex, columnIndex)))
+                    {
+                        cellX += columnWidths[columnIndex];
+                        columnIndex++;
+                    }
+
+                    int columnSpan = Math.Max(1, cell.ColSpan);
+                    int rowSpan = Math.Max(1, cell.RowSpan);
+                    float cellWidth = Sum(columnWidths, columnIndex, columnSpan);
+                    float cellHeight = Sum(rowHeights, rowIndex, rowSpan);
+
+                    if (cell.MeasuredContent != null && cell.MeasuredContentLayout != null)
+                        AddContentGroup(page, options, table, cell, cellX, rowTop, cellWidth, cellHeight);
+
+                    if (rowSpan > 1 || columnSpan > 1)
+                    {
+                        for (int rowOffset = 0; rowOffset < rowSpan; rowOffset++)
+                            for (int columnOffset = 0; columnOffset < columnSpan; columnOffset++)
+                            {
+                                if (rowOffset != 0 || columnOffset != 0)
+                                    covered.Add((rowIndex + rowOffset, columnIndex + columnOffset));
+                            }
+                    }
+
+                    cellX += cellWidth;
+                    columnIndex += columnSpan;
                 }
 
-                cellX += cellWidth;
-                columnIndex += columnSpan;
+                rowTop -= rowHeights[rowIndex];
             }
-
-            rowTop -= rowHeights[rowIndex];
+            finally
+            {
+                semanticScope?.Dispose();
+            }
         }
     }
 

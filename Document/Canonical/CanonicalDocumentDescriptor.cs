@@ -47,6 +47,17 @@ public partial class PdfDocument
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             configure(new CanonicalTaggedPdfDescriptor(_document));
         }
+        public void OutputIntent(Action<IPdfOutputIntentDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var intent = new PdfOutputIntent();
+            configure(new CanonicalOutputIntentDescriptor(intent));
+            if (intent.Profile.IsEmpty)
+                throw new InvalidOperationException("An ICC profile is required for an output intent.");
+            if (string.IsNullOrWhiteSpace(intent.Identifier))
+                throw new InvalidOperationException("An output-condition identifier is required for an output intent.");
+            _document.OutputIntent = intent;
+        }
         public void RenderLimits(Action<Layout.PdfRenderLimits> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));

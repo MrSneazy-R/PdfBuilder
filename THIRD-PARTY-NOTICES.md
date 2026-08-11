@@ -4,6 +4,10 @@ PdfBuilder depends on the following third-party packages at runtime. Versions ar
 
 `PdfBuilder.Operations` can invoke a separately installed qpdf executable. qpdf is not bundled in either package; deployments must review and comply with the licence of the qpdf build they install.
 
+`PdfBuilder.Compliance` can invoke a separately installed veraPDF executable or CLI JAR.
+veraPDF is not bundled in the NuGet packages; Ubuntu CI uses the pinned `verapdf/cli:v1.30.2`
+container. Deployments must review the licence of the veraPDF distribution they install.
+
 | Package | Version | Licence | Project |
 | --- | --- | --- | --- |
 | SkiaSharp | 2.88.9 | MIT | https://github.com/mono/SkiaSharp |

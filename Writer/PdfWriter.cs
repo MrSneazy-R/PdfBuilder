@@ -322,7 +322,10 @@ namespace PdfBuilder.Writer
                 writer.WriteLine($" /MediaBox [0 0 {N(page.Width)} {N(page.Height)}]");
                 writer.WriteLine($" /Contents {contentId} 0 R");
                 if (laidOut.Tagging.Enabled)
+                {
                     writer.WriteLine($" /StructParents {i}");
+                    writer.WriteLine(" /Tabs /S");
+                }
 
                 var resSb = new StringBuilder();
                 resSb.Append(" /Resources <<");
@@ -377,6 +380,34 @@ namespace PdfBuilder.Writer
                 writer.EndObject();
             }
 
+            int outputIntentId = 0;
+            if (laidOut.OutputIntent is { } outputIntent)
+            {
+                int profileId = writer.BeginObject();
+                string alternate = outputIntent.Components switch
+                {
+                    1 => "/DeviceGray",
+                    3 => "/DeviceRGB",
+                    4 => "/DeviceCMYK",
+                    _ => throw new InvalidOperationException("The output-intent ICC profile has an unsupported colour-component count.")
+                };
+                writer.WriteStream(
+                    outputIntent.GetProfileBytes(),
+                    ("N", outputIntent.Components.ToString(CultureInfo.InvariantCulture)),
+                    ("Alternate", alternate));
+                writer.EndObject();
+
+                outputIntentId = writer.BeginObject();
+                writer.WriteLine("<< /Type /OutputIntent /S /GTS_PDFA1");
+                writer.WriteLine($" /OutputConditionIdentifier {PdfStringEncoder.Encode(outputIntent.Identifier)}");
+                if (!string.IsNullOrWhiteSpace(outputIntent.Info))
+                    writer.WriteLine($" /Info {PdfStringEncoder.Encode(outputIntent.Info!)}");
+                writer.WriteLine($" /RegistryName {PdfStringEncoder.Encode(outputIntent.RegistryName)}");
+                writer.WriteLine($" /DestOutputProfile {profileId} 0 R");
+                writer.WriteLine(">>");
+                writer.EndObject();
+            }
+
             // Catalog -------------------------------------------------------------------------------
             int catalogId = writer.BeginObject();
             writer.WriteLine("<<");
@@ -387,6 +418,8 @@ namespace PdfBuilder.Writer
                 writer.WriteLine($" /Lang {PdfStringEncoder.Encode(metadata.Language!)}");
             if (xmpMetadataId != 0)
                 writer.WriteLine($" /Metadata {xmpMetadataId} 0 R");
+            if (outputIntentId != 0)
+                writer.WriteLine($" /OutputIntents [{outputIntentId} 0 R]");
             if (taggedStructure != null)
             {
                 writer.WriteLine($" /StructTreeRoot {taggedStructure.StructureTreeRootId} 0 R");
@@ -899,6 +932,15 @@ namespace PdfBuilder.Writer
 
             void AddFont(string? family, bool bold = false, bool italic = false)
             {
+                if (!string.IsNullOrWhiteSpace(family))
+                {
+                    var style = new SkiaSharp.SKFontStyle(
+                        bold ? SkiaSharp.SKFontStyleWeight.Bold : SkiaSharp.SKFontStyleWeight.Normal,
+                        SkiaSharp.SKFontStyleWidth.Normal,
+                        italic ? SkiaSharp.SKFontStyleSlant.Italic : SkiaSharp.SKFontStyleSlant.Upright);
+                    if (FontCatalog.CurrentSnapshot.Resolve(family, style) != null)
+                        return;
+                }
                 var base14 = FontManager.MapToBase14(FontManager.NormalizeFontKey(family, bold, italic));
                 fonts.Add(base14);
             }
@@ -911,19 +953,19 @@ namespace PdfBuilder.Writer
             }
 
             // Document-level header/footer + master watermark fonts
-            if (doc.HeaderFooter != null)
+            if (UsesLegacyHeaderFooterText(doc.HeaderFooter))
                 AddFont(doc.HeaderFooter.FontFamily);
-            if (doc.Master?.Watermark != null)
+            if (!string.IsNullOrEmpty(doc.Master?.Watermark?.Text))
                 AddFont(doc.Master.Watermark.FontFamily);
 
             foreach (var page in doc.Pages)
             {
                 var pageHF = page.HeaderFooterOverride ?? doc.HeaderFooter;
-                if (pageHF != null)
+                if (UsesLegacyHeaderFooterText(pageHF))
                     AddFont(pageHF.FontFamily);
 
                 var pageMaster = page.MasterOverride ?? doc.Master;
-                if (pageMaster?.Watermark != null)
+                if (!string.IsNullOrEmpty(pageMaster?.Watermark?.Text))
                     AddFont(pageMaster.Watermark.FontFamily);
 
                 foreach (var element in EnumerateAllElements(page))
@@ -931,7 +973,7 @@ namespace PdfBuilder.Writer
                     switch (element)
                     {
                         case TextElement text:
-                            fonts.Add(TextRenderer.PickBaseFont(text));
+                            AddFont(text.FontFamily, text.Bold, text.Italic);
                             break;
 
                         case RichTextElement richText:
@@ -996,9 +1038,18 @@ namespace PdfBuilder.Writer
             }
 
             if (fonts.Count == 0)
-                fonts.Add("Helvetica");
+                return fonts;
 
             return fonts;
+
+            static bool UsesLegacyHeaderFooterText(HeaderFooterSpec? spec)
+                => spec != null &&
+                   (!string.IsNullOrEmpty(spec.HeaderTemplate) ||
+                    !string.IsNullOrEmpty(spec.FooterTemplate) ||
+                    !string.IsNullOrEmpty(spec.FirstPageHeaderTemplate) ||
+                    !string.IsNullOrEmpty(spec.FirstPageFooterTemplate) ||
+                    spec.HeaderLayout != null ||
+                    spec.FooterLayout != null);
 
             static IEnumerable<RichRun> EnumerateListRuns(IEnumerable<ListItem> items)
             {

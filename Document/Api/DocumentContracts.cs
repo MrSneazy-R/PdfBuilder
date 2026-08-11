@@ -26,6 +26,9 @@ public interface IDocumentDescriptor
     /// <summary>Configures marked content and the document structure tree without claiming PDF/UA conformance.</summary>
     void Tagged(Action<ITaggedPdfDescriptor> configure);
 
+    /// <summary>Configures an ICC output intent for archival or print workflows.</summary>
+    void OutputIntent(Action<IPdfOutputIntentDescriptor> configure);
+
     /// <summary>Configures bounded rendering and pagination limits before canonical pages are composed.</summary>
     void RenderLimits(Action<Layout.PdfRenderLimits> configure);
 

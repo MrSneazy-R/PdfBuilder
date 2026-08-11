@@ -303,6 +303,7 @@ namespace PdfBuilder.Document.Layout
                 ExplicitRowIndex = row.ExplicitRowIndex,
                 BandIndex = row.BandIndex,
                 AllowSplit = row.AllowSplit,
+                SemanticDescriptor = row.SemanticDescriptor,
                 KeepWithNext = row.KeepWithNext,
                 ThickTopBorder = row.ThickTopBorder,
                 ThickBottomBorder = row.ThickBottomBorder,

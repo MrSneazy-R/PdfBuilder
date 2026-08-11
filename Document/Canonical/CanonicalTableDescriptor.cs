@@ -108,7 +108,12 @@ public partial class PdfDocument
         private void AddRow(Action<ITableRowDescriptor> configure, bool isHeader, bool isFooter = false)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var row = new TableRow { IsHeader = isHeader, IsFooter = isFooter };
+            var row = new TableRow
+            {
+                IsHeader = isHeader,
+                IsFooter = isFooter,
+                SemanticDescriptor = new PdfSemanticDescriptor { Role = PdfSemanticRole.TableRow }
+            };
             configure(new CanonicalTableRowDescriptor(row, _theme, _componentPath, _pagination, _compositionState));
             if (row.Cells.Count == 0)
                 throw new InvalidOperationException("A table row requires at least one cell.");
@@ -212,7 +217,9 @@ public partial class PdfDocument
         {
             var cell = new TableCell();
             _row.Cells.Add(cell);
-            return new CanonicalTableCellDescriptor(cell, _theme, _componentPath, _pagination, _compositionState);
+            var descriptor = new CanonicalTableCellDescriptor(cell, _theme, _componentPath, _pagination, _compositionState);
+            descriptor.Semantic(_row.IsHeader ? PdfSemanticRole.TableHeaderCell : PdfSemanticRole.TableCell);
+            return descriptor;
         }
     }
 

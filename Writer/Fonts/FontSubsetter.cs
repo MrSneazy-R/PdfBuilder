@@ -16,7 +16,11 @@ namespace PdfBuilder.Writer
             HB_MEMORY_MODE_READWRITE
         }
 
-        private const uint HB_SUBSET_FLAGS_RETAIN_GIDS = 1u;
+        // HarfBuzz hb_subset_flags_t: bit 0 disables hinting; bit 1 retains
+        // original glyph identifiers. CIDToGIDMap stores original GIDs, so using
+        // the no-hinting bit here corrupts subset rendering while extraction can
+        // still appear correct through ToUnicode.
+        private const uint HB_SUBSET_FLAGS_RETAIN_GIDS = 1u << 1;
 
         public static bool TrySubset(byte[] fontData, IEnumerable<uint> glyphIds, IEnumerable<int> codePoints, string fontName, out byte[] subsetBytes)
         {

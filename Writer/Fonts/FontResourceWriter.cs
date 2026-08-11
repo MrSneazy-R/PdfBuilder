@@ -85,8 +85,11 @@ namespace PdfBuilder.Writer.Fonts
                 float stemV = EstimateStemV(font.Typeface);
                 float xMin = metrics.XMin;
                 float xMax = metrics.XMax;
-                float yMin = metrics.Bottom;
-                float yMax = metrics.Top;
+                // Skia's font metrics use a downward-positive Y axis. PDF font
+                // descriptors use the conventional upward-positive coordinate
+                // system and require yMin <= yMax.
+                float yMin = -metrics.Bottom;
+                float yMax = -metrics.Top;
 
                 int descriptorId = writer.BeginObject();
                 writer.WriteLine("<< /Type /FontDescriptor");

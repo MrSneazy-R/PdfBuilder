@@ -49,6 +49,8 @@ namespace PdfBuilder.Document
         public PdfNavigationDiagnostics NavigationDiagnostics { get; } = new();
         /// <summary>Gets document-scoped tagged-PDF configuration.</summary>
         public PdfTaggingOptions Tagging { get; } = new();
+        /// <summary>Gets the configured ICC output intent, if any.</summary>
+        public PdfOutputIntent? OutputIntent { get; internal set; }
         /// <summary>Gets diagnostics captured by the most recent successful generation.</summary>
         public PdfGenerationMetrics? LastGenerationMetrics { get; internal set; }
 

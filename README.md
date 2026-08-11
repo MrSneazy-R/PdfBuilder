@@ -129,6 +129,11 @@ Windows, Ubuntu, and macOS are exercised in CI. Native SkiaSharp and HarfBuzz as
 
 Tagged output is a semantic foundation, not a PDF/UA conformance claim. This pre-release does not claim PDF/A or PDF/UA conformance. The core package does not edit existing PDFs and does not support encryption, signatures, forms, attachments, HTML rendering, remote images, or browser SVG; authorised existing-PDF operations, encryption, and attachments live in the optional `PdfBuilder.Operations` package.
 
+The optional [`PdfBuilder.Compliance`](src/PdfBuilder.Compliance/README.md) package
+prepares PDF/A-2b, PDF/A-3b, and PDF/UA-1 candidates, applies fail-closed preflight,
+and can retain independent veraPDF evidence. Metadata declarations alone never set
+its conformance result; every positive result requires a successful validator run.
+
 ## Security considerations
 
 Treat PDFs and media as untrusted inputs. Enforce application-level size limits, avoid placing secrets in diagnostics, and use inline SVG only. Generated PDFs can contain business data and require the same storage/access controls as their source records.

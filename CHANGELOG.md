@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Added the optional `PdfBuilder.Compliance` package for PDF/A-2b, PDF/A-3b, and PDF/UA-1 candidate preparation, caller-approved ICC output intents, embedded-font and semantic preflight, bounded shell-free veraPDF execution, compliance fixtures, and pinned Ubuntu CI validation. Conformance is reported only after independent validation passes.
+- Exposed bubble, waterfall, radar, funnel, Gantt, candlestick, bullet/KPI, Pareto, range-area, error-bar, histogram, box-plot, and heatmap series through typed canonical descriptors, with finite-data validation and explicit rejection of unsupported core/advanced mixing.
+- Fixed HarfBuzz subsetting to retain the original glyph identifiers used by `CIDToGIDMap`, corrected embedded-font bounding-box coordinates, and stopped emitting unused Base-14 font resources. This preserves extraction while fixing corrupt subset rendering and reducing unnecessary PDF content.
 - Added opt-in tagged-PDF semantics with canonical document/section/heading/paragraph/list/table/header/footer/figure/caption/link roles, alternative text, decorative artefacts, explicit reading order, marked content and MCIDs, structure and parent trees, role mapping, and link-annotation association. This is not a PDF/UA conformance claim.
 - Added the isolated `PdfBuilder.Operations` package for bounded, cancellation-aware qpdf inspection, selection, extraction, merge, split, overlay, underlay, attachments, encryption/permissions, authorised decryption, and linearisation without shell invocation.
 - Added a separate loopback-only preview and diagnostics host with `dotnet watch`, thumbnails, selected-page previews, PDF download, hierarchy/trace/timing panels, structured errors, debug labels, margins, flow guides, and clean/diagnostic render switching without telemetry.

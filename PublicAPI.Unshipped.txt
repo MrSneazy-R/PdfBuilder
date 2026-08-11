@@ -565,6 +565,7 @@ PdfBuilder.Document.IDocumentDescriptor
 PdfBuilder.Document.IDocumentDescriptor.Generation(System.Action<PdfBuilder.Models.PdfGenerationOptions!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Output(System.Action<PdfBuilder.Models.PdfOutputOptions!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.OutputIntent(System.Action<PdfBuilder.Document.IPdfOutputIntentDescriptor!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.OutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> void
 PdfBuilder.Document.IDocumentDescriptor.Page(System.Action<PdfBuilder.Document.IPageDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor
@@ -712,6 +713,11 @@ PdfBuilder.Document.IPdfComponent
 PdfBuilder.Document.IPdfComponent.Compose(PdfBuilder.Document.IContainer! container) -> void
 PdfBuilder.Document.IPdfComponent<TModel>
 PdfBuilder.Document.IPdfComponent<TModel>.Compose(PdfBuilder.Document.IContainer! container, TModel model) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Identifier(string! identifier) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Info(string! info) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Profile(System.ReadOnlyMemory<byte> profile) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.RegistryName(string! registryName) -> void
 PdfBuilder.Document.IPieChartSeriesDescriptor
 PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params PdfBuilder.Models.PdfColor[]! colors) -> void
 PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params string![]! themeColors) -> void
@@ -1305,6 +1311,7 @@ PdfBuilder.Document.PdfDocument.Master.set -> void
 PdfBuilder.Document.PdfDocument.Metadata.get -> PdfBuilder.Models.DocumentMetadata!
 PdfBuilder.Document.PdfDocument.MutablePages.get -> System.Collections.Generic.IList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.NavigationDiagnostics.get -> PdfBuilder.Document.PdfNavigationDiagnostics!
+PdfBuilder.Document.PdfDocument.OutputIntent.get -> PdfBuilder.Models.PdfOutputIntent?
 PdfBuilder.Document.PdfDocument.OutputOptions.get -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Document.PdfDocument.Pages.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.Pagination.get -> PdfBuilder.Document.PaginationRegistry!
@@ -2924,6 +2931,13 @@ PdfBuilder.Models.PdfGenerationOptions.DocumentIdSeed.set -> void
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.get -> System.DateTimeOffset?
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.set -> void
 PdfBuilder.Models.PdfGenerationOptions.PdfGenerationOptions() -> void
+PdfBuilder.Models.PdfOutputIntent
+PdfBuilder.Models.PdfOutputIntent.Components.get -> int
+PdfBuilder.Models.PdfOutputIntent.Identifier.get -> string!
+PdfBuilder.Models.PdfOutputIntent.Info.get -> string?
+PdfBuilder.Models.PdfOutputIntent.PdfOutputIntent() -> void
+PdfBuilder.Models.PdfOutputIntent.Profile.get -> System.ReadOnlyMemory<byte>
+PdfBuilder.Models.PdfOutputIntent.RegistryName.get -> string!
 PdfBuilder.Models.PdfOutputOptions
 PdfBuilder.Models.PdfOutputOptions.ApplyPreset(PdfBuilder.Models.PdfOutputPreset preset) -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.Clone() -> PdfBuilder.Models.PdfOutputOptions!
