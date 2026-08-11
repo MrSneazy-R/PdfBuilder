@@ -24,6 +24,17 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ITableOfContentsDescriptor),
         typeof(IImageDescriptor),
         typeof(IChartDescriptor),
+        typeof(IChartAxisDescriptor),
+        typeof(IChartSeriesDescriptor),
+        typeof(ILineChartSeriesDescriptor),
+        typeof(IAreaChartSeriesDescriptor),
+        typeof(IBarChartSeriesDescriptor),
+        typeof(IPieChartSeriesDescriptor),
+        typeof(IScatterChartSeriesDescriptor),
+        typeof(ChartPoint),
+        typeof(ChartValue),
+        typeof(ChartLegendPosition),
+        typeof(ChartMarkerShape),
         typeof(ITableDescriptor),
         typeof(ITableColumnsDescriptor),
         typeof(ITableRowDescriptor),
@@ -147,6 +158,31 @@ public sealed class CanonicalApiArchitectureTests
         {
             string source = File.ReadAllText(FindRepositoryPath(relativePath));
             source.Should().NotContain("public interface");
+        }
+    }
+
+    [Fact]
+    public void CanonicalChartRenderer_IsSplitIntoFocusedPdfColorOnlyModules()
+    {
+        string[] modules =
+        [
+            "Writer/Renderers/Charts/ChartLayout.cs",
+            "Writer/Renderers/Charts/ChartScales.cs",
+            "Writer/Renderers/Charts/ChartTicks.cs",
+            "Writer/Renderers/Charts/ChartAxesRenderer.cs",
+            "Writer/Renderers/Charts/ChartLegendRenderer.cs",
+            "Writer/Renderers/Charts/ChartLabelRenderer.cs",
+            "Writer/Renderers/Charts/ChartDrawing.cs",
+            "Writer/Renderers/Charts/LineChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/BarChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/PieChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/ScatterChartSeriesRenderer.cs"
+        ];
+
+        foreach (string module in modules)
+        {
+            string source = File.ReadAllText(FindRepositoryPath(module));
+            source.Should().NotContain("System.Drawing");
         }
     }
 

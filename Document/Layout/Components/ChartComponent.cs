@@ -20,8 +20,10 @@ namespace PdfBuilder.Document.Layout.Components
         {
             float titleSpace = !string.IsNullOrWhiteSpace(_chart.Title) ? _chart.TitleSize * 1.2f : 0f;
             float bodyHeight = _chart.Height > 0f ? _chart.Height : 220f;
-            float legendSpace = (_chart.ShowLegend && _chart.LegendPosition == ChartElement.LegendPos.Below)
-                ? (14f * Math.Max(1, _chart.Series.Count) + 6f)
+            bool canonicalLegendBelow = _chart.CanonicalModel?.Legend == ChartLegendPosition.Below;
+            int seriesCount = _chart.CanonicalModel?.Series.Count ?? _chart.Series.Count;
+            float legendSpace = ((_chart.ShowLegend && _chart.LegendPosition == ChartElement.LegendPos.Below) || canonicalLegendBelow)
+                ? (14f * Math.Max(1, seriesCount) + 6f)
                 : 0f;
 
             float contentHeight = titleSpace + bodyHeight + legendSpace;

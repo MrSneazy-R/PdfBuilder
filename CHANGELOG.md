@@ -8,6 +8,10 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- A PdfColor-only canonical chart model with line, area, grouped/stacked/100%-stacked bar,
+  pie, donut, and scatter series; typed series options; numeric and secondary axes; labels,
+  formatters, markers, smoothing, legends, and document-scoped theme palettes.
+
 - Canonical table cells now implement the normal `IContainer` surface, so rich text,
   images, SVG, barcodes, nested layouts, layers, and reusable components share the
   ordinary measurement, rendering, theme, resource, and diagnostic paths inside cells.
@@ -37,6 +41,8 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Split canonical chart rendering into focused layout, scales, ticks, axes, legends,
+  drawing/labels, and typed-series renderers while retaining the legacy raw chart path.
 - Split the canonical public contracts and private composition adapters into focused
   `Document/Api` and `Document/Canonical` source files without changing signatures or output.
 
