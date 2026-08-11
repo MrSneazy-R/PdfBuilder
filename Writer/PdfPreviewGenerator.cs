@@ -117,6 +117,12 @@ namespace PdfBuilder.Writer
                     case ImageElement image:
                         DrawImageElement(canvas, image);
                         break;
+                    case ClipGroupElement group:
+                        canvas.Save();
+                        canvas.ClipRect(new SKRect(group.X, group.Y, group.X + group.Width, group.Y + group.Height));
+                        DrawElements(canvas, group.Children, page);
+                        canvas.Restore();
+                        break;
                     default:
                         break;
                 }

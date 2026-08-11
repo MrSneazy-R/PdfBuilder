@@ -117,6 +117,11 @@ namespace PdfBuilder.Document.Layout
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
             _collection.Owner.ApplyTableDefaults(table);
+            foreach (TableCell cell in table.Rows.SelectMany(row => row.Cells))
+            {
+                if (cell.ContentBuilder != null)
+                    cell.ContentFactory = () => cell.ContentBuilder(_collection.Owner);
+            }
             _collection.Component(new TableComponent(table));
             return this;
         }

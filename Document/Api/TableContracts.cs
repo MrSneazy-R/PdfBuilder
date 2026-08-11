@@ -33,23 +33,43 @@ public interface ITableRowDescriptor
     ITableCellDescriptor Cell();
 }
 
-/// <summary>Configures basic table-cell content and decoration.</summary>
-public interface ITableCellDescriptor
+/// <summary>Configures a table cell using the normal canonical container surface.</summary>
+public interface ITableCellDescriptor : IContainer
 {
     /// <summary>Aligns cell content to the left.</summary>
-    ITableCellDescriptor AlignLeft();
+    new ITableCellDescriptor AlignLeft();
     /// <summary>Centers cell content.</summary>
-    ITableCellDescriptor AlignCenter();
+    new ITableCellDescriptor AlignCenter();
     /// <summary>Aligns cell content to the right.</summary>
-    ITableCellDescriptor AlignRight();
+    new ITableCellDescriptor AlignRight();
+    /// <summary>Aligns cell content to the top.</summary>
+    new ITableCellDescriptor AlignTop();
+    /// <summary>Aligns cell content vertically in the middle.</summary>
+    new ITableCellDescriptor AlignMiddle();
+    /// <summary>Aligns cell content to the bottom.</summary>
+    new ITableCellDescriptor AlignBottom();
     /// <summary>Sets the cell background colour.</summary>
-    ITableCellDescriptor Background(string color);
+    new ITableCellDescriptor Background(string color);
     /// <summary>Sets a border around the cell.</summary>
-    ITableCellDescriptor Border(float width = 1f, string color = "#000000");
+    new ITableCellDescriptor Border(float width = 1f, string color = "#000000");
+    /// <summary>Sets the cell's left border.</summary>
+    new ITableCellDescriptor BorderLeft(float width = 1f, string color = "#000000");
+    /// <summary>Sets the cell's top border.</summary>
+    new ITableCellDescriptor BorderTop(float width = 1f, string color = "#000000");
+    /// <summary>Sets the cell's right border.</summary>
+    new ITableCellDescriptor BorderRight(float width = 1f, string color = "#000000");
+    /// <summary>Sets the cell's bottom border.</summary>
+    new ITableCellDescriptor BorderBottom(float width = 1f, string color = "#000000");
+    /// <summary>Rounds the cell background and border corners.</summary>
+    new ITableCellDescriptor CornerRadius(float value);
     /// <summary>Sets uniform cell padding in points.</summary>
-    ITableCellDescriptor Padding(float value);
+    new ITableCellDescriptor Padding(float value);
+    /// <summary>Sets uniform cell padding from the current document theme.</summary>
+    new ITableCellDescriptor Padding(string spacingToken);
+    /// <summary>Sets per-side cell padding in points.</summary>
+    new ITableCellDescriptor Padding(float left, float top, float right, float bottom);
     /// <summary>Adds text to the cell.</summary>
-    ITextDescriptor Text(string text);
+    new ITextDescriptor Text(string text);
     /// <summary>Adds a formatted value to the cell.</summary>
     ITextDescriptor Text(object? value, string? format);
 }

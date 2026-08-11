@@ -8,9 +8,22 @@ public partial class PdfDocument
     private sealed class CanonicalTableDescriptor : ITableDescriptor
     {
         private readonly DocumentTheme _theme;
+        private readonly List<Type> _componentPath;
+        private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
         private readonly TableElement _table = new();
 
-        public CanonicalTableDescriptor(DocumentTheme theme) => _theme = theme;
+        public CanonicalTableDescriptor(
+            DocumentTheme theme,
+            List<Type> componentPath,
+            PaginationRegistry pagination,
+            CanonicalCompositionState? compositionState)
+        {
+            _theme = theme;
+            _componentPath = componentPath;
+            _pagination = pagination;
+            _compositionState = compositionState;
+        }
 
         public void Columns(Action<ITableColumnsDescriptor> configure)
         {
@@ -49,7 +62,7 @@ public partial class PdfDocument
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var row = new TableRow { IsHeader = isHeader };
-            configure(new CanonicalTableRowDescriptor(row, _theme));
+            configure(new CanonicalTableRowDescriptor(row, _theme, _componentPath, _pagination, _compositionState));
             if (row.Cells.Count == 0)
                 throw new InvalidOperationException("A table row requires at least one cell.");
             _table.Rows.Add(row);
@@ -78,87 +91,115 @@ public partial class PdfDocument
     {
         private readonly TableRow _row;
         private readonly DocumentTheme _theme;
-        public CanonicalTableRowDescriptor(TableRow row, DocumentTheme theme) { _row = row; _theme = theme; }
+        private readonly List<Type> _componentPath;
+        private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
+        public CanonicalTableRowDescriptor(TableRow row, DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState)
+        {
+            _row = row;
+            _theme = theme;
+            _componentPath = componentPath;
+            _pagination = pagination;
+            _compositionState = compositionState;
+        }
         public ITableCellDescriptor Cell()
         {
             var cell = new TableCell();
             _row.Cells.Add(cell);
-            return new CanonicalTableCellDescriptor(cell, _theme);
+            return new CanonicalTableCellDescriptor(cell, _theme, _componentPath, _pagination, _compositionState);
         }
     }
 
-    private sealed class CanonicalTableCellDescriptor : ITableCellDescriptor
+    private sealed class CanonicalTableCellDescriptor : CanonicalContainer, ITableCellDescriptor
     {
         private readonly TableCell _cell;
         private readonly DocumentTheme _theme;
-        public CanonicalTableCellDescriptor(TableCell cell, DocumentTheme theme) { _cell = cell; _theme = theme; }
-        public ITableCellDescriptor AlignLeft() { _cell.HorizontalAlign = HorizontalAlign.Left; return this; }
-        public ITableCellDescriptor AlignCenter() { _cell.HorizontalAlign = HorizontalAlign.Center; return this; }
-        public ITableCellDescriptor AlignRight() { _cell.HorizontalAlign = HorizontalAlign.Right; return this; }
-        public ITableCellDescriptor Background(string color) { _cell.BackgroundColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color)); return this; }
-        public ITableCellDescriptor Border(float width = 1f, string color = "#000000")
+        public CanonicalTableCellDescriptor(TableCell cell, DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState)
+            : base(theme, componentPath, pagination, compositionState)
+        {
+            _cell = cell;
+            _theme = theme;
+            _cell.ContentBuilder = owner => BuildComponent(owner, "Table cell");
+        }
+        public new ITableCellDescriptor AlignLeft() { _cell.HorizontalAlign = HorizontalAlign.Left; return this; }
+        public new ITableCellDescriptor AlignCenter() { _cell.HorizontalAlign = HorizontalAlign.Center; return this; }
+        public new ITableCellDescriptor AlignRight() { _cell.HorizontalAlign = HorizontalAlign.Right; return this; }
+        public new ITableCellDescriptor AlignTop() { _cell.VerticalAlign = VerticalAlign.Top; return this; }
+        public new ITableCellDescriptor AlignMiddle() { _cell.VerticalAlign = VerticalAlign.Middle; return this; }
+        public new ITableCellDescriptor AlignBottom() { _cell.VerticalAlign = VerticalAlign.Bottom; return this; }
+        public new ITableCellDescriptor Background(string color) { _cell.BackgroundColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color)); return this; }
+        public new ITableCellDescriptor Border(float width = 1f, string color = "#000000")
         {
             if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
             _cell.BorderWidth = width;
             _cell.BorderColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color));
             return this;
         }
-        public ITableCellDescriptor Padding(float value)
+        public new ITableCellDescriptor BorderLeft(float width = 1f, string color = "#000000") => SetSideBorder(TableBorderSide.Left, width, color);
+        public new ITableCellDescriptor BorderTop(float width = 1f, string color = "#000000") => SetSideBorder(TableBorderSide.Top, width, color);
+        public new ITableCellDescriptor BorderRight(float width = 1f, string color = "#000000") => SetSideBorder(TableBorderSide.Right, width, color);
+        public new ITableCellDescriptor BorderBottom(float width = 1f, string color = "#000000") => SetSideBorder(TableBorderSide.Bottom, width, color);
+        public new ITableCellDescriptor CornerRadius(float value)
+        {
+            if (value < 0f || !float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
+            _cell.CornerRadius = value;
+            return this;
+        }
+        public new ITableCellDescriptor Padding(float value)
         {
             if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value));
             _cell.Padding = value;
             return this;
         }
-        public ITextDescriptor Text(string text)
+        public new ITableCellDescriptor Padding(string spacingToken) => Padding(ResolveSpacing(spacingToken));
+        public new ITableCellDescriptor Padding(float left, float top, float right, float bottom)
+        {
+            ValidatePadding(left, nameof(left));
+            ValidatePadding(top, nameof(top));
+            ValidatePadding(right, nameof(right));
+            ValidatePadding(bottom, nameof(bottom));
+            _cell.Padding = null;
+            _cell.PaddingLeft = left;
+            _cell.PaddingTop = top;
+            _cell.PaddingRight = right;
+            _cell.PaddingBottom = bottom;
+            return this;
+        }
+        public new ITextDescriptor Text(string text)
         {
             _cell.Text = text ?? string.Empty;
-            return new CanonicalTableTextDescriptor(_cell);
+            return base.Text(_cell.Text);
         }
         public ITextDescriptor Text(object? value, string? format)
         {
             _cell.Text = value is IFormattable formattable ? formattable.ToString(format, System.Globalization.CultureInfo.InvariantCulture) : value?.ToString() ?? string.Empty;
-            return new CanonicalTableTextDescriptor(_cell);
+            return base.Text(_cell.Text);
         }
 
         private string ResolveColor(string color) => _theme.ResolveColor(ValidateColor(color));
-    }
-
-    private sealed class CanonicalTableTextDescriptor : ITextDescriptor
-    {
-        private readonly TableCell _cell;
-        private readonly TextStyleDefaults _style = TextStyleDefaults.CreateOverrides();
-        public CanonicalTableTextDescriptor(TableCell cell)
+        private float ResolveSpacing(string token)
         {
-            _cell = cell;
-            _cell.CanonicalStyleOverrides = _style;
+            if (string.IsNullOrWhiteSpace(token)) throw new ArgumentException("A theme spacing token is required.", nameof(token));
+            return _theme.Spacing[token];
         }
-        public ITextDescriptor Style(string name) { _cell.ThemeStyleName = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("A style name is required.", nameof(name)) : name; return this; }
-        public ITextStyleDescriptor FontFamily(string family) { _style.FontFamily = RequireText(family, nameof(family)); return this; }
-        public ITextStyleDescriptor FontSize(float size) { _style.FontSize = Positive(size, nameof(size)); return this; }
-        public ITextStyleDescriptor Bold() { _style.Bold = true; return this; }
-        public ITextStyleDescriptor Italic() { _style.Italic = true; return this; }
-        public ITextStyleDescriptor Color(string color) { _style.Color = RequireText(color, nameof(color)); return this; }
-        public ITextStyleDescriptor Highlight(string color) { _style.BackgroundColor = RequireText(color, nameof(color)); return this; }
-        public ITextStyleDescriptor LineHeight(float value) { _style.LineHeight = Positive(value, nameof(value)); return this; }
-        public ITextStyleDescriptor LetterSpacing(float value) { _style.LetterSpacing = Finite(value, nameof(value)); return this; }
-        public ITextStyleDescriptor WordSpacing(float value) { _style.WordSpacing = Finite(value, nameof(value)); return this; }
-        public ITextStyleDescriptor Underline() { _style.Underline = true; return this; }
-        public ITextStyleDescriptor Strikethrough() { _style.Strikethrough = true; return this; }
-        public ITextStyleDescriptor Overline() { _style.Overline = true; return this; }
-        public ITextStyleDescriptor Decoration(string? color = null, float? thickness = null, TextDecorationStyle style = TextDecorationStyle.Solid) { SetDecoration(_style, color, thickness, style); return this; }
-        public ITextStyleDescriptor Superscript() { _style.Superscript = true; _style.Subscript = false; return this; }
-        public ITextStyleDescriptor Subscript() { _style.Subscript = true; _style.Superscript = false; return this; }
-        public ITextStyleDescriptor AlignLeft() { _style.Alignment = TextAlignment.Left; return this; }
-        public ITextStyleDescriptor AlignCenter() { _style.Alignment = TextAlignment.Center; return this; }
-        public ITextStyleDescriptor AlignRight() { _style.Alignment = TextAlignment.Right; return this; }
-        public ITextStyleDescriptor Justify() { _style.Alignment = TextAlignment.Justify; return this; }
-        public ITextStyleDescriptor Direction(TextDirection direction) { _style.Direction = direction; return this; }
-        public ITextStyleDescriptor Wrap() { _style.Wrapping = TextWrapping.Wrap; return this; }
-        public ITextStyleDescriptor NoWrap() { _style.Wrapping = TextWrapping.NoWrap; return this; }
-        public ITextStyleDescriptor Hyphenate() { _style.Wrapping = TextWrapping.Hyphenate; return this; }
-        public ITextStyleDescriptor Ellipsis() { _style.Ellipsis = true; return this; }
-        public ITextStyleDescriptor MaximumLines(int value) { _style.MaximumLines = PositiveLines(value); return this; }
-        public ITextStyleDescriptor FallbackFonts(params string[] families) { _style.FallbackFonts = ValidateFamilies(families); return this; }
+        private ITableCellDescriptor SetSideBorder(TableBorderSide side, float width, string color)
+        {
+            if (width < 0f || !float.IsFinite(width)) throw new ArgumentOutOfRangeException(nameof(width));
+            var resolved = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color));
+            switch (side)
+            {
+                case TableBorderSide.Left: _cell.BorderLeft = true; _cell.BorderWidthLeft = width; _cell.BorderColorLeft = resolved; break;
+                case TableBorderSide.Top: _cell.BorderTop = true; _cell.BorderWidthTop = width; _cell.BorderColorTop = resolved; break;
+                case TableBorderSide.Right: _cell.BorderRight = true; _cell.BorderWidthRight = width; _cell.BorderColorRight = resolved; break;
+                case TableBorderSide.Bottom: _cell.BorderBottom = true; _cell.BorderWidthBottom = width; _cell.BorderColorBottom = resolved; break;
+            }
+            return this;
+        }
+        private static void ValidatePadding(float value, string name)
+        {
+            if (value < 0f || !float.IsFinite(value)) throw new ArgumentOutOfRangeException(name);
+        }
+        private enum TableBorderSide { Left, Top, Right, Bottom }
     }
 
     private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;

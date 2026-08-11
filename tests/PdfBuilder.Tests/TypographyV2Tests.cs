@@ -54,8 +54,12 @@ public sealed class TypographyV2Tests
         extracted.Should().Contain(ordinary);
         document.Pages.SelectMany(page => page.Elements).OfType<RichTextElement>().Should().ContainSingle()
             .Which.Runs.Should().HaveCount(3);
-        document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().Should().ContainSingle()
-            .Which.Rows.SelectMany(row => row.Cells).Single().TextStyle.Should().NotBeNull();
+        PdfContentHelper.FlattenElements(document.Pages.SelectMany(page => page.Elements)).OfType<TextElement>()
+            .Should().Contain(text => text.Text.StartsWith("Table ", StringComparison.Ordinal)
+                && text.FontSize == 11
+                && text.Color == "#17324D"
+                && text.BaselineOffset > 0
+                && text.Wrapping == TextWrapping.NoWrap);
         Encoding.ASCII.GetString(bytes).Should().Contain("/ToUnicode");
     }
 

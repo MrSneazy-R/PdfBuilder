@@ -159,6 +159,10 @@ namespace PdfBuilder.Elements
         public TableModels.TextStyle? TextStyle { get; set; } = null;
         internal string? ThemeStyleName { get; set; }
         internal TextStyleDefaults? CanonicalStyleOverrides { get; set; }
+        internal Func<ColumnBuilder, Document.Layout.IMeasurable>? ContentBuilder { get; set; }
+        internal Func<Document.Layout.IMeasurable>? ContentFactory { get; set; }
+        internal Document.Layout.IMeasurable? MeasuredContent { get; set; }
+        internal Document.Layout.LayoutMeasurement? MeasuredContentLayout { get; set; }
 
         // Typography
         public string Font { get; set; } = "Helvetica";
@@ -230,6 +234,7 @@ namespace PdfBuilder.Elements
         internal RichTextLayoutResult? CachedLayout { get; set; }
         internal float CachedLayoutWidth { get; set; } = -1f;
         internal float CachedContentHeight { get; set; }
+        internal bool HasContainerContent => ContentBuilder != null || ContentFactory != null;
     }
 }
 

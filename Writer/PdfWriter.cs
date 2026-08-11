@@ -597,11 +597,20 @@ namespace PdfBuilder.Writer
         private static IEnumerable<PdfElement> EnumerateAllElements(PdfPage page)
         {
             foreach (var element in page.HeaderElements)
-                yield return element;
+                foreach (PdfElement nested in EnumerateElement(element)) yield return nested;
             foreach (var element in page.Elements)
-                yield return element;
+                foreach (PdfElement nested in EnumerateElement(element)) yield return nested;
             foreach (var element in page.FooterElements)
+                foreach (PdfElement nested in EnumerateElement(element)) yield return nested;
+
+            static IEnumerable<PdfElement> EnumerateElement(PdfElement element)
+            {
                 yield return element;
+                if (element is not ClipGroupElement group) yield break;
+                foreach (PdfElement child in group.Children)
+                    foreach (PdfElement nested in EnumerateElement(child))
+                        yield return nested;
+            }
         }
 
         private static (
@@ -726,6 +735,13 @@ namespace PdfBuilder.Writer
 
                     case SolidRectElement solidRect:
                         AppendSolidRect(sb, solidRect);
+                        break;
+
+                    case ClipGroupElement clipGroup:
+                        sb.Append("q ");
+                        sb.Append($"{N(clipGroup.X)} {N(clipGroup.Y)} {N(clipGroup.Width)} {N(clipGroup.Height)} re W n\n");
+                        RenderElements(clipGroup.Children, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+                        sb.Append("Q\n");
                         break;
                 }
             }

@@ -363,10 +363,12 @@ namespace PdfBuilder.Document.Layout
                 PaddingLeft = cell.PaddingLeft,
                 ColSpan = cell.ColSpan,
                 RowSpan = cell.RowSpan,
+                ContentBuilder = cell.ContentBuilder,
+                ContentFactory = cell.ContentFactory,
                 TextRuns = cell.TextRuns?.Select(CloneInlineRun).ToList() ?? new List<TableModels.InlineRun>(),
-                CachedLayout = cell.CachedLayout,
+                CachedLayout = cell.HasContainerContent ? null : cell.CachedLayout,
                 CachedLayoutWidth = cell.CachedLayoutWidth,
-                CachedContentHeight = cell.CachedContentHeight
+                CachedContentHeight = cell.HasContainerContent ? 0f : cell.CachedContentHeight
             };
 
             return clone;
