@@ -262,6 +262,7 @@ PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Center = 1 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Left = 0 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Right = 2 -> PdfBuilder.Document.HorizontalAlign
+PdfBuilder.Document.IChartDescriptor.LabelStyle(System.Action<PdfBuilder.Document.ITextStyleDescriptor!>! configure) -> void
 PdfBuilder.Document.IColumnDescriptor
 PdfBuilder.Document.IColumnDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IColumnDescriptor.Spacing(float value) -> void
@@ -306,6 +307,7 @@ PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.ICont
 PdfBuilder.Document.IContainer.Padding(string! spacingToken) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.PageBreak() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.Document.IContainer!>! configure) -> void
+PdfBuilder.Document.IContainer.RichText(System.Action<PdfBuilder.Document.IRichTextDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
@@ -402,6 +404,9 @@ PdfBuilder.Document.IPdfComponent
 PdfBuilder.Document.IPdfComponent.Compose(PdfBuilder.Document.IContainer! container) -> void
 PdfBuilder.Document.IPdfComponent<TModel>
 PdfBuilder.Document.IPdfComponent<TModel>.Compose(PdfBuilder.Document.IContainer! container, TModel model) -> void
+PdfBuilder.Document.IRichTextDescriptor
+PdfBuilder.Document.IRichTextDescriptor.DefaultStyle() -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.IRichTextDescriptor.Span(string! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IRowDescriptor
 PdfBuilder.Document.IRowDescriptor.AutoItem() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.ConstantItem(float width) -> PdfBuilder.Document.IContainer!
@@ -432,9 +437,32 @@ PdfBuilder.Document.ITableRowDescriptor.Cell() -> PdfBuilder.Document.ITableCell
 PdfBuilder.Document.ITextDescriptor
 PdfBuilder.Document.ITextDescriptor.Style(string! name) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor
+PdfBuilder.Document.ITextStyleDescriptor.AlignCenter() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.AlignLeft() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.AlignRight() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.Bold() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Color(string! color) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Decoration(string? color = null, float? thickness = null, PdfBuilder.Models.TextDecorationStyle style = PdfBuilder.Models.TextDecorationStyle.Solid) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Direction(PdfBuilder.Models.TextDirection direction) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Ellipsis() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.FallbackFonts(params string![]! families) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.FontFamily(string! family) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.FontSize(float size) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Highlight(string! color) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Hyphenate() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Italic() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Justify() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.LetterSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.LineHeight(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.MaximumLines(int value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.NoWrap() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Overline() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Strikethrough() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Subscript() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Superscript() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Underline() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.WordSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.ITextStyleDescriptor.Wrap() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.Layout.CanvasBuilder
 PdfBuilder.Document.Layout.CanvasBuilder.AvoidBreakInside(bool value = true) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.ClosePath() -> PdfBuilder.Document.Layout.CanvasBuilder!
@@ -522,6 +550,7 @@ PdfBuilder.Document.Layout.ContentComposer.Padding(float left, float top, float 
 PdfBuilder.Document.Layout.ContentComposer.Padding(float uniform, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Repeat(int count, System.Action<int, PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Repeat<T>(System.Collections.Generic.IEnumerable<T>! source, System.Action<T, int, PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.RichText(System.Action<RichTextElement!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Row(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float gap = 12) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Row(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.RowComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.ShowOnce(string! key, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -622,6 +651,7 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.RelativeBuilder.Spacing.get
 PdfBuilder.Document.Layout.LayoutComponentCollection.RelativeBuilder.Spacing.set -> void
 PdfBuilder.Document.Layout.LayoutComponentCollection.Repeat(int count, System.Action<int, PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.RepeatEach<T>(System.Collections.Generic.IEnumerable<T>! source, System.Action<T, int, PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.RichText(System.Action<RichTextElement!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Row(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float gap = 12) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Row(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.RowComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.RowComponentBuilder
@@ -1081,16 +1111,27 @@ PdfBuilder.Document.TextBuilder.Transform(PdfBuilder.Models.TextTransform value)
 PdfBuilder.Document.TextBuilder.Underline() -> PdfBuilder.Document.TextBuilder!
 PdfBuilder.Document.TextBuilder.WordSpacing(float value) -> PdfBuilder.Document.TextBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder
+PdfBuilder.Document.ThemeTextStyleBuilder.Alignment(PdfBuilder.Models.TextAlignment value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.Bold(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.Color(string! value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Decoration(string? color = null, float? thickness = null, PdfBuilder.Models.TextDecorationStyle style = PdfBuilder.Models.TextDecorationStyle.Solid) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Direction(PdfBuilder.Models.TextDirection value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Ellipsis(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.FallbackFonts(params string![]! families) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.FontFamily(string! value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.FontSize(float value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Highlight(string! value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.Italic(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.LetterSpacing(float value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.LineHeight(float value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.MaximumLines(int value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Overline(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.Strikethrough(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Subscript(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Superscript(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.Underline(bool value = true) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.ThemeTextStyleBuilder.WordSpacing(float value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
+PdfBuilder.Document.ThemeTextStyleBuilder.Wrapping(PdfBuilder.Models.TextWrapping value) -> PdfBuilder.Document.ThemeTextStyleBuilder!
 PdfBuilder.Document.Units
 PdfBuilder.Document.VerticalAlign
 PdfBuilder.Document.VerticalAlign.Bottom = 2 -> PdfBuilder.Document.VerticalAlign
@@ -1931,6 +1972,8 @@ PdfBuilder.Elements.Table.TextStyle.DecorationStyle.get -> PdfBuilder.Models.Tex
 PdfBuilder.Elements.Table.TextStyle.DecorationStyle.set -> void
 PdfBuilder.Elements.Table.TextStyle.DecorationThickness.get -> float?
 PdfBuilder.Elements.Table.TextStyle.DecorationThickness.set -> void
+PdfBuilder.Elements.Table.TextStyle.Direction.get -> PdfBuilder.Models.TextDirection?
+PdfBuilder.Elements.Table.TextStyle.Direction.set -> void
 PdfBuilder.Elements.Table.TextStyle.FallbackFonts.get -> System.Collections.Generic.List<string!>?
 PdfBuilder.Elements.Table.TextStyle.FallbackFonts.set -> void
 PdfBuilder.Elements.Table.TextStyle.FlowDirection.get -> PdfBuilder.Models.FlowDirection
@@ -1953,6 +1996,8 @@ PdfBuilder.Elements.Table.TextStyle.LetterSpacing.get -> float?
 PdfBuilder.Elements.Table.TextStyle.LetterSpacing.set -> void
 PdfBuilder.Elements.Table.TextStyle.LineHeight.get -> float?
 PdfBuilder.Elements.Table.TextStyle.LineHeight.set -> void
+PdfBuilder.Elements.Table.TextStyle.Overline.get -> bool
+PdfBuilder.Elements.Table.TextStyle.Overline.set -> void
 PdfBuilder.Elements.Table.TextStyle.ParagraphSpacingAfter.get -> float?
 PdfBuilder.Elements.Table.TextStyle.ParagraphSpacingAfter.set -> void
 PdfBuilder.Elements.Table.TextStyle.ParagraphSpacingBefore.get -> float?
@@ -2258,6 +2303,12 @@ PdfBuilder.Elements.WaterfallSeries.WaterfallSeries() -> void
 PdfBuilder.Elements.WaterfallSeries.YAxisIndex.get -> int
 PdfBuilder.Elements.WaterfallSeries.YAxisIndex.set -> void
 PdfBuilder.Fonts.FontCatalog
+PdfBuilder.Fonts.FontCatalogSnapshot
+PdfBuilder.Fonts.FontCatalogSnapshot.FallbackFonts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+PdfBuilder.Fonts.FontCatalogSnapshot.StrictMatching.get -> bool
+PdfBuilder.Fonts.FontCatalogSnapshot.Version.get -> int
+PdfBuilder.Fonts.FontNotFoundException
+PdfBuilder.Fonts.FontNotFoundException.FontNotFoundException(string! message) -> void
 PdfBuilder.Models.ColumnLayoutSpec
 PdfBuilder.Models.ColumnLayoutSpec.ColumnLayoutSpec() -> void
 PdfBuilder.Models.ColumnLayoutSpec.Columns.get -> int
@@ -2408,10 +2459,18 @@ PdfBuilder.Models.PdfPage.TextDefaults.set -> void
 PdfBuilder.Models.PdfPage.Theme.get -> PdfBuilder.Document.DocumentTheme!
 PdfBuilder.Models.PdfPage.Width.get -> float
 PdfBuilder.Models.RichRun
+PdfBuilder.Models.RichRun.BackgroundColor.get -> string?
+PdfBuilder.Models.RichRun.BackgroundColor.set -> void
 PdfBuilder.Models.RichRun.Bold.get -> bool
 PdfBuilder.Models.RichRun.Bold.set -> void
 PdfBuilder.Models.RichRun.Color.get -> string!
 PdfBuilder.Models.RichRun.Color.set -> void
+PdfBuilder.Models.RichRun.DecorationColor.get -> string?
+PdfBuilder.Models.RichRun.DecorationColor.set -> void
+PdfBuilder.Models.RichRun.DecorationStyle.get -> PdfBuilder.Models.TextDecorationStyle
+PdfBuilder.Models.RichRun.DecorationStyle.set -> void
+PdfBuilder.Models.RichRun.DecorationThickness.get -> float?
+PdfBuilder.Models.RichRun.DecorationThickness.set -> void
 PdfBuilder.Models.RichRun.FallbackFonts.get -> System.Collections.Generic.List<string!>?
 PdfBuilder.Models.RichRun.FallbackFonts.set -> void
 PdfBuilder.Models.RichRun.FontFamily.get -> string!
@@ -2428,11 +2487,17 @@ PdfBuilder.Models.RichRun.LinkUrl.get -> string?
 PdfBuilder.Models.RichRun.LinkUrl.set -> void
 PdfBuilder.Models.RichRun.Monospace.get -> bool
 PdfBuilder.Models.RichRun.Monospace.set -> void
+PdfBuilder.Models.RichRun.Overline.get -> bool
+PdfBuilder.Models.RichRun.Overline.set -> void
 PdfBuilder.Models.RichRun.RichRun() -> void
 PdfBuilder.Models.RichRun.SmallCaps.get -> bool
 PdfBuilder.Models.RichRun.SmallCaps.set -> void
 PdfBuilder.Models.RichRun.Strikethrough.get -> bool
 PdfBuilder.Models.RichRun.Strikethrough.set -> void
+PdfBuilder.Models.RichRun.Subscript.get -> bool
+PdfBuilder.Models.RichRun.Subscript.set -> void
+PdfBuilder.Models.RichRun.Superscript.get -> bool
+PdfBuilder.Models.RichRun.Superscript.set -> void
 PdfBuilder.Models.RichRun.Text.get -> string!
 PdfBuilder.Models.RichRun.Text.set -> void
 PdfBuilder.Models.RichRun.Transform.get -> PdfBuilder.Models.TextTransform?
@@ -2451,38 +2516,10 @@ PdfBuilder.Models.TextDecorationStyle.Dashed = 2 -> PdfBuilder.Models.TextDecora
 PdfBuilder.Models.TextDecorationStyle.Dotted = 1 -> PdfBuilder.Models.TextDecorationStyle
 PdfBuilder.Models.TextDecorationStyle.Double = 3 -> PdfBuilder.Models.TextDecorationStyle
 PdfBuilder.Models.TextDecorationStyle.Solid = 0 -> PdfBuilder.Models.TextDecorationStyle
-PdfBuilder.Models.TextStyle
-PdfBuilder.Models.TextStyle.Alignment.get -> PdfBuilder.Models.TextAlignment
-PdfBuilder.Models.TextStyle.Alignment.set -> void
-PdfBuilder.Models.TextStyle.BackgroundColor.get -> string?
-PdfBuilder.Models.TextStyle.BackgroundColor.set -> void
-PdfBuilder.Models.TextStyle.Bold.get -> bool
-PdfBuilder.Models.TextStyle.Bold.set -> void
-PdfBuilder.Models.TextStyle.Color.get -> string!
-PdfBuilder.Models.TextStyle.Color.set -> void
-PdfBuilder.Models.TextStyle.FontFamily.get -> string!
-PdfBuilder.Models.TextStyle.FontFamily.set -> void
-PdfBuilder.Models.TextStyle.FontSize.get -> float
-PdfBuilder.Models.TextStyle.FontSize.set -> void
-PdfBuilder.Models.TextStyle.Italic.get -> bool
-PdfBuilder.Models.TextStyle.Italic.set -> void
-PdfBuilder.Models.TextStyle.LineHeight.get -> float
-PdfBuilder.Models.TextStyle.LineHeight.set -> void
-PdfBuilder.Models.TextStyle.MarginTop.get -> float?
-PdfBuilder.Models.TextStyle.MarginTop.set -> void
-PdfBuilder.Models.TextStyle.MaxWidth.get -> float?
-PdfBuilder.Models.TextStyle.MaxWidth.set -> void
-PdfBuilder.Models.TextStyle.Opacity.get -> float
-PdfBuilder.Models.TextStyle.Opacity.set -> void
-PdfBuilder.Models.TextStyle.Rotation.get -> float
-PdfBuilder.Models.TextStyle.Rotation.set -> void
-PdfBuilder.Models.TextStyle.TextStyle() -> void
-PdfBuilder.Models.TextStyle.Underline.get -> bool
-PdfBuilder.Models.TextStyle.Underline.set -> void
-PdfBuilder.Models.TextStyle.X.get -> float
-PdfBuilder.Models.TextStyle.X.set -> void
-PdfBuilder.Models.TextStyle.Y.get -> float
-PdfBuilder.Models.TextStyle.Y.set -> void
+PdfBuilder.Models.TextDirection
+PdfBuilder.Models.TextDirection.Automatic = 0 -> PdfBuilder.Models.TextDirection
+PdfBuilder.Models.TextDirection.LeftToRight = 1 -> PdfBuilder.Models.TextDirection
+PdfBuilder.Models.TextDirection.RightToLeft = 2 -> PdfBuilder.Models.TextDirection
 PdfBuilder.Models.TextStyleDefaults
 PdfBuilder.Models.TextStyleDefaults.Alignment.get -> PdfBuilder.Models.TextAlignment?
 PdfBuilder.Models.TextStyleDefaults.Alignment.set -> void
@@ -2491,6 +2528,8 @@ PdfBuilder.Models.TextStyleDefaults.ApplyTo(PdfBuilder.Elements.Table.TextStyle!
 PdfBuilder.Models.TextStyleDefaults.ApplyTo(PdfBuilder.Models.RichRun! run) -> void
 PdfBuilder.Models.TextStyleDefaults.ApplyTo(RichTextElement! element) -> void
 PdfBuilder.Models.TextStyleDefaults.ApplyTo(TextElement! element) -> void
+PdfBuilder.Models.TextStyleDefaults.BackgroundColor.get -> string?
+PdfBuilder.Models.TextStyleDefaults.BackgroundColor.set -> void
 PdfBuilder.Models.TextStyleDefaults.BaselineOffset.get -> float?
 PdfBuilder.Models.TextStyleDefaults.BaselineOffset.set -> void
 PdfBuilder.Models.TextStyleDefaults.Bold.get -> bool?
@@ -2505,6 +2544,10 @@ PdfBuilder.Models.TextStyleDefaults.DecorationStyle.get -> PdfBuilder.Models.Tex
 PdfBuilder.Models.TextStyleDefaults.DecorationStyle.set -> void
 PdfBuilder.Models.TextStyleDefaults.DecorationThickness.get -> float?
 PdfBuilder.Models.TextStyleDefaults.DecorationThickness.set -> void
+PdfBuilder.Models.TextStyleDefaults.Direction.get -> PdfBuilder.Models.TextDirection?
+PdfBuilder.Models.TextStyleDefaults.Direction.set -> void
+PdfBuilder.Models.TextStyleDefaults.Ellipsis.get -> bool?
+PdfBuilder.Models.TextStyleDefaults.Ellipsis.set -> void
 PdfBuilder.Models.TextStyleDefaults.FallbackFonts.get -> System.Collections.Generic.List<string!>?
 PdfBuilder.Models.TextStyleDefaults.FallbackFonts.set -> void
 PdfBuilder.Models.TextStyleDefaults.FlowDirection.get -> PdfBuilder.Models.FlowDirection
@@ -2519,6 +2562,8 @@ PdfBuilder.Models.TextStyleDefaults.LetterSpacing.get -> float?
 PdfBuilder.Models.TextStyleDefaults.LetterSpacing.set -> void
 PdfBuilder.Models.TextStyleDefaults.LineHeight.get -> float?
 PdfBuilder.Models.TextStyleDefaults.LineHeight.set -> void
+PdfBuilder.Models.TextStyleDefaults.MaximumLines.get -> int?
+PdfBuilder.Models.TextStyleDefaults.MaximumLines.set -> void
 PdfBuilder.Models.TextStyleDefaults.Monospace.get -> bool?
 PdfBuilder.Models.TextStyleDefaults.Monospace.set -> void
 PdfBuilder.Models.TextStyleDefaults.Opacity.get -> float?
@@ -2529,6 +2574,10 @@ PdfBuilder.Models.TextStyleDefaults.SmallCaps.get -> bool?
 PdfBuilder.Models.TextStyleDefaults.SmallCaps.set -> void
 PdfBuilder.Models.TextStyleDefaults.Strikethrough.get -> bool?
 PdfBuilder.Models.TextStyleDefaults.Strikethrough.set -> void
+PdfBuilder.Models.TextStyleDefaults.Subscript.get -> bool?
+PdfBuilder.Models.TextStyleDefaults.Subscript.set -> void
+PdfBuilder.Models.TextStyleDefaults.Superscript.get -> bool?
+PdfBuilder.Models.TextStyleDefaults.Superscript.set -> void
 PdfBuilder.Models.TextStyleDefaults.TextStyleDefaults() -> void
 PdfBuilder.Models.TextStyleDefaults.Transform.get -> PdfBuilder.Models.TextTransform?
 PdfBuilder.Models.TextStyleDefaults.Transform.set -> void
@@ -2536,6 +2585,8 @@ PdfBuilder.Models.TextStyleDefaults.Underline.get -> bool?
 PdfBuilder.Models.TextStyleDefaults.Underline.set -> void
 PdfBuilder.Models.TextStyleDefaults.WordSpacing.get -> float?
 PdfBuilder.Models.TextStyleDefaults.WordSpacing.set -> void
+PdfBuilder.Models.TextStyleDefaults.Wrapping.get -> PdfBuilder.Models.TextWrapping?
+PdfBuilder.Models.TextStyleDefaults.Wrapping.set -> void
 PdfBuilder.Models.TextTransform
 PdfBuilder.Models.TextTransform.Capitalize = 3 -> PdfBuilder.Models.TextTransform
 PdfBuilder.Models.TextTransform.Lowercase = 2 -> PdfBuilder.Models.TextTransform
@@ -2543,6 +2594,10 @@ PdfBuilder.Models.TextTransform.None = 0 -> PdfBuilder.Models.TextTransform
 PdfBuilder.Models.TextTransform.SmallCaps = 5 -> PdfBuilder.Models.TextTransform
 PdfBuilder.Models.TextTransform.TitleCase = 4 -> PdfBuilder.Models.TextTransform
 PdfBuilder.Models.TextTransform.Uppercase = 1 -> PdfBuilder.Models.TextTransform
+PdfBuilder.Models.TextWrapping
+PdfBuilder.Models.TextWrapping.Hyphenate = 2 -> PdfBuilder.Models.TextWrapping
+PdfBuilder.Models.TextWrapping.NoWrap = 1 -> PdfBuilder.Models.TextWrapping
+PdfBuilder.Models.TextWrapping.Wrap = 0 -> PdfBuilder.Models.TextWrapping
 PdfBuilder.Models.WatermarkLayer
 PdfBuilder.Models.WatermarkLayer.AboveContent = 1 -> PdfBuilder.Models.WatermarkLayer
 PdfBuilder.Models.WatermarkLayer.BehindContent = 0 -> PdfBuilder.Models.WatermarkLayer
@@ -2698,6 +2753,16 @@ RichTextElement.Alignment.get -> PdfBuilder.Models.TextAlignment
 RichTextElement.Alignment.set -> void
 RichTextElement.AvoidBreakInside.get -> bool
 RichTextElement.AvoidBreakInside.set -> void
+RichTextElement.BackgroundColor.get -> string?
+RichTextElement.BackgroundColor.set -> void
+RichTextElement.Color.get -> string!
+RichTextElement.Color.set -> void
+RichTextElement.Direction.get -> PdfBuilder.Models.TextDirection
+RichTextElement.Direction.set -> void
+RichTextElement.EllipsisWhenConstrained.get -> bool
+RichTextElement.EllipsisWhenConstrained.set -> void
+RichTextElement.FallbackFonts.get -> System.Collections.Generic.List<string!>?
+RichTextElement.FallbackFonts.set -> void
 RichTextElement.FlowDirection.get -> PdfBuilder.Models.FlowDirection
 RichTextElement.FlowDirection.set -> void
 RichTextElement.FontFamily.get -> string!
@@ -2716,6 +2781,8 @@ RichTextElement.MarginRight.get -> float?
 RichTextElement.MarginRight.set -> void
 RichTextElement.MarginTop.get -> float?
 RichTextElement.MarginTop.set -> void
+RichTextElement.MaximumLines.get -> int?
+RichTextElement.MaximumLines.set -> void
 RichTextElement.MaxWidth.get -> float?
 RichTextElement.MaxWidth.set -> void
 RichTextElement.PaddingBottom.get -> float?
@@ -2730,6 +2797,8 @@ RichTextElement.RichTextElement(float x, float y) -> void
 RichTextElement.Rotation.get -> float
 RichTextElement.Rotation.set -> void
 RichTextElement.Runs.get -> System.Collections.Generic.List<PdfBuilder.Models.RichRun!>!
+RichTextElement.Wrapping.get -> PdfBuilder.Models.TextWrapping
+RichTextElement.Wrapping.set -> void
 SampleDocumentBlueprint
 SampleDocumentBlueprint.BrandingInfo
 SampleDocumentBlueprint.BrandingInfo.CompanyName.get -> string?
@@ -2937,10 +3006,21 @@ static PdfBuilder.Elements.Axis.Numeric() -> PdfBuilder.Elements.Axis!
 static PdfBuilder.Elements.Table.TableColumn.Auto(float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
 static PdfBuilder.Elements.Table.TableColumn.Fixed(float width, float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
 static PdfBuilder.Elements.Table.TableColumn.Relative(float weight, float? minWidth = null, float? maxWidth = null) -> PdfBuilder.Elements.Table.TableColumnDefinition!
+static PdfBuilder.Fonts.FontCatalog.CaptureSnapshot() -> PdfBuilder.Fonts.FontCatalogSnapshot!
+static PdfBuilder.Fonts.FontCatalog.FallbackFonts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static PdfBuilder.Fonts.FontCatalog.MaximumFontFileBytes.get -> long
+static PdfBuilder.Fonts.FontCatalog.MaximumFontFileBytes.set -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterFile(string! path, params string![]! aliases) -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterFolder(string! directory, System.IO.SearchOption searchOption = System.IO.SearchOption.AllDirectories) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFont(byte[]! data, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFont(System.IO.Stream! stream, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFontDirectory(string! path, System.IO.SearchOption searchOption = System.IO.SearchOption.AllDirectories) -> void
+static PdfBuilder.Fonts.FontCatalog.RegisterFontFile(string! path, params string![]! aliases) -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterSystemFonts() -> void
 static PdfBuilder.Fonts.FontCatalog.RegisterTypeface(SkiaSharp.SKTypeface! typeface, params string![]! aliases) -> void
+static PdfBuilder.Fonts.FontCatalog.SetFallbackFonts(params string![]! fontFamilies) -> void
+static PdfBuilder.Fonts.FontCatalog.StrictMatching.get -> bool
+static PdfBuilder.Fonts.FontCatalog.StrictMatching.set -> void
 static PdfBuilder.Models.PdfPage.A3() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.A3Landscape() -> PdfBuilder.Models.PdfPage!
 static PdfBuilder.Models.PdfPage.A4() -> PdfBuilder.Models.PdfPage!
@@ -2962,8 +3042,10 @@ static PdfBuilder.Writer.FontManager.NormalizeFontKey(string? fontFamily, bool b
 PdfBuilder.Writer.PdfWriter.GenerateBytes(PdfBuilder.Document.PdfDocument! doc, System.Threading.CancellationToken cancellationToken) -> byte[]!
 PdfBuilder.Writer.PdfWriter.GenerateStream(PdfBuilder.Document.PdfDocument! doc, System.IO.Stream! destination, System.Threading.CancellationToken cancellationToken) -> void
 PdfBuilder.Writer.PdfWriter.Save(PdfBuilder.Document.PdfDocument! doc, string! path, System.Threading.CancellationToken cancellationToken) -> void
+static PdfBuilder.Writer.Fonts.FontDiagnostics.Clear() -> void
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Enabled.get -> bool
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Enabled.set -> void
+static PdfBuilder.Writer.Fonts.FontDiagnostics.RecentMessages.get -> System.Collections.Generic.IReadOnlyList<string!>!
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Writer.get -> System.Action<string!>?
 static PdfBuilder.Writer.Fonts.FontDiagnostics.Writer.set -> void
 static PdfBuilder.Writer.HeaderFooterRenderer.Append(System.Text.StringBuilder! sb, PdfBuilder.Document.PdfDocument! doc, PdfBuilder.Models.PdfPage! page, PdfBuilder.Models.HeaderFooterSpec! hf, PdfBuilder.Writer.PdfRenderContext! context, int pageIndex1, int pageCount, System.DateTime nowUtc) -> void
@@ -3029,6 +3111,10 @@ TextElement.DecorationStyle.get -> PdfBuilder.Models.TextDecorationStyle
 TextElement.DecorationStyle.set -> void
 TextElement.DecorationThickness.get -> float?
 TextElement.DecorationThickness.set -> void
+TextElement.Direction.get -> PdfBuilder.Models.TextDirection
+TextElement.Direction.set -> void
+TextElement.EllipsisWhenConstrained.get -> bool
+TextElement.EllipsisWhenConstrained.set -> void
 TextElement.FallbackFonts.get -> System.Collections.Generic.List<string!>?
 TextElement.FallbackFonts.set -> void
 TextElement.FlowDirection.get -> PdfBuilder.Models.FlowDirection
@@ -3053,6 +3139,8 @@ TextElement.MarginRight.get -> float?
 TextElement.MarginRight.set -> void
 TextElement.MarginTop.get -> float?
 TextElement.MarginTop.set -> void
+TextElement.MaximumLines.get -> int?
+TextElement.MaximumLines.set -> void
 TextElement.MaxWidth.get -> float?
 TextElement.MaxWidth.set -> void
 TextElement.Monospace.get -> bool
@@ -3090,10 +3178,22 @@ TextElement.WidowLines.get -> int
 TextElement.WidowLines.set -> void
 TextElement.WordSpacing.get -> float?
 TextElement.WordSpacing.set -> void
+TextElement.Wrapping.get -> PdfBuilder.Models.TextWrapping
+TextElement.Wrapping.set -> void
 TextSpan
+TextSpan.BackgroundColor.get -> string?
+TextSpan.BackgroundColor.set -> void
 TextSpan.Bold.get -> bool?
 TextSpan.Bold.set -> void
 TextSpan.Clone() -> TextSpan!
+TextSpan.Color.get -> string?
+TextSpan.Color.set -> void
+TextSpan.DecorationColor.get -> string?
+TextSpan.DecorationColor.set -> void
+TextSpan.DecorationStyle.get -> PdfBuilder.Models.TextDecorationStyle?
+TextSpan.DecorationStyle.set -> void
+TextSpan.DecorationThickness.get -> float?
+TextSpan.DecorationThickness.set -> void
 TextSpan.FallbackFonts.get -> System.Collections.Generic.List<string!>?
 TextSpan.FallbackFonts.set -> void
 TextSpan.FontFamily.get -> string?
@@ -3106,12 +3206,22 @@ TextSpan.LetterSpacing.get -> float?
 TextSpan.LetterSpacing.set -> void
 TextSpan.Monospace.get -> bool?
 TextSpan.Monospace.set -> void
+TextSpan.Overline.get -> bool?
+TextSpan.Overline.set -> void
 TextSpan.SmallCaps.get -> bool?
 TextSpan.SmallCaps.set -> void
+TextSpan.Strikethrough.get -> bool?
+TextSpan.Strikethrough.set -> void
+TextSpan.Subscript.get -> bool?
+TextSpan.Subscript.set -> void
+TextSpan.Superscript.get -> bool?
+TextSpan.Superscript.set -> void
 TextSpan.Text.get -> string!
 TextSpan.Text.set -> void
 TextSpan.TextSpan() -> void
 TextSpan.Transform.get -> PdfBuilder.Models.TextTransform?
 TextSpan.Transform.set -> void
+TextSpan.Underline.get -> bool?
+TextSpan.Underline.set -> void
 TextSpan.WordSpacing.get -> float?
 TextSpan.WordSpacing.set -> void

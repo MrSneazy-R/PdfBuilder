@@ -50,9 +50,13 @@ namespace PdfBuilder.Document.Layout
                 LineHeight = source.LineHeight,
                 LetterSpacing = source.LetterSpacing,
                 WordSpacing = source.WordSpacing,
+                Wrapping = source.Wrapping,
+                EllipsisWhenConstrained = source.EllipsisWhenConstrained,
+                MaximumLines = source.MaximumLines,
                 Rotation = source.Rotation,
                 Alignment = source.Alignment,
                 FlowDirection = source.FlowDirection,
+                Direction = source.Direction,
                 BaselineOffset = source.BaselineOffset,
                 Transform = source.Transform,
                 DecorationColor = source.DecorationColor,
@@ -63,6 +67,8 @@ namespace PdfBuilder.Document.Layout
                 WidowLines = source.WidowLines,
                 OrphanLines = source.OrphanLines,
                 ThemeStyleName = source.ThemeStyleName
+                ,
+                CanonicalStyleOverrides = source.CanonicalStyleOverrides?.Clone()
             };
 
             if (overrideText != null)
@@ -102,6 +108,68 @@ namespace PdfBuilder.Document.Layout
             foreach (var item in source.Items)
                 clone.Items.Add(CloneListItem(item));
 
+            return clone;
+        }
+
+        public static RichTextElement CloneRichText(RichTextElement source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            var clone = new RichTextElement(source.X, source.Y)
+            {
+                FontFamily = source.FontFamily,
+                FontSize = source.FontSize,
+                LineHeight = source.LineHeight,
+                Alignment = source.Alignment,
+                Color = source.Color,
+                BackgroundColor = source.BackgroundColor,
+                FallbackFonts = source.FallbackFonts?.ToList(),
+                Wrapping = source.Wrapping,
+                EllipsisWhenConstrained = source.EllipsisWhenConstrained,
+                MaximumLines = source.MaximumLines,
+                MarginTop = source.MarginTop,
+                MarginBottom = source.MarginBottom,
+                MarginLeft = source.MarginLeft,
+                MarginRight = source.MarginRight,
+                PaddingTop = source.PaddingTop,
+                PaddingBottom = source.PaddingBottom,
+                PaddingLeft = source.PaddingLeft,
+                PaddingRight = source.PaddingRight,
+                MaxWidth = source.MaxWidth,
+                Rotation = source.Rotation,
+                FlowDirection = source.FlowDirection,
+                Direction = source.Direction,
+                KeepWithNext = source.KeepWithNext,
+                AvoidBreakInside = source.AvoidBreakInside
+            };
+            foreach (var run in source.Runs)
+            {
+                clone.Runs.Add(new RichRun
+                {
+                    Text = run.Text,
+                    FontFamily = run.FontFamily,
+                    FontSize = run.FontSize,
+                    Bold = run.Bold,
+                    Italic = run.Italic,
+                    Monospace = run.Monospace,
+                    Underline = run.Underline,
+                    Strikethrough = run.Strikethrough,
+                    SmallCaps = run.SmallCaps,
+                    Color = run.Color,
+                    BackgroundColor = run.BackgroundColor,
+                    FallbackFonts = run.FallbackFonts?.ToList(),
+                    LetterSpacing = run.LetterSpacing,
+                    WordSpacing = run.WordSpacing,
+                    Transform = run.Transform,
+                    Overline = run.Overline,
+                    DecorationColor = run.DecorationColor,
+                    DecorationThickness = run.DecorationThickness,
+                    DecorationStyle = run.DecorationStyle,
+                    Superscript = run.Superscript,
+                    Subscript = run.Subscript,
+                    LinkUrl = run.LinkUrl,
+                    LinkAnchor = run.LinkAnchor
+                });
+            }
             return clone;
         }
 
@@ -373,6 +441,7 @@ namespace PdfBuilder.Document.Layout
                 WordSpacing = style.WordSpacing,
                 Underline = style.Underline,
                 Strikethrough = style.Strikethrough,
+                Overline = style.Overline,
                 DecorationColor = style.DecorationColor,
                 DecorationThickness = style.DecorationThickness,
                 DecorationStyle = style.DecorationStyle,
@@ -382,6 +451,8 @@ namespace PdfBuilder.Document.Layout
                 Wrap = style.Wrap,
                 FallbackFonts = style.FallbackFonts?.ToList(),
                 FlowDirection = style.FlowDirection
+                ,
+                Direction = style.Direction
             };
         }
     }

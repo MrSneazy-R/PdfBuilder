@@ -16,10 +16,17 @@ namespace PdfBuilder.Models
         public bool Strikethrough { get; set; }
         public bool SmallCaps { get; set; }
         public string Color { get; set; } = "#000";
+        public string? BackgroundColor { get; set; }
         public List<string>? FallbackFonts { get; set; }
         public float? LetterSpacing { get; set; }
         public float? WordSpacing { get; set; }
         public TextTransform? Transform { get; set; }
+        public bool Overline { get; set; }
+        public string? DecorationColor { get; set; }
+        public float? DecorationThickness { get; set; }
+        public TextDecorationStyle DecorationStyle { get; set; } = TextDecorationStyle.Solid;
+        public bool Superscript { get; set; }
+        public bool Subscript { get; set; }
 
         // Links (choose one)
         public string? LinkUrl { get; set; }             // "https://", "mailto:..."

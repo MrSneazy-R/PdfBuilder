@@ -163,7 +163,10 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             if (!string.IsNullOrWhiteSpace(element.ThemeStyleName))
                 _owner.ApplyNamedTextStyle(element, element.ThemeStyleName);
+            element.CanonicalStyleOverrides?.ApplyTo(element);
             element.Color = _owner.ResolveThemeColor(element.Color);
+            if (!string.IsNullOrWhiteSpace(element.BackgroundColor)) element.BackgroundColor = _owner.ResolveThemeColor(element.BackgroundColor);
+            if (!string.IsNullOrWhiteSpace(element.DecorationColor)) element.DecorationColor = _owner.ResolveThemeColor(element.DecorationColor);
             _components.Add(new TextComponent(element, _owner.DefaultSpacing));
             return this;
         }
@@ -176,8 +179,27 @@ namespace PdfBuilder.Document.Layout
             _owner.ApplyNamedTextStyle(element, styleName);
             element.FlowDirection = _owner.CurrentFlowDirection;
             configure?.Invoke(element);
+            element.CanonicalStyleOverrides?.ApplyTo(element);
             element.Color = _owner.ResolveThemeColor(element.Color);
             _components.Add(new TextComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection RichText(Action<RichTextElement> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var flow = _owner.GetFlow();
+            var element = new RichTextElement(flow.X, flow.Y) { MaxWidth = flow.Width };
+            _owner.ApplyRichTextDefaults(element);
+            configure(element);
+            element.Color = _owner.ResolveThemeColor(element.Color);
+            foreach (var run in element.Runs)
+            {
+                run.Color = _owner.ResolveThemeColor(run.Color);
+                if (!string.IsNullOrWhiteSpace(run.BackgroundColor)) run.BackgroundColor = _owner.ResolveThemeColor(run.BackgroundColor);
+                if (!string.IsNullOrWhiteSpace(run.DecorationColor)) run.DecorationColor = _owner.ResolveThemeColor(run.DecorationColor);
+            }
+            _components.Add(new RichTextComponent(element, _owner.DefaultSpacing));
             return this;
         }
 

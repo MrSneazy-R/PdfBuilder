@@ -13,11 +13,13 @@ namespace PdfBuilder.Document.Layout.Components
     {
         private readonly RichTextElement _element;
         private readonly float _defaultSpacing;
+        private readonly int _startLine;
 
-        public RichTextComponent(RichTextElement element, float defaultSpacing)
+        public RichTextComponent(RichTextElement element, float defaultSpacing, int startLine = 0)
         {
             _element = element ?? throw new ArgumentNullException(nameof(element));
             _defaultSpacing = defaultSpacing;
+            _startLine = Math.Max(0, startLine);
         }
 
         public LayoutMeasurement Measure(LayoutMeasureContext context)
@@ -34,22 +36,49 @@ namespace PdfBuilder.Document.Layout.Components
             float paddingLeft = rt.PaddingLeft ?? 0f;
             float paddingRight = rt.PaddingRight ?? 0f;
 
-            float baseWidth = rt.MaxWidth ?? Math.Max(0f, context.Column.Width - marginLeft - marginRight);
+            float availableWidth = Math.Max(0f, context.Column.Width - marginLeft - marginRight);
+            float baseWidth = rt.MaxWidth.HasValue ? Math.Min(rt.MaxWidth.Value, availableWidth) : availableWidth;
             float innerWidth = Math.Max(0f, baseWidth - paddingLeft - paddingRight);
 
             var layout = RichTextLayouter.Layout(rt, innerWidth);
             rt.ShapedLayout = layout;
             rt.ShapedLayoutWidth = innerWidth;
-            rt.ShapedStartLine = 0;
-            rt.ShapedLineCount = layout.Lines.Count;
+            int startLine = Math.Min(_startLine, Math.Max(0, layout.Lines.Count - 1));
+            int remainingLines = Math.Max(0, layout.Lines.Count - startLine);
 
-            float contentHeight = paddingTop + layout.TotalHeight + paddingBottom;
+            float remainingHeight = layout.Lines.Skip(startLine).Sum(line => line.LineHeight);
+            float contentHeight = paddingTop + remainingHeight + paddingBottom;
 
             float usedWidth = marginLeft + marginRight + paddingLeft + paddingRight + Math.Min(baseWidth, context.Column.Width);
             float availableHeight = context.AvailableHeight - marginTop - marginBottom;
 
-            if (availableHeight <= 0f || contentHeight > availableHeight + 0.1f)
+            if (availableHeight <= 0f)
                 return LayoutMeasurement.Wrap(usedWidth);
+
+            int renderLineCount = remainingLines;
+            LayoutResultKind resultKind = LayoutResultKind.Full;
+            IMeasurable? remainder = null;
+            if (contentHeight > availableHeight + 0.1f)
+            {
+                if (rt.AvoidBreakInside)
+                    return LayoutMeasurement.Wrap(usedWidth);
+                float usableHeight = Math.Max(0f, availableHeight - paddingTop - paddingBottom);
+                float consumed = 0f;
+                renderLineCount = 0;
+                foreach (var line in layout.Lines.Skip(startLine))
+                {
+                    if (consumed + line.LineHeight > usableHeight + 0.1f) break;
+                    consumed += line.LineHeight;
+                    renderLineCount++;
+                }
+                if (renderLineCount == 0) return LayoutMeasurement.Wrap(usedWidth);
+                if (renderLineCount < remainingLines)
+                {
+                    resultKind = LayoutResultKind.Partial;
+                    remainder = new RichTextComponent(LayoutSplitUtils.CloneRichText(rt), _defaultSpacing, startLine + renderLineCount);
+                }
+                contentHeight = paddingTop + consumed + paddingBottom;
+            }
 
             var metadata = new RichTextMetadata(
                 marginLeft,
@@ -58,7 +87,10 @@ namespace PdfBuilder.Document.Layout.Components
                 paddingTop,
                 paddingBottom,
                 innerWidth,
-                layout);
+                layout,
+                startLine,
+                renderLineCount,
+                LayoutSplitUtils.CloneRichText(rt));
 
             return new LayoutMeasurement(
                 marginTop,
@@ -66,7 +98,9 @@ namespace PdfBuilder.Document.Layout.Components
                 marginBottom,
                 usedWidth,
                 metadata,
-                rt.AvoidBreakInside);
+                rt.AvoidBreakInside,
+                resultKind,
+                remainder);
         }
 
         public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
@@ -74,7 +108,7 @@ namespace PdfBuilder.Document.Layout.Components
             if (measurement.Metadata is not RichTextMetadata metadata)
                 throw new InvalidOperationException("RichText measurement metadata missing.");
 
-            var rt = _element;
+            var rt = metadata.Element;
             float contentLeft = context.ContentLeft + metadata.MarginLeft + metadata.PaddingLeft;
 
             rt.X = contentLeft;
@@ -86,8 +120,8 @@ namespace PdfBuilder.Document.Layout.Components
             rt.PaddingBottom = metadata.PaddingBottom;
             rt.ShapedLayout = metadata.Layout;
             rt.ShapedLayoutWidth = metadata.InnerWidth;
-            rt.ShapedStartLine = 0;
-            rt.ShapedLineCount = metadata.Layout.Lines.Count;
+            rt.ShapedStartLine = metadata.StartLine;
+            rt.ShapedLineCount = metadata.LineCount;
 
             context.Page.AddElement(rt);
         }
@@ -101,7 +135,10 @@ namespace PdfBuilder.Document.Layout.Components
                 float paddingTop,
                 float paddingBottom,
                 float innerWidth,
-                RichTextLayoutResult layout)
+                RichTextLayoutResult layout,
+                int startLine,
+                int lineCount,
+                RichTextElement element)
             {
                 MarginLeft = marginLeft;
                 PaddingLeft = paddingLeft;
@@ -110,6 +147,9 @@ namespace PdfBuilder.Document.Layout.Components
                 PaddingBottom = paddingBottom;
                 InnerWidth = innerWidth;
                 Layout = layout;
+                StartLine = startLine;
+                LineCount = lineCount;
+                Element = element;
             }
 
             public float MarginLeft { get; }
@@ -119,6 +159,9 @@ namespace PdfBuilder.Document.Layout.Components
             public float PaddingBottom { get; }
             public float InnerWidth { get; }
             public RichTextLayoutResult Layout { get; }
+            public int StartLine { get; }
+            public int LineCount { get; }
+            public RichTextElement Element { get; }
         }
     }
 }

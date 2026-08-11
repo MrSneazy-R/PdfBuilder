@@ -61,7 +61,7 @@ namespace PdfBuilder.Writer
             for (int i = 0; i < lines.Count; i++)
             {
                 var line = lines[i];
-                float baselineY = baselines[i];
+                float baselineY = baselines[i] + (element.BaselineOffset ?? 0f);
 
                 var justification = TextJustification.Compute(element, line, textBlockWidth, i, lines.Count);
                 float effectiveLineWidth = justification.HasWordSpacing ? textBlockWidth : line.Width;
@@ -87,6 +87,9 @@ namespace PdfBuilder.Writer
                     int spacesInRun = justification.HasWordSpacing ? TextJustification.CountWordSpacingGlyphs(run) : 0;
                     float runAdvance = run.Width + (extraPerSpace * spacesInRun);
                     var encoded = GlyphRunEncoder.Encode(run, context);
+                    bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(run.Text);
+                    if (preserveLogicalOrder)
+                        sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(run.Text)} >> BDC\n");
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {textRgb} rg ");
                     if (justification.HasWordSpacing)
@@ -108,6 +111,8 @@ namespace PdfBuilder.Writer
                     if (justification.HasWordSpacing)
                         sb.Append(" 0 Tw");
                     sb.Append("\n");
+                    if (preserveLogicalOrder)
+                        sb.Append("EMC\n");
                     if (!isRtl)
                         cursorX += runAdvance;
                 }

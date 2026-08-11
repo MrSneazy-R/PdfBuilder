@@ -70,6 +70,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public ContentComposer RichText(Action<RichTextElement> configure)
+        {
+            _collection.RichText(configure);
+            return this;
+        }
+
         public ContentComposer List(Action<ListElement> configure)
         {
             _collection.List(configure);

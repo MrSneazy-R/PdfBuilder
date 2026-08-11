@@ -18,8 +18,10 @@ namespace PdfBuilder.TextShaping
 
             if (element.Spans.Count == 0)
             {
-                var request = BuildRequestForElement(element, targetWidth);
-                return TextShaper.Shared.ShapeParagraph(request);
+                float shapingWidth = element.Wrapping == TextWrapping.NoWrap ? 0f : targetWidth;
+                var request = BuildRequestForElement(element, shapingWidth);
+                var paragraph = TextShaper.Shared.ShapeParagraph(request);
+                return ConstrainLines(element, paragraph, targetWidth);
             }
 
             var rich = BuildRichElement(element);
@@ -37,7 +39,8 @@ namespace PdfBuilder.TextShaping
             if (string.IsNullOrEmpty(sourceText))
                 sourceText = element.Text ?? string.Empty;
 
-            return new ShapedParagraph(sourceText, shapedLines, layout.MaxLineWidth, layout.TotalHeight);
+            var richParagraph = new ShapedParagraph(sourceText, shapedLines, layout.MaxLineWidth, layout.TotalHeight);
+            return ConstrainLines(element, richParagraph, targetWidth);
         }
 
         private static TextShapingRequest BuildRequestForElement(TextElement element, float maxWidth)
@@ -53,10 +56,52 @@ namespace PdfBuilder.TextShaping
                 element.SmallCaps,
                 element.Monospace,
                 element.FallbackFonts,
-                element.FlowDirection,
+                TypographyDirectionResolver.Resolve(element.Direction, element.Text, element.FlowDirection),
                 element.LetterSpacing,
                 element.WordSpacing,
-                element.Transform);
+                element.Transform,
+                element.Wrapping);
+        }
+
+        private static ShapedParagraph ConstrainLines(TextElement element, ShapedParagraph paragraph, float maxWidth)
+        {
+            int? maximum = element.MaximumLines;
+            bool widthOverflow = element.Wrapping == TextWrapping.NoWrap && maxWidth > 0f && paragraph.MaxLineWidth > maxWidth;
+            bool lineOverflow = maximum.HasValue && paragraph.Lines.Count > maximum.Value;
+            if (!widthOverflow && !lineOverflow)
+                return paragraph;
+
+            int count = maximum.HasValue ? Math.Min(maximum.Value, paragraph.Lines.Count) : Math.Min(1, paragraph.Lines.Count);
+            var lines = paragraph.Lines.Take(Math.Max(1, count)).ToList();
+            if (element.EllipsisWhenConstrained && lines.Count > 0 && maxWidth > 0f)
+                lines[^1] = ShapeEllipsized(element, lines[^1].Text, maxWidth);
+
+            float width = lines.Count == 0 ? 0f : lines.Max(line => line.Width);
+            return new ShapedParagraph(paragraph.SourceText, lines, width, lines.Sum(line => line.LineHeight));
+        }
+
+        private static ShapedLine ShapeEllipsized(TextElement element, string text, float maxWidth)
+        {
+            const string ellipsis = "…";
+            var pieces = new List<string>();
+            var enumerator = System.Globalization.StringInfo.GetTextElementEnumerator(text);
+            while (enumerator.MoveNext()) pieces.Add(enumerator.GetTextElement());
+            for (int count = pieces.Count; count >= 0; count--)
+            {
+                string candidate = string.Concat(pieces.Take(count)) + ellipsis;
+                var shaped = TextShaper.Shared.ShapeParagraph(BuildRequestForElement(element, 0f, candidate));
+                var line = shaped.Lines[0];
+                if (line.Width <= maxWidth) return line;
+            }
+            return TextShaper.Shared.ShapeParagraph(BuildRequestForElement(element, 0f, string.Empty)).Lines[0];
+        }
+
+        private static TextShapingRequest BuildRequestForElement(TextElement element, float maxWidth, string text)
+        {
+            return new TextShapingRequest(text, element.FontFamily, element.FontSize, element.LineHeight, maxWidth,
+                element.Bold, element.Italic, element.SmallCaps, element.Monospace, element.FallbackFonts,
+                TypographyDirectionResolver.Resolve(element.Direction, text, element.FlowDirection), element.LetterSpacing,
+                element.WordSpacing, element.Transform, element.Wrapping);
         }
 
         private static RichTextElement BuildRichElement(TextElement element)
@@ -70,6 +115,14 @@ namespace PdfBuilder.TextShaping
                 MaxWidth = element.MaxWidth,
                 Rotation = element.Rotation,
                 FlowDirection = element.FlowDirection
+                ,
+                Direction = element.Direction
+                ,
+                Wrapping = element.Wrapping
+                ,
+                EllipsisWhenConstrained = element.EllipsisWhenConstrained
+                ,
+                MaximumLines = element.MaximumLines
             };
 
             if (element.Spans.Count == 0)
@@ -85,7 +138,14 @@ namespace PdfBuilder.TextShaping
                     Monospace = element.Monospace,
                     Underline = element.Underline,
                     Strikethrough = element.Strikethrough,
+                    Overline = element.Overline,
                     Color = element.Color,
+                    BackgroundColor = element.BackgroundColor,
+                    DecorationColor = element.DecorationColor,
+                    DecorationThickness = element.DecorationThickness,
+                    DecorationStyle = element.DecorationStyle,
+                    Superscript = (element.BaselineOffset ?? 0f) > 0f,
+                    Subscript = (element.BaselineOffset ?? 0f) < 0f,
                     FallbackFonts = element.FallbackFonts == null ? null : new List<string>(element.FallbackFonts),
                     LetterSpacing = element.LetterSpacing,
                     WordSpacing = element.WordSpacing,
@@ -105,9 +165,16 @@ namespace PdfBuilder.TextShaping
                     Italic = span.Italic ?? element.Italic,
                     SmallCaps = span.SmallCaps ?? element.SmallCaps,
                     Monospace = span.Monospace ?? element.Monospace,
-                    Underline = element.Underline,
-                    Strikethrough = element.Strikethrough,
-                    Color = element.Color,
+                    Underline = span.Underline ?? element.Underline,
+                    Strikethrough = span.Strikethrough ?? element.Strikethrough,
+                    Overline = span.Overline ?? element.Overline,
+                    Color = span.Color ?? element.Color,
+                    BackgroundColor = span.BackgroundColor ?? element.BackgroundColor,
+                    DecorationColor = span.DecorationColor ?? element.DecorationColor,
+                    DecorationThickness = span.DecorationThickness ?? element.DecorationThickness,
+                    DecorationStyle = span.DecorationStyle ?? element.DecorationStyle,
+                    Superscript = span.Superscript ?? ((element.BaselineOffset ?? 0f) > 0f),
+                    Subscript = span.Subscript ?? ((element.BaselineOffset ?? 0f) < 0f),
                     FallbackFonts = span.FallbackFonts != null ? new List<string>(span.FallbackFonts)
                         : element.FallbackFonts != null ? new List<string>(element.FallbackFonts) : null,
                     LetterSpacing = span.LetterSpacing ?? element.LetterSpacing,

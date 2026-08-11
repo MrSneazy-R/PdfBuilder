@@ -1,54 +1,39 @@
-Typography & HarfBuzz Integration
-=================================
+# Typography and HarfBuzz
 
-Overview
---------
-PdfBuilder uses HarfBuzz (via SkiaSharp.HarfBuzz) for shaping text in `TextElement`, `RichTextElement`, and table cells. Complex scripts, ligatures, diacritics, and mixed-direction paragraphs render correctly without manual intervention.
+PdfBuilder has one canonical typography surface. `ITextStyleDescriptor` is used by ordinary text, rich-text paragraph defaults and spans, page defaults, theme styles, table-cell text, headers and footers, and the practical subset supported by chart labels. Internally, `TextStyleDefaults` is the shared style state; adapters copy it into legacy element models without creating another shaping path.
 
-Key Components
---------------
-- `TextShaper` (`Document/TextShaping/TextShaper.cs`): shapes paragraphs into glyph runs with directionality and line wrapping.
-- `RichTextLayouter` and `TextElementLayouter`: manage line breaking, hyphenation, rotation, ellipsis, and fallback fonts.
-- Tests in `tests/PdfBuilder.Tests/HarfbuzzIntegrationTests.cs` verify:
-  - Unicode text round-trips through extraction (`TableCell_WithInternationalText_RoundTripsThroughExtractor`).
-  - Rotated cells produce proper text matrices.
-  - Hyphenation, ellipsis, and mixed-direction text behave as expected.
+## Canonical style properties
 
-Best Practices
---------------
-1. **Fallback fonts**: supply `TextStyleDefaults.FallbackFonts` or `Table.TextStyle.FallbackFonts` when using scripts not covered by the primary font.
-2. **Rotation**: set `TextBuilder.Rotation`, `TableCellBuilder.Rotation`, or `TextElement.Rotation` to rotate text while maintaining glyph alignment.
-3. **Hyphenation & wrapping**: choose `TextWrapMode` in tables and `AvoidBreakInside`, `WidowLines`, `OrphanLines` on text blocks to control pagination.
-4. **Bidi text**: mixed languages are handled automatically; set `FlowDirection` for paragraphs that should default to RTL.
+The canonical descriptor supports font family and size, bold, italic, text and highlight colours, line height, letter and word spacing, underline, strikethrough, overline, decoration colour/thickness/style, superscript, subscript, left/centre/right/justify alignment, automatic/LTR/RTL direction, wrap/no-wrap/hyphenation, ellipsis, maximum lines, and an ordered fallback-font chain.
 
-Example
--------
+Named theme styles are inherited first and direct overrides are applied afterward. Named styles contain only explicitly configured values, so a style such as `Bold()` does not reset the inherited family, size, or colour.
+
 ```csharp
-builder.DefaultTextStyle(defaults =>
+var document = PdfDocument.Create(document =>
 {
-    defaults.FontFamily = "Noto Sans";
-    defaults.FallbackFonts = new List<string> { "Noto Sans Arabic", "Noto Sans Hebrew" };
-});
+    document.Theme(theme => theme.TextStyle("Body", style => style
+        .FontFamily("Inter")
+        .FontSize(11)
+        .LineHeight(1.35f)
+        .FallbackFonts("Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans CJK SC")));
 
-page.Compose(flow =>
-{
-    flow.Text("مرحبا بالعالم • שלום עולם • Hello World")
-        .FontSize(14)
-        .LineHeight(1.4f);
-
-    flow.Table(table =>
+    document.Page(page => page.Content().RichText(paragraph =>
     {
-        table.ColumnWidths(200);
-        table.Row(row => row.Cell(cell =>
-        {
-            cell.Text("Rotation demo");
-            cell.Rotation(90);
-        }));
-    });
+        paragraph.DefaultStyle().Style("Body");
+        paragraph.Span("Invoice ").Bold();
+        paragraph.Span("مرحبا").Direction(TextDirection.RightToLeft).Underline();
+    }));
 });
 ```
 
-Expected Outcome
-----------------
-- The combined Arabic, Hebrew, and Latin sentence renders in the correct visual order with appropriate glyph shaping.
-- The rotated table cell text uses a proper transformation matrix (validated by tests) so glyphs remain crisp.
+Rich text participates in normal flow measurement and page splitting. Each span retains its inherited style, fallback chain, decoration, and baseline shift through measurement and rendering. Links remain supported by the legacy rich-run model; the canonical link surface is intentionally deferred to Roadmap PR 24.
+
+## Shaping and output guarantees
+
+All ordinary text, rich spans, and table runs continue through `TextShaper`, SkiaSharp.HarfBuzz, `GlyphRunEncoder`, CID-to-GID mapping, ToUnicode generation, font subsetting, and resource deduplication. Font catalogue versions are part of typeface cache keys. A document captures an immutable font snapshot before canonical composition so concurrent registration cannot change its family or fallback choices midway through generation.
+
+Automatic direction chooses the first strong script. Explicit LTR and RTL remain available. Logical Unicode stays in ToUnicode mappings so extracted text is independent of visual glyph order.
+
+Full-font embedding after a subset failure is never silent: every fallback is retained in `FontDiagnostics.RecentMessages`, even when trace output and a custom diagnostic writer are disabled.
+
+No font binaries are stored in the repository. Multilingual tests use fonts installed by the CI environment.

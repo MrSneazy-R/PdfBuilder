@@ -114,6 +114,20 @@ namespace PdfBuilder.Tests
             if (string.IsNullOrEmpty(stream))
                 return blocks;
 
+            var actualText = new Dictionary<string, string>(StringComparer.Ordinal);
+            int actualIndex = 0;
+            stream = Regex.Replace(stream,
+                @"(?s)/Span\s*<<\s*/ActualText\s*(?<value><[0-9A-Fa-f]+>|\((?:\\.|[^\\\)])*\))\s*>>\s*BDC.*?EMC",
+                match =>
+                {
+                    string token = $"PDFBUILDERACTUAL{actualIndex++}";
+                    string value = match.Groups["value"].Value;
+                    actualText[token] = value.StartsWith('<')
+                        ? DecodeUnicodeHex(value[1..^1].StartsWith("FEFF", StringComparison.OrdinalIgnoreCase) ? value[5..^1] : value[1..^1])
+                        : DecodeLiteralString(value[1..^1]);
+                    return $"({token}) Tj";
+                });
+
             string currentFont = string.Empty;
             int i = 0;
             while (i < stream.Length)
@@ -152,6 +166,7 @@ namespace PdfBuilder.Tests
             {
                 if (!literal.Success) continue;
                 string decoded = DecodeLiteralString(literal.Groups["text"].Value);
+                if (actualText.TryGetValue(decoded, out var replacement)) decoded = replacement;
                 if (!string.IsNullOrEmpty(decoded))
                     blocks.Add(decoded);
             }

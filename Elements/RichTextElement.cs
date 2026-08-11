@@ -12,6 +12,12 @@ public sealed class RichTextElement : PdfElement
     public float FontSize { get; set; } = 12f;
     public float LineHeight { get; set; } = 1.2f;
     public TextAlignment Alignment { get; set; } = TextAlignment.Left;
+    public string Color { get; set; } = "black";
+    public string? BackgroundColor { get; set; }
+    public List<string>? FallbackFonts { get; set; }
+    public TextWrapping Wrapping { get; set; } = TextWrapping.Wrap;
+    public bool EllipsisWhenConstrained { get; set; }
+    public int? MaximumLines { get; set; }
 
     // Box model
     public float? MarginTop { get; set; }
@@ -26,6 +32,7 @@ public sealed class RichTextElement : PdfElement
     public float? MaxWidth { get; set; }
     public float Rotation { get; set; } = 0f;
     public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
+    public TextDirection Direction { get; set; } = TextDirection.Automatic;
 
     public RichTextElement(float x, float y) : base(x, y) { }
 

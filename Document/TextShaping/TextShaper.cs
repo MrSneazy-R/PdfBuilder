@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using PdfBuilder.Fonts;
 using PdfBuilder.Models;
+using PdfBuilder.Writer.Fonts;
 using SkiaSharp;
 using SkiaSharp.HarfBuzz;
 
@@ -250,7 +251,14 @@ namespace PdfBuilder.TextShaping
 
                 if (cached != null)
                 {
-                    yield return cached.Text;
+                    string completed = cached.Text;
+                    if (request.Wrapping == TextWrapping.Hyphenate)
+                    {
+                        var hyphenated = ShapeLine(completed + "-", request);
+                        if (hyphenated.Width <= maxWidth)
+                            completed = hyphenated.Text;
+                    }
+                    yield return completed;
                     buffer.Clear();
                     buffer.Append(element);
                     cached = ShapeLine(buffer.ToString(), request);
@@ -570,7 +578,7 @@ namespace PdfBuilder.TextShaping
         private SKTypeface ResolveTypeface(string fontFamily, bool bold, bool italic, bool monospace)
         {
             string resolvedFamily = monospace ? ResolveMonospaceFamily(fontFamily) : fontFamily;
-            string key = $"{resolvedFamily}|{(bold ? "b" : "n")}|{(italic ? "i" : "r")}";
+            string key = $"{FontCatalog.Version}|{resolvedFamily}|{(bold ? "b" : "n")}|{(italic ? "i" : "r")}";
             return _typefaceCache.GetOrAdd(key, _ =>
             {
                 var weight = bold ? SKFontStyleWeight.Bold : SKFontStyleWeight.Normal;
@@ -581,7 +589,18 @@ namespace PdfBuilder.TextShaping
                 if (custom != null)
                     return custom;
 
-                return _fontManager.MatchFamily(resolvedFamily, style) ?? SKTypeface.Default;
+                var matched = _fontManager.MatchFamily(resolvedFamily, style);
+                if (IsBase14Family(resolvedFamily))
+                    return matched ?? SKTypeface.Default;
+
+                if (matched != null && IsFamilyMatch(resolvedFamily, matched.FamilyName))
+                    return matched;
+
+                string message = $"Font family '{resolvedFamily}' with style '{style}' could not be resolved.";
+                if (FontCatalog.IsStrictMatching)
+                    throw new FontNotFoundException(message);
+                FontDiagnostics.Report($"{message} Using platform fallback '{matched?.FamilyName ?? SKTypeface.Default.FamilyName}'.");
+                return matched ?? SKTypeface.Default;
             });
         }
 
@@ -604,9 +623,10 @@ namespace PdfBuilder.TextShaping
             if (primary.ContainsGlyphs(runeString))
                 return primary;
 
-            if (request.FallbackFonts != null)
+            var fallbacks = request.FallbackFonts ?? FontCatalog.GetFallbackFonts();
+            if (fallbacks.Count > 0)
             {
-                foreach (var fallback in request.FallbackFonts)
+                foreach (var fallback in fallbacks)
                 {
                     var fallbackFace = ResolveTypeface(fallback, request.Bold, request.Italic, request.Monospace);
                     if (fallbackFace.ContainsGlyphs(runeString))
@@ -631,7 +651,31 @@ namespace PdfBuilder.TextShaping
                 return matched;
 
             matched = _fontManager.MatchCharacter(null, style, Array.Empty<string>(), rune.Value);
-            return matched != null && matched.ContainsGlyphs(runeString) ? matched : SKTypeface.Default;
+            if (matched != null && matched.ContainsGlyphs(runeString))
+            {
+                FontDiagnostics.Report($"Glyph U+{rune.Value:X4} was resolved using platform fallback '{matched.FamilyName}'.");
+                return matched;
+            }
+
+            string message = $"No registered or platform fallback font contains glyph U+{rune.Value:X4}.";
+            if (FontCatalog.IsStrictMatching)
+                throw new FontNotFoundException(message);
+            FontDiagnostics.Report($"{message} Using the default platform typeface.");
+            return SKTypeface.Default;
+        }
+
+        private static bool IsBase14Family(string family) =>
+            string.IsNullOrWhiteSpace(family)
+            || family.Contains("Helvetica", StringComparison.OrdinalIgnoreCase)
+            || family.Contains("Times", StringComparison.OrdinalIgnoreCase)
+            || family.Contains("Courier", StringComparison.OrdinalIgnoreCase)
+            || family.Equals("Symbol", StringComparison.OrdinalIgnoreCase)
+            || family.Equals("ZapfDingbats", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsFamilyMatch(string requested, string? resolved)
+        {
+            static string Normalize(string value) => value.Replace(" ", string.Empty, StringComparison.Ordinal).Replace("-", string.Empty, StringComparison.Ordinal);
+            return !string.IsNullOrWhiteSpace(resolved) && string.Equals(Normalize(requested), Normalize(resolved), StringComparison.OrdinalIgnoreCase);
         }
 
         private readonly struct TextSegment

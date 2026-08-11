@@ -21,7 +21,8 @@ namespace PdfBuilder.TextShaping
             FlowDirection flowDirection = FlowDirection.LeftToRight,
             float? letterSpacing = null,
             float? wordSpacing = null,
-            TextTransform transform = TextTransform.None)
+            TextTransform transform = TextTransform.None,
+            TextWrapping wrapping = TextWrapping.Wrap)
         {
             Text = text ?? string.Empty;
             FontFamily = string.IsNullOrWhiteSpace(fontFamily) ? "Helvetica" : fontFamily;
@@ -37,6 +38,7 @@ namespace PdfBuilder.TextShaping
             LetterSpacing = letterSpacing;
             WordSpacing = wordSpacing;
             Transform = transform;
+            Wrapping = wrapping;
         }
 
         public string Text { get; }
@@ -53,6 +55,7 @@ namespace PdfBuilder.TextShaping
         public float? LetterSpacing { get; }
         public float? WordSpacing { get; }
         public TextTransform Transform { get; }
+        public TextWrapping Wrapping { get; }
     }
 
     internal sealed class ShapedParagraph

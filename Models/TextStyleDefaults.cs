@@ -13,6 +13,7 @@ namespace PdfBuilder.Models
         public float? FontSize { get; set; } = 12f;
         public float? LineHeight { get; set; } = 1.2f;
         public string? Color { get; set; } = "black";
+        public string? BackgroundColor { get; set; }
         public bool? Bold { get; set; }
         public bool? Italic { get; set; }
         public bool? Underline { get; set; }
@@ -30,6 +31,22 @@ namespace PdfBuilder.Models
         public bool? Overline { get; set; }
         public TextTransform? Transform { get; set; }
         public List<string>? FallbackFonts { get; set; }
+        public TextDirection? Direction { get; set; } = TextDirection.Automatic;
+        public TextWrapping? Wrapping { get; set; } = TextWrapping.Wrap;
+        public bool? Ellipsis { get; set; }
+        public int? MaximumLines { get; set; }
+        public bool? Superscript { get; set; }
+        public bool? Subscript { get; set; }
+
+        internal static TextStyleDefaults CreateOverrides() => new()
+        {
+            FontFamily = null,
+            FontSize = null,
+            LineHeight = null,
+            Color = null,
+            Direction = null,
+            Wrapping = null
+        };
 
         public TextStyleDefaults Clone()
         {
@@ -39,6 +56,7 @@ namespace PdfBuilder.Models
                 FontSize = FontSize,
                 LineHeight = LineHeight,
                 Color = Color,
+                BackgroundColor = BackgroundColor,
                 Bold = Bold,
                 Italic = Italic,
                 Underline = Underline,
@@ -56,7 +74,13 @@ namespace PdfBuilder.Models
                 Overline = Overline,
                 Transform = Transform,
                 FallbackFonts = FallbackFonts != null ? new List<string>(FallbackFonts) : null,
-                FlowDirection = FlowDirection
+                FlowDirection = FlowDirection,
+                Direction = Direction,
+                Wrapping = Wrapping,
+                Ellipsis = Ellipsis,
+                MaximumLines = MaximumLines,
+                Superscript = Superscript,
+                Subscript = Subscript
             };
         }
 
@@ -68,6 +92,7 @@ namespace PdfBuilder.Models
             FontSize = other.FontSize;
             LineHeight = other.LineHeight;
             Color = other.Color;
+            BackgroundColor = other.BackgroundColor;
             Bold = other.Bold;
             Italic = other.Italic;
             Underline = other.Underline;
@@ -86,6 +111,45 @@ namespace PdfBuilder.Models
             Transform = other.Transform;
             FallbackFonts = other.FallbackFonts != null ? new List<string>(other.FallbackFonts) : null;
             FlowDirection = other.FlowDirection;
+            Direction = other.Direction;
+            Wrapping = other.Wrapping;
+            Ellipsis = other.Ellipsis;
+            MaximumLines = other.MaximumLines;
+            Superscript = other.Superscript;
+            Subscript = other.Subscript;
+        }
+
+        internal void ApplyOverridesTo(TextStyleDefaults target)
+        {
+            if (target == null) throw new ArgumentNullException(nameof(target));
+            if (FontFamily != null) target.FontFamily = FontFamily;
+            if (FontSize.HasValue) target.FontSize = FontSize;
+            if (LineHeight.HasValue) target.LineHeight = LineHeight;
+            if (Color != null) target.Color = Color;
+            if (BackgroundColor != null) target.BackgroundColor = BackgroundColor;
+            if (Bold.HasValue) target.Bold = Bold;
+            if (Italic.HasValue) target.Italic = Italic;
+            if (Underline.HasValue) target.Underline = Underline;
+            if (Strikethrough.HasValue) target.Strikethrough = Strikethrough;
+            if (SmallCaps.HasValue) target.SmallCaps = SmallCaps;
+            if (Monospace.HasValue) target.Monospace = Monospace;
+            if (Opacity.HasValue) target.Opacity = Opacity;
+            if (Alignment.HasValue) target.Alignment = Alignment;
+            if (BaselineOffset.HasValue) target.BaselineOffset = BaselineOffset;
+            if (LetterSpacing.HasValue) target.LetterSpacing = LetterSpacing;
+            if (WordSpacing.HasValue) target.WordSpacing = WordSpacing;
+            if (DecorationColor != null) target.DecorationColor = DecorationColor;
+            if (DecorationThickness.HasValue) target.DecorationThickness = DecorationThickness;
+            if (DecorationStyle.HasValue) target.DecorationStyle = DecorationStyle;
+            if (Overline.HasValue) target.Overline = Overline;
+            if (Transform.HasValue) target.Transform = Transform;
+            if (FallbackFonts != null) target.FallbackFonts = new List<string>(FallbackFonts);
+            if (Direction.HasValue) { target.Direction = Direction; target.FlowDirection = FlowDirection; }
+            if (Wrapping.HasValue) target.Wrapping = Wrapping;
+            if (Ellipsis.HasValue) target.Ellipsis = Ellipsis;
+            if (MaximumLines.HasValue) target.MaximumLines = MaximumLines;
+            if (Superscript.HasValue) target.Superscript = Superscript;
+            if (Subscript.HasValue) target.Subscript = Subscript;
         }
 
         public void ApplyTo(TextElement element)
@@ -100,7 +164,13 @@ namespace PdfBuilder.Models
                 element.LineHeight = LineHeight.Value;
             if (!string.IsNullOrWhiteSpace(Color))
                 element.Color = Color!;
-            element.FlowDirection = FlowDirection;
+            if (!string.IsNullOrWhiteSpace(BackgroundColor))
+                element.BackgroundColor = BackgroundColor;
+            if (Direction.HasValue)
+            {
+                element.Direction = Direction.Value;
+                element.FlowDirection = ResolveFlowDirection();
+            }
             if (Bold.HasValue)
                 element.Bold = Bold.Value;
             if (Italic.HasValue)
@@ -135,6 +205,16 @@ namespace PdfBuilder.Models
                 element.Transform = Transform.Value;
             if (FallbackFonts != null)
                 element.FallbackFonts = new List<string>(FallbackFonts);
+            if (Wrapping.HasValue)
+                element.Wrapping = Wrapping.Value;
+            if (Ellipsis.HasValue)
+                element.EllipsisWhenConstrained = Ellipsis.Value;
+            if (MaximumLines.HasValue)
+                element.MaximumLines = MaximumLines;
+            if (Superscript == true)
+                element.BaselineOffset = element.FontSize * 0.35f;
+            else if (Subscript == true)
+                element.BaselineOffset = element.FontSize * -0.20f;
         }
 
         public void ApplyTo(RichTextElement element)
@@ -149,7 +229,23 @@ namespace PdfBuilder.Models
                 element.LineHeight = LineHeight.Value;
             if (Alignment.HasValue)
                 element.Alignment = Alignment.Value;
-            element.FlowDirection = FlowDirection;
+            if (Direction.HasValue)
+            {
+                element.Direction = Direction.Value;
+                element.FlowDirection = ResolveFlowDirection();
+            }
+            if (!string.IsNullOrWhiteSpace(Color))
+                element.Color = Color!;
+            if (!string.IsNullOrWhiteSpace(BackgroundColor))
+                element.BackgroundColor = BackgroundColor;
+            if (Wrapping.HasValue)
+                element.Wrapping = Wrapping.Value;
+            if (Ellipsis.HasValue)
+                element.EllipsisWhenConstrained = Ellipsis.Value;
+            if (MaximumLines.HasValue)
+                element.MaximumLines = MaximumLines;
+            if (FallbackFonts != null)
+                element.FallbackFonts = new List<string>(FallbackFonts);
         }
 
         public void ApplyTo(ListElement element)
@@ -197,6 +293,20 @@ namespace PdfBuilder.Models
                 run.WordSpacing = WordSpacing;
             if (Transform.HasValue && Transform.Value != TextTransform.None)
                 run.Transform = Transform;
+            if (!string.IsNullOrWhiteSpace(BackgroundColor))
+                run.BackgroundColor = BackgroundColor;
+            if (Overline.HasValue)
+                run.Overline = Overline.Value;
+            if (!string.IsNullOrWhiteSpace(DecorationColor))
+                run.DecorationColor = DecorationColor;
+            if (DecorationThickness.HasValue)
+                run.DecorationThickness = DecorationThickness;
+            if (DecorationStyle.HasValue)
+                run.DecorationStyle = DecorationStyle.Value;
+            if (Superscript.HasValue)
+                run.Superscript = Superscript.Value;
+            if (Subscript.HasValue)
+                run.Subscript = Subscript.Value;
         }
 
         public void ApplyTo(PdfBuilder.Elements.Table.TextStyle style)
@@ -233,7 +343,53 @@ namespace PdfBuilder.Models
                 style.DecorationStyle = DecorationStyle.Value;
             if (LineHeight.HasValue)
                 style.LineHeight = LineHeight;
-            style.FlowDirection = FlowDirection;
+            if (Alignment.HasValue)
+                style.HorizontalAlign = Alignment.Value switch
+                {
+                    TextAlignment.Center => PdfBuilder.Document.HorizontalAlign.Center,
+                    TextAlignment.Right => PdfBuilder.Document.HorizontalAlign.Right,
+                    _ => PdfBuilder.Document.HorizontalAlign.Left
+                };
+            if (FallbackFonts != null)
+                style.FallbackFonts = new List<string>(FallbackFonts);
+            if (Direction.HasValue)
+            {
+                style.Direction = Direction;
+                style.FlowDirection = ResolveFlowDirection();
+            }
+            if (!string.IsNullOrWhiteSpace(BackgroundColor))
+            {
+                try { style.BackgroundColor = ColorTranslator.FromHtml(BackgroundColor); }
+                catch { }
+            }
+            if (Overline.HasValue)
+                style.Overline = Overline.Value;
+            if (Underline.HasValue)
+                style.Underline = Underline.Value;
+            if (Strikethrough.HasValue)
+                style.Strikethrough = Strikethrough.Value;
+            if (Superscript.HasValue)
+                style.Superscript = Superscript.Value;
+            if (Subscript.HasValue)
+                style.Subscript = Subscript.Value;
+            if (Wrapping.HasValue || Ellipsis == true)
+                style.Wrap = Wrapping switch
+                {
+                    TextWrapping.NoWrap => PdfBuilder.Elements.Table.TextWrapMode.NoWrap,
+                    TextWrapping.Hyphenate => PdfBuilder.Elements.Table.TextWrapMode.Hyphenate,
+                    _ when Ellipsis == true => PdfBuilder.Elements.Table.TextWrapMode.EllipsisWhenClipped,
+                    _ => PdfBuilder.Elements.Table.TextWrapMode.Wrap
+                };
+        }
+
+        internal FlowDirection ResolveFlowDirection()
+        {
+            return Direction switch
+            {
+                TextDirection.LeftToRight => FlowDirection.LeftToRight,
+                TextDirection.RightToLeft => FlowDirection.RightToLeft,
+                _ => FlowDirection
+            };
         }
     }
 }

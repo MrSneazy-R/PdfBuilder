@@ -6,6 +6,16 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- A shared canonical typography surface for ordinary text, rich spans, theme styles,
+  table cells, headers/footers, and practical chart-label styling.
+- Flow-aware rich-text pagination, logical RTL extraction with PDF `ActualText`, and
+  wrapping, hyphenation, ellipsis, maximum-line, decoration, and baseline-shift controls.
+- Thread-safe byte, stream, file, and directory font registration with deterministic
+  fallback order, strict missing-font failures, size guardrails, retained diagnostics,
+  versioned cache keys, and immutable per-document catalogue snapshots.
+
 ## [0.1.0-preview.2] - 2026-08-11
 
 ### Added
