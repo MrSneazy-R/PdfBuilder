@@ -6,6 +6,8 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0-preview.2] - 2026-08-11
+
 ### Added
 
 - Canonical document composition, reusable components, theming, page composition,
@@ -13,8 +15,10 @@ policy is [Semantic Versioning](https://semver.org/).
   streaming resources, validation fixtures, and rendering limits.
 - A manual-only release-candidate workflow that creates package artefacts and a draft
   GitHub release without publishing to NuGet.org.
+- Typed-template file saving, usable named spacing tokens, complete canonical colour-token
+  resolution, and retained serializer-encoding audit coverage.
 
 ### Changed
 
-- The next package is versioned `0.1.0-preview.1` because the documented v1
+- The package is versioned `0.1.0-preview.2` because the documented v1
   production gates are not all proven yet.

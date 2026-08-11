@@ -1,14 +1,16 @@
 # PdfBuilder
 
-> **Pre-release:** PdfBuilder `0.1.0-preview.1` is under active production hardening. Validate output against your own documents before production use.
+> **Pre-release:** PdfBuilder `0.1.0-preview.2` is under active production hardening. Validate output against your own documents before production use. It is neither stable nor a 1.0 release candidate.
 
 PdfBuilder is a cross-platform .NET PDF library for invoices, statements, operational documents, and reports. It keeps its own PDF writer and layout engine; it is not a wrapper around another PDF generator.
 
 ## Installation
 
 ```bash
-dotnet add package PdfBuilder --prerelease
+dotnet add package PdfBuilder --version 0.1.0-preview.2
 ```
+
+Use that command with the owner-approved private or local package source. PdfBuilder is not currently published to NuGet.org.
 
 Use the stable .NET 10 SDK specified in [global.json](global.json).
 
@@ -75,7 +77,7 @@ Use `container.Image` for PNG/JPEG and `container.Svg` for sanitised inline SVG.
 
 ## Reusable components
 
-Keep templates typed and side-effect free. The invoice sample’s `InvoiceTemplate.Create(Invoice)` accepts an immutable model and performs no database or service access.
+Keep templates typed and side-effect free. The invoice sample subclasses `PdfTemplate<Invoice>`, accepts an immutable model, and performs no database or service access.
 
 ## Diagnostics
 

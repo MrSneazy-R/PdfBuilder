@@ -2,7 +2,7 @@
 
 ## Package status
 
-`0.1.0-preview.1` is a pre-release package. It is intentionally not labelled
+`0.1.0-preview.2` is a pre-release package. It is intentionally not labelled
 `1.0.0-rc.1`: the production-readiness report records the gates still awaiting
 evidence. The package is suitable only for controlled evaluation until those gates
 are passed and the repository owner approves a licence.
@@ -45,6 +45,13 @@ breaking changes remain possible before 1.0. The `Release candidate` workflow is
 manual, creates `.nupkg`, `.snupkg`, and SHA-256 files, and attaches them to a draft
 GitHub release. It never publishes to NuGet.org. Public publishing is blocked until
 the owner approves a licence; private/internal distribution remains an owner decision.
+
+Build and consume the current private package with the project version unchanged:
+
+```bash
+dotnet pack PdfBuilder.csproj -c Release -p:Version=0.1.0-preview.2 -o ./artifacts
+dotnet add package PdfBuilder --version 0.1.0-preview.2 --source ./artifacts
+```
 
 ## Known limitations
 

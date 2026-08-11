@@ -88,7 +88,9 @@ namespace PdfBuilder.Document
                 MarginBottom = page.MarginBottom,
                 MarginLeft = page.MarginLeft,
                 MarginRight = page.MarginRight,
-                TextDefaults = page.TextDefaults.Clone()
+                TextDefaults = page.TextDefaults.Clone(),
+                Theme = page.Theme.Clone(),
+                BackgroundColor = page.BackgroundColor
             };
             tempPage.LayoutOptions = page.LayoutOptions.Clone();
 

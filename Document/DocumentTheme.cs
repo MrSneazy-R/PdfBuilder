@@ -67,9 +67,17 @@ namespace PdfBuilder.Document
 
         public IReadOnlyDictionary<string, float> Values => _values;
 
-        public float this[string name] => _values.TryGetValue(name, out var value)
-            ? value
-            : throw new KeyNotFoundException($"Theme spacing '{name}' is not defined.");
+        public float this[string name]
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(name))
+                    throw new ArgumentException("A theme spacing token is required.", nameof(name));
+                return _values.TryGetValue(name, out var value)
+                    ? value
+                    : throw new KeyNotFoundException($"Theme spacing '{name}' is not defined.");
+            }
+        }
 
         internal void Set(string name, float value) => _values[name] = value;
 

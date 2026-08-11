@@ -58,10 +58,14 @@ public interface IContainer
     IContainer Component<TModel>(IPdfComponent<TModel> component, TModel model);
     /// <summary>Applies uniform inner padding in points.</summary>
     IContainer Padding(float value);
+    /// <summary>Applies uniform inner padding resolved from the current document theme.</summary>
+    IContainer Padding(string spacingToken);
     /// <summary>Applies per-side inner padding in points.</summary>
     IContainer Padding(float left, float top, float right, float bottom);
     /// <summary>Applies uniform outer margin in points.</summary>
     IContainer Margin(float value);
+    /// <summary>Applies uniform outer margin resolved from the current document theme.</summary>
+    IContainer Margin(string spacingToken);
     /// <summary>Applies per-side outer margin in points.</summary>
     IContainer Margin(float left, float top, float right, float bottom);
     /// <summary>Paints a background behind this container.</summary>
@@ -155,6 +159,8 @@ public interface IColumnDescriptor
 {
     /// <summary>Sets spacing between column items in points.</summary>
     void Spacing(float value);
+    /// <summary>Sets spacing between column items from the current document theme.</summary>
+    void Spacing(string spacingToken);
     /// <summary>Adds a column item.</summary>
     IContainer Item();
 }
@@ -177,8 +183,12 @@ public interface IGridDescriptor
     void Columns(int value);
     /// <summary>Sets the gap between grid rows in points.</summary>
     void RowSpacing(float value);
+    /// <summary>Sets the gap between grid rows from the current document theme.</summary>
+    void RowSpacing(string spacingToken);
     /// <summary>Sets the gap between grid columns in points.</summary>
     void ColumnSpacing(float value);
+    /// <summary>Sets the gap between grid columns from the current document theme.</summary>
+    void ColumnSpacing(string spacingToken);
     /// <summary>Adds a grid item.</summary>
     IContainer Item();
 }
@@ -422,10 +432,10 @@ public partial class PdfDocument
     private sealed class CanonicalPageDescriptor : IPageDescriptor
     {
         private readonly PdfDocument _document;
-        private readonly CanonicalContainer _content = new();
-        private readonly CanonicalContainer _header = new();
-        private readonly CanonicalContainer _footer = new();
-        private readonly CanonicalContainer _background = new();
+        private readonly CanonicalContainer _content;
+        private readonly CanonicalContainer _header;
+        private readonly CanonicalContainer _footer;
+        private readonly CanonicalContainer _background;
         private PageSize _size = PageSizes.Letter;
         private PageOrientation _orientation = PageOrientation.Portrait;
         private float _left = 40f, _top = 40f, _right = 40f, _bottom = 40f;
@@ -434,7 +444,17 @@ public partial class PdfDocument
         private float _columnGutter = 14f;
         private bool _hasHeader, _hasFooter, _hasBackground, _firstPageDifferent, _hideFooterOnLastPage;
 
-        public CanonicalPageDescriptor(PdfDocument document) => _document = document;
+        public CanonicalPageDescriptor(PdfDocument document)
+        {
+            _document = document;
+            _content = new CanonicalContainer(document.Theme);
+            _header = new CanonicalContainer(document.Theme);
+            _footer = new CanonicalContainer(document.Theme);
+            _background = new CanonicalContainer(document.Theme);
+
+            if (document.Theme.Page.Margin.HasValue)
+                _left = _top = _right = _bottom = document.Theme.Page.Margin.Value;
+        }
         public void Size(PageSize size)
         {
             if (size.Width <= 0 || size.Height <= 0) throw new ArgumentOutOfRangeException(nameof(size));
@@ -469,6 +489,8 @@ public partial class PdfDocument
             var size = _size.WithOrientation(_orientation);
             var page = _document.AddPage(size.Width, size.Height);
             page.MarginLeft = _left; page.MarginTop = _top; page.MarginRight = _right; page.MarginBottom = _bottom;
+            if (!string.IsNullOrWhiteSpace(page.Theme.Page.BackgroundColor))
+                page.BackgroundColor = page.Theme.ResolveColor(page.Theme.Page.BackgroundColor!);
             page.Columns = new ColumnLayoutSpec { Columns = _columnCount, Gutter = _columnGutter };
             _defaultStyle.Apply(page.TextDefaults);
             if (_hasHeader || _hasFooter)
@@ -490,6 +512,7 @@ public partial class PdfDocument
 
     private sealed class CanonicalContainer : IContainer
     {
+        private readonly DocumentTheme _theme;
         private readonly List<Action<Layout.ContentComposer>> _content = new();
         private float? _paddingLeft, _paddingTop, _paddingRight, _paddingBottom;
         private float? _marginLeft, _marginTop, _marginRight, _marginBottom;
@@ -502,26 +525,34 @@ public partial class PdfDocument
         private float? _width, _height, _minWidth, _maxWidth, _minHeight, _maxHeight, _aspectRatio, _ensureSpace;
         private bool _extend, _shrink, _keepTogether, _keepWithNext, _visible = true;
         private string? _debugLabel;
-        private readonly List<Type> _componentPath = new();
+        private readonly List<Type> _componentPath;
+
+        public CanonicalContainer(DocumentTheme theme, List<Type>? componentPath = null)
+        {
+            _theme = theme ?? throw new ArgumentNullException(nameof(theme));
+            _componentPath = componentPath ?? new List<Type>();
+        }
 
         public IContainer Padding(float value) => Padding(value, value, value, value);
+        public IContainer Padding(string spacingToken) => Padding(ResolveSpacing(spacingToken));
         public IContainer Padding(float left, float top, float right, float bottom)
         {
             ValidateNonNegative(left, nameof(left)); ValidateNonNegative(top, nameof(top)); ValidateNonNegative(right, nameof(right)); ValidateNonNegative(bottom, nameof(bottom));
             _paddingLeft = left; _paddingTop = top; _paddingRight = right; _paddingBottom = bottom; return this;
         }
         public IContainer Margin(float value) => Margin(value, value, value, value);
+        public IContainer Margin(string spacingToken) => Margin(ResolveSpacing(spacingToken));
         public IContainer Margin(float left, float top, float right, float bottom)
         {
             ValidateNonNegative(left, nameof(left)); ValidateNonNegative(top, nameof(top)); ValidateNonNegative(right, nameof(right)); ValidateNonNegative(bottom, nameof(bottom));
             _marginLeft = left; _marginTop = top; _marginRight = right; _marginBottom = bottom; return this;
         }
-        public IContainer Background(string color) { _background = ValidateColor(color); return this; }
-        public IContainer Border(float width = 1f, string color = "#000000") { _border.SetAll(width, color); return this; }
-        public IContainer BorderLeft(float width = 1f, string color = "#000000") { _border.Left = BorderValues.Create(width, color); return this; }
-        public IContainer BorderTop(float width = 1f, string color = "#000000") { _border.Top = BorderValues.Create(width, color); return this; }
-        public IContainer BorderRight(float width = 1f, string color = "#000000") { _border.Right = BorderValues.Create(width, color); return this; }
-        public IContainer BorderBottom(float width = 1f, string color = "#000000") { _border.Bottom = BorderValues.Create(width, color); return this; }
+        public IContainer Background(string color) { _background = ResolveColor(color); return this; }
+        public IContainer Border(float width = 1f, string color = "#000000") { _border.SetAll(width, ResolveColor(color)); return this; }
+        public IContainer BorderLeft(float width = 1f, string color = "#000000") { _border.Left = BorderValues.Create(width, ResolveColor(color)); return this; }
+        public IContainer BorderTop(float width = 1f, string color = "#000000") { _border.Top = BorderValues.Create(width, ResolveColor(color)); return this; }
+        public IContainer BorderRight(float width = 1f, string color = "#000000") { _border.Right = BorderValues.Create(width, ResolveColor(color)); return this; }
+        public IContainer BorderBottom(float width = 1f, string color = "#000000") { _border.Bottom = BorderValues.Create(width, ResolveColor(color)); return this; }
         public IContainer CornerRadius(float value) { ValidateNonNegative(value, nameof(value)); _cornerRadius = value; return this; }
         public IContainer Opacity(float value) { if (value < 0f || value > 1f || float.IsNaN(value)) throw new ArgumentOutOfRangeException(nameof(value)); _opacity = value; return this; }
         public IContainer AlignLeft() { _horizontal = Layout.Components.LayoutHorizontalAlignment.Left; return this; }
@@ -598,9 +629,9 @@ public partial class PdfDocument
         public void Table(Action<ITableDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var descriptor = new CanonicalTableDescriptor();
+            var descriptor = new CanonicalTableDescriptor(_theme);
             configure(descriptor);
-            _content.Add(composer => composer.Component(new Layout.Components.TableComponent(descriptor.Build())));
+            _content.Add(composer => composer.Table(descriptor.Build()));
         }
         public ITextDescriptor Text(Func<string> text)
         {
@@ -612,38 +643,38 @@ public partial class PdfDocument
         public void Column(Action<IColumnDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var column = new CanonicalColumnDescriptor(); configure(column);
+            var column = new CanonicalColumnDescriptor(_theme, _componentPath); configure(column);
             _content.Add(composer => composer.Column(builder => column.Compose(builder)));
         }
         public void Row(Action<IRowDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var row = new CanonicalRowDescriptor(); configure(row);
+            var row = new CanonicalRowDescriptor(_theme, _componentPath); configure(row);
             _content.Add(composer => composer.Row(builder => row.Compose(builder)));
         }
         public void Grid(Action<IGridDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var grid = new CanonicalGridDescriptor(); configure(grid);
+            var grid = new CanonicalGridDescriptor(_theme, _componentPath); configure(grid);
             _content.Add(composer => composer.Grid(builder => grid.Compose(builder)));
         }
         public void Stack(Action<IStackDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var stack = new CanonicalStackDescriptor(); configure(stack);
+            var stack = new CanonicalStackDescriptor(_theme, _componentPath); configure(stack);
             _content.Add(composer => composer.Stack(builder => stack.Compose(builder)));
         }
         public void Layer(Action<ILayerDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var layer = new CanonicalLayerDescriptor(); configure(layer);
+            var layer = new CanonicalLayerDescriptor(_theme, _componentPath); configure(layer);
             _content.Add(composer => composer.Layer(builder => layer.Compose(builder)));
         }
         public void Repeat(int count, Action<int, IContainer> configure)
         {
             if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(); configure(index, item); _content.Add(item.Compose); }
+            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(_theme, _componentPath); configure(index, item); _content.Add(item.Compose); }
         }
         public void Compose(Layout.ContentComposer composer) => Compose(composer, null);
 
@@ -716,6 +747,13 @@ public partial class PdfDocument
         private static float ValidateDimension(float value, string name) { ValidateNonNegative(value, name); return value; }
         private static void ValidateNonNegative(float value, string name) { if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(name); }
         private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
+        private string ResolveColor(string color) => _theme.ResolveColor(ValidateColor(color));
+        private float ResolveSpacing(string spacingToken)
+        {
+            if (string.IsNullOrWhiteSpace(spacingToken))
+                throw new ArgumentException("A theme spacing token is required.", nameof(spacingToken));
+            return _theme.Spacing[spacingToken];
+        }
     }
 
     private sealed class CanonicalImageDescriptor : IImageDescriptor
@@ -779,7 +817,10 @@ public partial class PdfDocument
 
     private sealed class CanonicalTableDescriptor : ITableDescriptor
     {
+        private readonly DocumentTheme _theme;
         private readonly TableElement _table = new();
+
+        public CanonicalTableDescriptor(DocumentTheme theme) => _theme = theme;
 
         public void Columns(Action<ITableColumnsDescriptor> configure)
         {
@@ -802,10 +843,10 @@ public partial class PdfDocument
         {
             if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
             _table.BorderWidth = width;
-            _table.BorderColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+            _table.BorderColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color));
         }
 
-        public void HeaderBackground(string color) => _table.HeaderBackground = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+        public void HeaderBackground(string color) => _table.HeaderBackground = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color));
 
         public TableElement Build()
         {
@@ -818,11 +859,13 @@ public partial class PdfDocument
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var row = new TableRow { IsHeader = isHeader };
-            configure(new CanonicalTableRowDescriptor(row));
+            configure(new CanonicalTableRowDescriptor(row, _theme));
             if (row.Cells.Count == 0)
                 throw new InvalidOperationException("A table row requires at least one cell.");
             _table.Rows.Add(row);
         }
+
+        private string ResolveColor(string color) => _theme.ResolveColor(ValidateColor(color));
     }
 
     private sealed class CanonicalTableColumnsDescriptor : ITableColumnsDescriptor
@@ -844,28 +887,30 @@ public partial class PdfDocument
     private sealed class CanonicalTableRowDescriptor : ITableRowDescriptor
     {
         private readonly TableRow _row;
-        public CanonicalTableRowDescriptor(TableRow row) => _row = row;
+        private readonly DocumentTheme _theme;
+        public CanonicalTableRowDescriptor(TableRow row, DocumentTheme theme) { _row = row; _theme = theme; }
         public ITableCellDescriptor Cell()
         {
             var cell = new TableCell();
             _row.Cells.Add(cell);
-            return new CanonicalTableCellDescriptor(cell);
+            return new CanonicalTableCellDescriptor(cell, _theme);
         }
     }
 
     private sealed class CanonicalTableCellDescriptor : ITableCellDescriptor
     {
         private readonly TableCell _cell;
-        public CanonicalTableCellDescriptor(TableCell cell) => _cell = cell;
+        private readonly DocumentTheme _theme;
+        public CanonicalTableCellDescriptor(TableCell cell, DocumentTheme theme) { _cell = cell; _theme = theme; }
         public ITableCellDescriptor AlignLeft() { _cell.HorizontalAlign = HorizontalAlign.Left; return this; }
         public ITableCellDescriptor AlignCenter() { _cell.HorizontalAlign = HorizontalAlign.Center; return this; }
         public ITableCellDescriptor AlignRight() { _cell.HorizontalAlign = HorizontalAlign.Right; return this; }
-        public ITableCellDescriptor Background(string color) { _cell.BackgroundColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color)); return this; }
+        public ITableCellDescriptor Background(string color) { _cell.BackgroundColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color)); return this; }
         public ITableCellDescriptor Border(float width = 1f, string color = "#000000")
         {
             if (width < 0f || float.IsNaN(width) || float.IsInfinity(width)) throw new ArgumentOutOfRangeException(nameof(width));
             _cell.BorderWidth = width;
-            _cell.BorderColor = System.Drawing.ColorTranslator.FromHtml(ValidateColor(color));
+            _cell.BorderColor = System.Drawing.ColorTranslator.FromHtml(ResolveColor(color));
             return this;
         }
         public ITableCellDescriptor Padding(float value)
@@ -884,6 +929,8 @@ public partial class PdfDocument
             _cell.Text = value is IFormattable formattable ? formattable.ToString(format, System.Globalization.CultureInfo.InvariantCulture) : value?.ToString() ?? string.Empty;
             return new CanonicalTableTextDescriptor(_cell);
         }
+
+        private string ResolveColor(string color) => _theme.ResolveColor(ValidateColor(color));
     }
 
     private sealed class CanonicalTableTextDescriptor : ITextDescriptor
@@ -900,10 +947,14 @@ public partial class PdfDocument
 
     private sealed class CanonicalColumnDescriptor : IColumnDescriptor
     {
+        private readonly DocumentTheme _theme;
+        private readonly List<Type> _componentPath;
         private readonly List<CanonicalContainer> _items = new();
         private float _spacing = 8f;
+        public CanonicalColumnDescriptor(DocumentTheme theme, List<Type> componentPath) { _theme = theme; _componentPath = componentPath; }
         public void Spacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _spacing = value; }
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public void Spacing(string spacingToken) => Spacing(_theme.Spacing[spacingToken]);
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.ColumnComponentBuilder builder)
         {
             builder.Spacing(_spacing);
@@ -918,14 +969,17 @@ public partial class PdfDocument
 
     private sealed class CanonicalRowDescriptor : IRowDescriptor
     {
+        private readonly DocumentTheme _theme;
+        private readonly List<Type> _componentPath;
         private readonly List<(RowItemKind kind, float value, CanonicalContainer container)> _items = new();
+        public CanonicalRowDescriptor(DocumentTheme theme, List<Type> componentPath) { _theme = theme; _componentPath = componentPath; }
         public IContainer ConstantItem(float width) => Add(RowItemKind.Constant, width);
         public IContainer RelativeItem(float weight = 1f) => Add(RowItemKind.Relative, weight);
         public IContainer AutoItem() => Add(RowItemKind.Auto, 0f);
         private IContainer Add(RowItemKind kind, float value)
         {
             if (value < 0 || (kind == RowItemKind.Relative && value == 0)) throw new ArgumentOutOfRangeException(nameof(value));
-            var container = new CanonicalContainer(); _items.Add((kind, value, container)); return container;
+            var container = new CanonicalContainer(_theme, _componentPath); _items.Add((kind, value, container)); return container;
         }
         public void Compose(Layout.LayoutComponentCollection.RowComponentBuilder builder)
         {
@@ -946,13 +1000,18 @@ public partial class PdfDocument
 
     private sealed class CanonicalGridDescriptor : IGridDescriptor
     {
+        private readonly DocumentTheme _theme;
+        private readonly List<Type> _componentPath;
         private readonly List<CanonicalContainer> _items = new();
         private int _columns = 1;
         private float _rowGap = 8f, _columnGap = 8f;
+        public CanonicalGridDescriptor(DocumentTheme theme, List<Type> componentPath) { _theme = theme; _componentPath = componentPath; }
         public void Columns(int value) { if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value)); _columns = value; }
         public void RowSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _rowGap = value; }
+        public void RowSpacing(string spacingToken) => RowSpacing(_theme.Spacing[spacingToken]);
         public void ColumnSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _columnGap = value; }
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public void ColumnSpacing(string spacingToken) => ColumnSpacing(_theme.Spacing[spacingToken]);
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.GridComponentBuilder builder)
         {
             builder.Columns(_columns).RowGap(_rowGap).ColumnGap(_columnGap);
@@ -962,17 +1021,26 @@ public partial class PdfDocument
 
     private sealed class CanonicalStackDescriptor : IStackDescriptor
     {
+        private readonly DocumentTheme _theme;
+        private readonly List<Type> _componentPath;
         private readonly List<CanonicalContainer> _items = new();
-        public IContainer Item() { var item = new CanonicalContainer(); _items.Add(item); return item; }
+        public CanonicalStackDescriptor(DocumentTheme theme, List<Type> componentPath) { _theme = theme; _componentPath = componentPath; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.StackComponentBuilder builder) { foreach (var item in _items) builder.Item(item.Compose); }
     }
 
     private sealed class CanonicalLayerDescriptor : ILayerDescriptor
     {
-        private readonly CanonicalContainer _background = new();
-        private readonly CanonicalContainer _content = new();
-        private readonly CanonicalContainer _foreground = new();
+        private readonly CanonicalContainer _background;
+        private readonly CanonicalContainer _content;
+        private readonly CanonicalContainer _foreground;
         private bool _hasBackground, _hasContent, _hasForeground;
+        public CanonicalLayerDescriptor(DocumentTheme theme, List<Type> componentPath)
+        {
+            _background = new CanonicalContainer(theme, componentPath);
+            _content = new CanonicalContainer(theme, componentPath);
+            _foreground = new CanonicalContainer(theme, componentPath);
+        }
         public IContainer Background() { _hasBackground = true; return _background; }
         public IContainer Content() { _hasContent = true; return _content; }
         public IContainer Foreground() { _hasForeground = true; return _foreground; }

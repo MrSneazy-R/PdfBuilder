@@ -61,6 +61,7 @@ namespace PdfBuilder.Document
                     {
                         BackgroundColor = _page.BackgroundColor,
                         LayoutOptions = _page.LayoutOptions.Clone(),
+                        Theme = _page.Theme.Clone(),
                         MarginTop = _page.MarginTop,
                         MarginBottom = _page.MarginBottom,
                         MarginLeft = _page.MarginLeft,
