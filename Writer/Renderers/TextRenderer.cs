@@ -23,9 +23,27 @@ namespace PdfBuilder.Writer
         public static void Append(
            StringBuilder sb, TextElement element, float pageHeight,
            PdfRenderContext context)
+            => AppendCore(sb, element, pageHeight, context, null);
+
+        internal static void Append(
+           StringBuilder sb, TextElement element, float pageHeight,
+           PdfRenderContext context, PageContext pageContext)
+            => AppendCore(sb, element, pageHeight, context, pageContext);
+
+        private static void AppendCore(
+           StringBuilder sb, TextElement element, float pageHeight,
+           PdfRenderContext context, PageContext? pageContext)
         {
             if (element == null) throw new ArgumentNullException(nameof(element));
             if (context == null) throw new ArgumentNullException(nameof(context));
+
+            if (element.PageTextTemplate != null)
+            {
+                if (pageContext == null)
+                    throw new InvalidOperationException("Page-aware text requires a final PageContext. Render it through PdfDocument generation.");
+                AppendResolvedPageText(sb, element, pageHeight, context, pageContext);
+                return;
+            }
 
             var paragraph = EnsureShapedParagraph(element);
             int startLine = Math.Clamp(element.ShapedStartLine, 0, Math.Max(0, paragraph.Lines.Count - 1));
@@ -118,6 +136,38 @@ namespace PdfBuilder.Writer
                 }
 
                 DrawDecorations(sb, element, lineX, line.Width, baselineY);
+            }
+        }
+
+        private static void AppendResolvedPageText(
+            StringBuilder sb,
+            TextElement element,
+            float pageHeight,
+            PdfRenderContext context,
+            PageContext pageContext)
+        {
+            string measurementText = element.Text;
+            string template = element.PageTextTemplate!;
+            ShapedParagraph? measurementLayout = element.ShapedLayout;
+            int measurementStartLine = element.ShapedStartLine;
+            int measurementLineCount = element.ShapedLineCount;
+
+            try
+            {
+                element.Text = PageTextFormatter.Resolve(template, pageContext);
+                element.PageTextTemplate = null;
+                element.ShapedLayout = null;
+                element.ShapedStartLine = 0;
+                element.ShapedLineCount = 0;
+                AppendCore(sb, element, pageHeight, context, pageContext);
+            }
+            finally
+            {
+                element.Text = measurementText;
+                element.PageTextTemplate = template;
+                element.ShapedLayout = measurementLayout;
+                element.ShapedStartLine = measurementStartLine;
+                element.ShapedLineCount = measurementLineCount;
             }
         }
 

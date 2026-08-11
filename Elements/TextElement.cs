@@ -87,6 +87,7 @@ public class TextElement : PdfElement
     public List<TextSpan> Spans { get; } = new();
 
     internal ShapedParagraph? ShapedLayout { get; set; }
+    internal string? PageTextTemplate { get; set; }
     internal string? ThemeStyleName { get; set; }
     internal TextStyleDefaults? CanonicalStyleOverrides { get; set; }
     internal int ShapedStartLine { get; set; }

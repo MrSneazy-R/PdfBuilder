@@ -90,6 +90,25 @@ public sealed class PdfLayoutException : PdfCompositionException
     public PdfLayoutFailureContext Context { get; }
 }
 
+/// <summary>Raised when final pagination values cannot reach a bounded stable result.</summary>
+public sealed class PdfPaginationStabilizationException : PdfCompositionException
+{
+    /// <summary>Initializes an actionable pagination-stabilization failure.</summary>
+    public PdfPaginationStabilizationException(int passCount, int passLimit)
+        : base($"Final pagination did not stabilize within {passLimit} pass(es). "
+            + "Remove page-context callbacks that add or remove pages, or increase "
+            + $"{nameof(PdfRenderLimits.MaximumPaginationPasses)} when the document intentionally requires more passes.")
+    {
+        PassCount = passCount;
+        PassLimit = passLimit;
+    }
+
+    /// <summary>Gets the number of finalization passes attempted.</summary>
+    public int PassCount { get; }
+    /// <summary>Gets the configured pass limit.</summary>
+    public int PassLimit { get; }
+}
+
 /// <summary>Contains the data required to diagnose a layout failure.</summary>
 public sealed class PdfLayoutFailureContext
 {
@@ -162,6 +181,8 @@ public sealed class PdfRenderLimits
     public int MaximumPages { get; set; } = 10_000;
     /// <summary>Gets or sets the maximum placement attempts for one component.</summary>
     public int MaximumLayoutIterations { get; set; } = 32;
+    /// <summary>Gets or sets the maximum passes used to stabilize final-pagination context.</summary>
+    public int MaximumPaginationPasses { get; set; } = 8;
     /// <summary>Gets or sets the maximum decoded image pixels.</summary>
     public long MaximumImagePixels { get; set; } = 100_000_000;
     /// <summary>Gets or sets the maximum SVG source bytes.</summary>
@@ -180,5 +201,11 @@ public sealed class PdfRenderLimits
     {
         if (MaximumImagePixels <= 0 || pixels > MaximumImagePixels)
             throw new PdfRenderLimitException(nameof(MaximumImagePixels), $"The image contains {pixels} pixels, exceeding the configured maximum of {MaximumImagePixels}.");
+    }
+
+    internal void ValidatePaginationPass(int passCount)
+    {
+        if (MaximumPaginationPasses <= 0 || passCount > MaximumPaginationPasses)
+            throw new PdfPaginationStabilizationException(passCount, MaximumPaginationPasses);
     }
 }

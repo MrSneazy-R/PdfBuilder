@@ -66,8 +66,8 @@ namespace PdfBuilder.Document.Layout
                 AvoidBreakInside = source.AvoidBreakInside,
                 WidowLines = source.WidowLines,
                 OrphanLines = source.OrphanLines,
-                ThemeStyleName = source.ThemeStyleName
-                ,
+                PageTextTemplate = source.PageTextTemplate,
+                ThemeStyleName = source.ThemeStyleName,
                 CanonicalStyleOverrides = source.CanonicalStyleOverrides?.Clone()
             };
 

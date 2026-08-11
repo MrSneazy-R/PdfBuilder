@@ -8,6 +8,8 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Immutable final-pagination page context and canonical current-page/total-page text tokens
+  with conservative measurement, bounded stabilization, and deterministic parallel generation.
 - A shared canonical typography surface for ordinary text, rich spans, theme styles,
   table cells, headers/footers, and practical chart-label styling.
 - Flow-aware rich-text pagination, logical RTL extraction with PDF `ActualText`, and

@@ -37,6 +37,7 @@ namespace PdfBuilder.Document
         public PdfRenderLimits RenderLimits { get; } = new();
 
         internal FontCatalogSnapshot FontSnapshot { get; } = FontCatalog.CaptureSnapshot();
+        internal object GenerationSyncRoot { get; } = new();
 
         public PdfDocument()
         {
