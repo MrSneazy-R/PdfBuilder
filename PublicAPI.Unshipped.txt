@@ -446,10 +446,20 @@ PdfBuilder.Document.IStackDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ITableCellDescriptor
 PdfBuilder.Document.ITableCellDescriptor.AlignCenter() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.AlignLeft() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.AlignBottom() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.AlignMiddle() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.AlignRight() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.AlignTop() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Background(string! color) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Border(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderBottom(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderRight(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderTop(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.CornerRadius(float value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Padding(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Padding(float left, float top, float right, float bottom) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Padding(string! spacingToken) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Text(object? value, string? format) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.ITableColumnsDescriptor

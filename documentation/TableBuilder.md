@@ -1,6 +1,51 @@
 TableBuilder
 ============
 
+Canonical container cells
+-------------------------
+The preferred coordinate-free API treats every `ITableCellDescriptor` as an `IContainer`.
+`Cell().Text(...)` remains the concise text convenience, while the same cell can compose
+rich text, images, SVG, barcodes, columns, rows, grids, stacks, layers, and reusable
+components. Content is measured and drawn by the normal canonical component pipeline;
+there is no separate nested cell-layout engine.
+
+```csharp
+container.Table(table =>
+{
+    table.Columns(columns =>
+    {
+        columns.ConstantColumn(90);
+        columns.RelativeColumn();
+    });
+    table.Header(row =>
+    {
+        row.Cell().Background("Primary").Padding("Compact").Text("Item").Bold();
+        row.Cell().Background("Primary").Padding("Compact").Text("Details").Bold();
+    });
+    table.Row(row =>
+    {
+        row.Cell().Padding("Compact").Image(logoBytes, 28, 28);
+        row.Cell().Padding("Compact").Column(column =>
+        {
+            column.Spacing("Compact");
+            column.Item().RichText(text =>
+            {
+                text.Span("Reusable ").Bold();
+                text.Span("rich content").Italic();
+            });
+            column.Item().Component(productDetails, model);
+        });
+    });
+});
+```
+
+Cell padding, backgrounds, borders, corner radius, horizontal/vertical alignment, and
+clipping remain cell properties. Named colours and spacing tokens resolve against the
+current document theme, including inside reused components and repeated header cells.
+Rows remain atomic in this release: content that cannot complete within one usable row
+fails with an explicit error instead of silently clipping or looping. Controlled row
+continuation is introduced separately.
+
 Purpose
 -------
 `TableBuilder` creates `TableElement` instances with advanced pagination, styling, and typography controls. It supports headers, banding, per-cell overrides, spans, rotation, and HarfBuzz-shaped runs.

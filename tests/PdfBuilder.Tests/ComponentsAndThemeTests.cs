@@ -166,9 +166,10 @@ namespace PdfBuilder.Tests
             table.HeaderBackground.Should().Be(Color.FromArgb(0xE8, 0xEE, 0xF7));
             table.Rows.SelectMany(row => row.Cells).Should().OnlyContain(cell =>
                 cell.BackgroundColor == Color.FromArgb(0xE8, 0xEE, 0xF7)
-                && cell.BorderColor == Color.FromArgb(0xAA, 0xBB, 0xCC)
-                && cell.TextStyle != null
-                && cell.TextStyle.TextColor == Color.FromArgb(0x12, 0x34, 0x56));
+                && cell.BorderColor == Color.FromArgb(0xAA, 0xBB, 0xCC));
+            PdfContentHelper.FlattenElements(document.Pages.SelectMany(page => page.Elements)).OfType<TextElement>()
+                .Where(text => text.Text.Contains("cell", StringComparison.Ordinal))
+                .Should().OnlyContain(text => text.Color == "#123456" && text.Bold);
             document.Pages.SelectMany(page => page.Elements).OfType<SolidRectElement>()
                 .Should().Contain(rect => rect.FillColor == "#E8EEF7")
                 .And.Contain(rect => rect.StrokeColor == "#AABBCC");

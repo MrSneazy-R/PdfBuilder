@@ -5,7 +5,7 @@ namespace PdfBuilder.Document;
 
 public partial class PdfDocument
 {
-    private sealed class CanonicalContainer : IContainer
+    private class CanonicalContainer : IContainer
     {
         private readonly DocumentTheme _theme;
         private readonly List<Action<Layout.ContentComposer>> _content = new();
@@ -231,7 +231,7 @@ public partial class PdfDocument
         public void Table(Action<ITableDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var descriptor = new CanonicalTableDescriptor(_theme);
+            var descriptor = new CanonicalTableDescriptor(_theme, _componentPath, _pagination, _compositionState);
             configure(descriptor);
             _content.Add(composer => composer.Table(descriptor.Build()));
         }
@@ -327,6 +327,20 @@ public partial class PdfDocument
             }
             if (label != null) { var next = content; content = inner => inner.DebugLabel(label, next); }
             content(composer);
+        }
+
+        internal Layout.IMeasurable BuildComponent(ColumnBuilder owner, string automaticLabel)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            var collection = new Layout.LayoutComponentCollection(owner);
+            Compose(new Layout.ContentComposer(collection), automaticLabel);
+            if (collection.Components.Count == 1)
+                return collection.Components[0];
+
+            var column = new Layout.Components.ColumnComponent { Spacing = owner.DefaultSpacing };
+            foreach (Layout.IMeasurable component in collection.Components)
+                column.Add(component);
+            return column;
         }
 
         private IContainer SetPageVisibility(Action configure)

@@ -82,7 +82,6 @@ public sealed class CanonicalApiArchitectureTests
             "CanonicalTableColumnsDescriptor",
             "CanonicalTableRowDescriptor",
             "CanonicalTableCellDescriptor",
-            "CanonicalTableTextDescriptor",
             "CanonicalColumnDescriptor",
             "CanonicalRowDescriptor",
             "CanonicalGridDescriptor",

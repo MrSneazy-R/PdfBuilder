@@ -66,6 +66,19 @@ namespace PdfBuilder.Tests
             return (HashSet<string>)method.Invoke(null, new object[] { doc })!;
         }
 
+        public static IEnumerable<PdfElement> FlattenElements(IEnumerable<PdfElement> elements)
+        {
+            foreach (PdfElement element in elements)
+            {
+                yield return element;
+                if (element is PdfBuilder.Elements.ClipGroupElement group)
+                {
+                    foreach (PdfElement child in FlattenElements(group.Children))
+                        yield return child;
+                }
+            }
+        }
+
         public static List<string> ExtractPageContentStreams(byte[] pdfBytes)
         {
             var result = new List<string>();

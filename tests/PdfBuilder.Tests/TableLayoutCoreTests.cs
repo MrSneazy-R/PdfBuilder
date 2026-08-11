@@ -105,7 +105,7 @@ public sealed class TableLayoutCoreTests
         }));
 
         document.Pages.Should().ContainSingle();
-        string.Join("\n", PdfTextExtractor.ExtractTextBlocks(PdfContentHelper.Generate(document))).Should().Contain("Only\n \nheader");
+        string.Join("\n", PdfTextExtractor.ExtractTextBlocks(PdfContentHelper.Generate(document))).Should().Contain("Only header");
     }
 
     [Fact]

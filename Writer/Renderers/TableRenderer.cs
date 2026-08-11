@@ -407,7 +407,7 @@ namespace PdfBuilder.Writer
                     }
 
                     // ----- Text -----
-                    if (eff.Runs.Any(run => !string.IsNullOrEmpty(run.Text)))
+                    if (!cell.HasContainerContent && eff.Runs.Any(run => !string.IsNullOrEmpty(run.Text)))
                     {
                         var pad = GetPadding(eff, table.CellPadding);
 
@@ -676,7 +676,9 @@ namespace PdfBuilder.Writer
 
                     var columnBand = ResolveColumnBand(table, colIndex);
                     var effective = BuildEffectiveCell(table, row, cell, colIndex, rowBand, columnBand);
-                    float req = MeasureCellContentHeight(table, effective, cw);
+                    float req = cell.HasContainerContent
+                        ? cell.CachedContentHeight
+                        : MeasureCellContentHeight(table, effective, cw);
 
                     if (rowSpan == 1)
                     {

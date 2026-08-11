@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
+using PdfBuilder.Models;
 using PdfBuilder.Writer;
 
 namespace PdfBuilder.Document.Layout.Components
@@ -34,7 +35,7 @@ namespace PdfBuilder.Document.Layout.Components
             TableGridValidator.Validate(_workingTable);
 
             var width = ResolveWidth(context.AvailableWidth);
-            var metrics = TableMeasurementHelper.Measure(_workingTable, width);
+            var metrics = TableMeasurementHelper.Measure(_workingTable, width, context.Page, context.Options);
             var rowHeights = metrics.RowHeights;
 
             // Rows are kept together by default. A row taller than the usable page area
@@ -77,7 +78,7 @@ namespace PdfBuilder.Document.Layout.Components
                 return LayoutMeasurement.Wrap(width);
             }
 
-            var headerInfo = ResolveHeaderInfo(width);
+            var headerInfo = ResolveHeaderInfo(width, context.Page, context.Options);
             float availableHeight = context.AvailableHeight;
 
             if (captionHeight > 0f)
@@ -174,6 +175,7 @@ namespace PdfBuilder.Document.Layout.Components
                 element.PageTopY = context.Column.TopY;
                 element.PageBottomY = context.Column.BottomY;
                 context.Page.AddElement(element);
+                TableCellContainerLayout.AddContentGroups(element, context.Page, context.Options);
 
                 cursorY -= piece.Height;
             }
@@ -206,7 +208,7 @@ namespace PdfBuilder.Document.Layout.Components
             return sum;
         }
 
-        private HeaderInfo? ResolveHeaderInfo(float width)
+        private HeaderInfo? ResolveHeaderInfo(float width, PdfPage page, LayoutOptions options)
         {
             if (!_isContinuation || !_workingTable.RepeatHeaders)
                 return null;
@@ -224,7 +226,7 @@ namespace PdfBuilder.Document.Layout.Components
             headerTable.EnablePageBreaks = false;
             headerTable.TableWidth = width;
 
-            var metrics = TableMeasurementHelper.Measure(headerTable, width);
+            var metrics = TableMeasurementHelper.Measure(headerTable, width, page, options);
             float height = ComputeCaptionHeight(headerTable) + SumRows(metrics.RowHeights, 0, metrics.RowHeights.Length);
             return new HeaderInfo(headerTable, height);
         }
