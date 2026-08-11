@@ -26,6 +26,7 @@ namespace PdfBuilder.Models
         internal PdfDocument? Owner { get; set; }
         internal PaginationRegistry? Pagination { get; set; }
         internal LayoutProfilerSession? ProfilerSession { get; set; }
+        internal int CompositionPageNumber { get; set; }
 
         // Styling
         public string? BackgroundColor { get; set; } = "#FFFFFF"; // Default: white

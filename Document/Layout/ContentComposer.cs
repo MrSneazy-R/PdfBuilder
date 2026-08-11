@@ -30,6 +30,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal ContentComposer PageVisibility(PageVisibilityRule rule, string diagnosticPath, Action<ContentComposer> configure)
+        {
+            _collection.PageVisibility(rule, diagnosticPath, inner => configure(new ContentComposer(inner)));
+            return this;
+        }
+
         public ContentComposer Component(
             Func<LayoutMeasureContext, LayoutMeasurement> measure,
             Action<LayoutDrawContext, LayoutMeasurement> draw)

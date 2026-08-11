@@ -67,6 +67,8 @@ Use `Text`, `FontSize`, `Bold`, and `DefaultTextStyle`. Font registration and fa
 
 `container.Table` supports relative/fixed columns, headers, repeating continuation headers, and normal flow pagination. [samples/Invoice](samples/Invoice) demonstrates a multi-page invoice table.
 
+[samples/CanonicalReport](samples/CanonicalReport) demonstrates the canonical Phase 1 surface: first-page and continuation headers, final `Page X of Y` tokens, a forward table of contents, internal and external links, outlines, and last-page-only content.
+
 ## Images and SVG
 
 Use `container.Image` for PNG/JPEG and `container.Svg` for sanitised inline SVG. Do not pass untrusted oversized media; PdfBuilder rejects unsafe data and blocks SVG external resources by default.

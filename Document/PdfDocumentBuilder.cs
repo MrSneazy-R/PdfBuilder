@@ -244,7 +244,9 @@ namespace PdfBuilder.Document
             FirstPageFooterTemplate = s.FirstPageFooterTemplate,
             HideOnLastPage = s.HideOnLastPage,
             HeaderLayout = s.HeaderLayout?.Clone(),
-            FooterLayout = s.FooterLayout?.Clone()
+            FooterLayout = s.FooterLayout?.Clone(),
+            HeaderVisibilityRules = s.HeaderVisibilityRules?.Select(rule => rule.Clone()).ToList(),
+            FooterVisibilityRules = s.FooterVisibilityRules?.Select(rule => rule.Clone()).ToList()
         };
 
         private void ApplyFontSettingsFromEnvironment()

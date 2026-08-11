@@ -199,7 +199,9 @@ namespace PdfBuilder.Document
             FirstPageFooterTemplate = source.FirstPageFooterTemplate,
             HideOnLastPage = source.HideOnLastPage,
             HeaderLayout = source.HeaderLayout?.Clone(),
-            FooterLayout = source.FooterLayout?.Clone()
+            FooterLayout = source.FooterLayout?.Clone(),
+            HeaderVisibilityRules = source.HeaderVisibilityRules?.Select(rule => rule.Clone()).ToList(),
+            FooterVisibilityRules = source.FooterVisibilityRules?.Select(rule => rule.Clone()).ToList()
         };
 
         private static void ApplyPageNumberTemplate(HeaderFooterSpec spec, PageNumberPlacement placement, string template)

@@ -58,6 +58,27 @@ public sealed class DocumentationTests
         invoiceSample.Should().NotContain("IServiceProvider");
     }
 
+    [Fact]
+    public void CanonicalReportSample_SatisfiesPhaseOneExitGateWithoutRawElements()
+    {
+        string sample = File.ReadAllText(FindRepositoryFile("samples/CanonicalReport/Program.cs"));
+
+        sample.Should().Contain(".FirstPageHeader()")
+            .And.Contain(".ContinuationHeader()")
+            .And.Contain("PageTextTokens.CurrentPage")
+            .And.Contain("PageTextTokens.TotalPages")
+            .And.Contain(".TableOfContents(")
+            .And.Contain(".InternalLink(")
+            .And.Contain(".ExternalLink(")
+            .And.Contain(".Section(");
+        sample.Should().NotContain("new PdfDocument")
+            .And.NotContain("PdfPageBuilder")
+            .And.NotContain("ColumnBuilder")
+            .And.NotContain("TextElement")
+            .And.NotContain("PdfElement")
+            .And.NotContain("AddElement");
+    }
+
     [Theory]
     [InlineData("samples/HelloPdf/HelloPdf.csproj")]
     [InlineData("samples/Invoice/Invoice.csproj")]
@@ -65,6 +86,7 @@ public sealed class DocumentationTests
     [InlineData("samples/MultiLanguage/MultiLanguage.csproj")]
     [InlineData("samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj")]
     [InlineData("samples/LayoutDiagnostics/LayoutDiagnostics.csproj")]
+    [InlineData("samples/CanonicalReport/CanonicalReport.csproj")]
     public void PublishedSample_ProjectExists(string relativePath)
         => File.Exists(FindRepositoryFile(relativePath)).Should().BeTrue();
 

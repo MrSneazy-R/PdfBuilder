@@ -77,6 +77,10 @@ namespace PdfBuilder.Document
                         }
                     };
                     autoDoc!.Pages.Add(p);
+                    p.Owner = autoDoc;
+                    p.Pagination = autoDoc.Pagination;
+                    p.ProfilerSession = autoDoc.ProfilerSession;
+                    p.CompositionPageNumber = autoDoc.Pages.Count;
                     return p;
                 };
             }

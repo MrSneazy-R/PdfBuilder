@@ -34,6 +34,25 @@ namespace PdfBuilder.Models
         public HeaderFooterLayoutDefinition? HeaderLayout { get; set; }
 
         public HeaderFooterLayoutDefinition? FooterLayout { get; set; }
+
+        internal List<PageVisibilityRule>? HeaderVisibilityRules { get; set; }
+        internal List<PageVisibilityRule>? FooterVisibilityRules { get; set; }
+
+        internal bool IsHeaderVisible(int currentPage, int totalPages)
+        {
+            if (HeaderVisibilityRules != null)
+                return HeaderVisibilityRules.Any(rule => rule.Matches(currentPage, totalPages));
+            return !(FirstPageDifferent && currentPage == 1);
+        }
+
+        internal bool IsFooterVisible(int currentPage, int totalPages)
+        {
+            if (HideOnLastPage && currentPage == totalPages)
+                return false;
+            if (FooterVisibilityRules != null)
+                return FooterVisibilityRules.Any(rule => rule.Matches(currentPage, totalPages));
+            return !(FirstPageDifferent && currentPage == 1);
+        }
     }
 
     public enum WatermarkLayer { BehindContent, AboveContent }

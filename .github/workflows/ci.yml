@@ -51,6 +51,7 @@ jobs:
           dotnet restore samples/LayoutDiagnostics/LayoutDiagnostics.csproj
           dotnet restore samples/Invoice/Invoice.csproj
           dotnet restore samples/MultiPageReport/MultiPageReport.csproj
+          dotnet restore samples/CanonicalReport/CanonicalReport.csproj
           dotnet restore samples/MultiLanguage/MultiLanguage.csproj
           dotnet restore samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj
       - name: Verify formatting
@@ -71,6 +72,7 @@ jobs:
           dotnet build samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-restore
           dotnet build samples/Invoice/Invoice.csproj -c Release --no-restore
           dotnet build samples/MultiPageReport/MultiPageReport.csproj -c Release --no-restore
+          dotnet build samples/CanonicalReport/CanonicalReport.csproj -c Release --no-restore
           dotnet build samples/MultiLanguage/MultiLanguage.csproj -c Release --no-restore
           dotnet build samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj -c Release --no-restore
       - name: Run runnable console samples
@@ -78,6 +80,7 @@ jobs:
           dotnet run --project samples/HelloPdf/HelloPdf.csproj -c Release --no-build
           dotnet run --project samples/Invoice/Invoice.csproj -c Release --no-build
           dotnet run --project samples/MultiPageReport/MultiPageReport.csproj -c Release --no-build
+          dotnet run --project samples/CanonicalReport/CanonicalReport.csproj -c Release --no-build
           dotnet run --project samples/MultiLanguage/MultiLanguage.csproj -c Release --no-build
           dotnet run --project samples/LayoutDiagnostics/LayoutDiagnostics.csproj -c Release --no-build
       # The solution deliberately includes the Linux-only independent validation

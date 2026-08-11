@@ -289,16 +289,20 @@ PdfBuilder.Document.IContainer.BorderTop(float width = 1, string! color = "#0000
 PdfBuilder.Document.IContainer.Column(System.Action<PdfBuilder.Document.IColumnDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Component(PdfBuilder.Document.IPdfComponent! component) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Component<TModel>(PdfBuilder.Document.IPdfComponent<TModel>! component, TModel model) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.ContinuationPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.CornerRadius(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.EnsureSpace(float minimumHeight) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.EvenPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Extend() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.ExternalLink(string! text, string! uri) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.IContainer.FirstPageOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Grid(System.Action<PdfBuilder.Document.IGridDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Height(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Image(byte[]! data, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IContainer.InternalLink(string! text, string! anchorId) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.KeepTogether() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.LastPageOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Layer(System.Action<PdfBuilder.Document.ILayerDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Margin(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Margin(float value) -> PdfBuilder.Document.IContainer!
@@ -307,6 +311,7 @@ PdfBuilder.Document.IContainer.MaxHeight(float value) -> PdfBuilder.Document.ICo
 PdfBuilder.Document.IContainer.MaxWidth(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.MinHeight(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.MinWidth(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.OddPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Opacity(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Padding(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.IContainer!
@@ -319,7 +324,9 @@ PdfBuilder.Document.IContainer.RichText(System.Action<PdfBuilder.Document.IRichT
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Section(string! id, string! title, System.Action<PdfBuilder.Document.IContainer!>! content, System.Action<PdfBuilder.Document.ISectionDescriptor!>? configure = null) -> void
 PdfBuilder.Document.IContainer.ShowIf(bool condition) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.ShowOnce() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Shrink() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.SkipOnce() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Svg(string! markup, float width, float height) -> void
 PdfBuilder.Document.IContainer.Stack(System.Action<PdfBuilder.Document.IStackDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Table(System.Action<PdfBuilder.Document.ITableDescriptor!>! configure) -> void
@@ -336,6 +343,7 @@ PdfBuilder.Document.IChartDescriptor.Bars(string! name, System.Collections.Gener
 PdfBuilder.Document.IChartDescriptor.Line(string! name, System.Collections.Generic.IEnumerable<float>! values, PdfBuilder.Models.PdfColor color, float strokeWidth = 1) -> void
 PdfBuilder.Document.IChartDescriptor.Size(float width, float height) -> void
 PdfBuilder.Document.IChartDescriptor.Title(string! value) -> void
+PdfBuilder.Document.IDocumentDescriptor.RenderLimits(System.Action<PdfBuilder.Document.Layout.PdfRenderLimits!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Theme(System.Action<PdfBuilder.Document.DocumentThemeBuilder!>! configure) -> void
 PdfBuilder.Document.IGridDescriptor
 PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
@@ -399,7 +407,11 @@ PdfBuilder.Document.ImageBuilder.X(float x) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.Y(float y) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.IPageDescriptor
 PdfBuilder.Document.IPageDescriptor.Background() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.ContinuationFooter() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.ContinuationHeader() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.FirstPageDifferent() -> void
+PdfBuilder.Document.IPageDescriptor.FirstPageFooter() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IPageDescriptor.FirstPageHeader() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.HideFooterOnLastPage() -> void
 PdfBuilder.Document.IPageDescriptor.Columns(int count, float gutter = 14) -> void
 PdfBuilder.Document.IPageDescriptor.Content() -> PdfBuilder.Document.IContainer!
