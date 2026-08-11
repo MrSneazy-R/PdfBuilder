@@ -6,10 +6,30 @@ on:
 jobs:
   benchmark:
     runs-on: windows-latest
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with: { dotnet-version: 10.0.x }
-      - run: dotnet run -c Release --project benchmarks/PdfBuilder.Benchmarks
+      - name: Restore and build
+        run: dotnet build benchmarks/PdfBuilder.Benchmarks/PdfBuilder.Benchmarks.csproj -c Release
+      - name: Capture comparable scenario metrics
+        shell: pwsh
+        run: |
+          $baseline = 'BenchmarkDotNet.Artifacts/current-baseline.json'
+          $names = @(
+            'minimal-document', 'invoice', 'multi-page-invoice', '1000-row-table', '500-page-report',
+            'multilingual-shaping', 'image-heavy-report', 'core-charts', 'advanced-charts', 'previews',
+            'streaming', 'concurrent-invoices', 'cancellation', 'resource-deduplication', 'deterministic-generation'
+          )
+          foreach ($name in $names) {
+            dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --capture-scenario $name $baseline 1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Compare reference timing
+        run: dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --compare-files benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10.json BenchmarkDotNet.Artifacts/current-baseline.json
+      - name: Run BenchmarkDotNet suite
+        run: dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --filter '*' --join
       - uses: actions/upload-artifact@v4
+        if: always()
         with: { name: benchmarks, path: BenchmarkDotNet.Artifacts }

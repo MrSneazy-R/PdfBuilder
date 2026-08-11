@@ -93,6 +93,9 @@ jobs:
       # Windows/macOS test failures.
       - name: Run unit tests
         run: dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+      - name: Run deterministic benchmark gates
+        if: runner.os == 'Windows'
+        run: dotnet run --project benchmarks/PdfBuilder.Benchmarks -c Release --no-build -- --verify-gates benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10.json
       - name: Run independent PDF validation
         if: runner.os == 'Linux'
         env:
