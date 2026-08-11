@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: Pre-release package version, for example 0.1.0-preview.1
+        description: Pre-release package version, for example 0.1.0-preview.2
         required: true
-        default: 0.1.0-preview.1
+        default: 0.1.0-preview.2
       tag:
         description: Draft release tag
         required: true
-        default: v0.1.0-preview.1
+        default: v0.1.0-preview.2
 
 permissions:
   contents: write

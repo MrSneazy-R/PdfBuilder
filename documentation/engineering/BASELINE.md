@@ -34,7 +34,7 @@ The test project contains 74 `[Fact]` tests across 18 test files. It is not incl
 
 ## Package and sample output
 
-- Current package: `PdfBuilder.1.0.0.nupkg`; it was produced successfully during baseline packaging at 245,255 bytes (239.5 KiB). CI retains the package artefact for subsequent comparisons.
+- Historical baseline package: `PdfBuilder.1.0.0.nupkg`; it was produced during the initial baseline before pre-release versioning was corrected. The current project version is `0.1.0-preview.2`; the historical filename is not current package status.
 - There are no committed sample PDFs. Generated PDFs and `artifacts/` are ignored, so no stable sample-PDF byte-size baseline exists yet.
 - `SimpleRenderCheck` produces one basic text PDF; `TablePerfSample` produces Latin/Arabic and CJK table PDFs with timing output; `HBSubsetProbe` inspects HarfBuzz APIs. None is currently run automatically.
 - Existing tests include structural PDF and text extraction helpers, but no committed visual-regression fixture or automated performance threshold.

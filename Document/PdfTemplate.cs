@@ -30,5 +30,14 @@ namespace PdfBuilder.Document
             Create(model).Generate(destination, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
         }
+
+        /// <summary>Creates a fresh document and saves it to a file while observing cancellation.</summary>
+        public void Save(string path, TModel model, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Path must be provided.", nameof(path));
+            cancellationToken.ThrowIfCancellationRequested();
+            Create(model).Save(path, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
     }
 }

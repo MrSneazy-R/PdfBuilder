@@ -265,6 +265,7 @@ PdfBuilder.Document.HorizontalAlign.Right = 2 -> PdfBuilder.Document.HorizontalA
 PdfBuilder.Document.IColumnDescriptor
 PdfBuilder.Document.IColumnDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IColumnDescriptor.Spacing(float value) -> void
+PdfBuilder.Document.IColumnDescriptor.Spacing(string! spacingToken) -> void
 PdfBuilder.Document.IContainer
 PdfBuilder.Document.IContainer.AlignBottom() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.AlignCenter() -> PdfBuilder.Document.IContainer!
@@ -294,6 +295,7 @@ PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Layer(System.Action<PdfBuilder.Document.ILayerDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Margin(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Margin(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Margin(string! spacingToken) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.MaxHeight(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.MaxWidth(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.MinHeight(float value) -> PdfBuilder.Document.IContainer!
@@ -301,6 +303,7 @@ PdfBuilder.Document.IContainer.MinWidth(float value) -> PdfBuilder.Document.ICon
 PdfBuilder.Document.IContainer.Opacity(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Padding(float left, float top, float right, float bottom) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Padding(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Padding(string! spacingToken) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.PageBreak() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Repeat(int count, System.Action<int, PdfBuilder.Document.IContainer!>! configure) -> void
 PdfBuilder.Document.IContainer.Row(System.Action<PdfBuilder.Document.IRowDescriptor!>! configure) -> void
@@ -325,8 +328,10 @@ PdfBuilder.Document.IDocumentDescriptor.Theme(System.Action<PdfBuilder.Document.
 PdfBuilder.Document.IGridDescriptor
 PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
 PdfBuilder.Document.IGridDescriptor.ColumnSpacing(float value) -> void
+PdfBuilder.Document.IGridDescriptor.ColumnSpacing(string! spacingToken) -> void
 PdfBuilder.Document.IGridDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IGridDescriptor.RowSpacing(float value) -> void
+PdfBuilder.Document.IGridDescriptor.RowSpacing(string! spacingToken) -> void
 PdfBuilder.Document.ILayerDescriptor
 PdfBuilder.Document.ILayerDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ILayerDescriptor.Content() -> PdfBuilder.Document.IContainer!
@@ -863,6 +868,7 @@ PdfBuilder.Document.PdfTemplate<TModel>
 PdfBuilder.Document.PdfTemplate<TModel>.Create(TModel model) -> PdfBuilder.Document.PdfDocument!
 PdfBuilder.Document.PdfTemplate<TModel>.Generate(System.IO.Stream! destination, TModel model, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
 PdfBuilder.Document.PdfTemplate<TModel>.GenerateBytes(TModel model, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> byte[]!
+PdfBuilder.Document.PdfTemplate<TModel>.Save(string! path, TModel model, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> void
 PdfBuilder.Document.PdfTemplate<TModel>.PdfTemplate() -> void
 PdfBuilder.Document.RichTextBuilder
 PdfBuilder.Document.RichTextBuilder.Add() -> float

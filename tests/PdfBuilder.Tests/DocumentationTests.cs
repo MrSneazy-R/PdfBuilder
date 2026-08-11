@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using FluentAssertions;
 using Xunit;
 
@@ -9,10 +11,51 @@ public sealed class DocumentationTests
     public void Readme_UsesCanonicalQuickStart()
     {
         var readme = File.ReadAllText(FindRepositoryFile("README.md"));
+        string version = ReadProjectVersion();
 
         readme.Should().Contain("PdfDocument.Create");
-        readme.Should().Contain("dotnet add package PdfBuilder --prerelease");
+        readme.Should().Contain($"dotnet add package PdfBuilder --version {version}");
         readme.Should().NotContain("new PdfWriter().Save");
+    }
+
+    [Theory]
+    [InlineData("README.md")]
+    [InlineData("CHANGELOG.md")]
+    [InlineData("documentation/release/release-candidate.md")]
+    [InlineData("documentation/engineering/PRODUCTION-READINESS.md")]
+    [InlineData("documentation/engineering/BASELINE.md")]
+    [InlineData(".github/workflows/release-candidate.yml")]
+    public void DocumentedPreReleaseVersion_MatchesProjectVersion(string relativePath)
+    {
+        string projectVersion = ReadProjectVersion();
+        string content = File.ReadAllText(FindRepositoryFile(relativePath));
+        var documentedVersions = Regex.Matches(content, @"0\.1\.0-preview\.\d+")
+            .Select(match => match.Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        projectVersion.Should().MatchRegex(@"^0\.1\.0-preview\.\d+$");
+        documentedVersions.Should().ContainSingle().Which.Should().Be(projectVersion);
+    }
+
+    [Fact]
+    public void ComponentsThemesDocumentation_UsesCompileValidCanonicalCalls()
+    {
+        string documentation = File.ReadAllText(FindRepositoryFile("documentation/Components_Templates_and_Themes.md"));
+        string invoiceSample = File.ReadAllText(FindRepositoryFile("samples/Invoice/Program.cs"));
+
+        documentation.Should().Contain("public sealed class InvoiceTemplate : PdfTemplate<Invoice>");
+        documentation.Should().Contain("document.Theme(theme =>");
+        documentation.Should().Contain("document.Page(page =>");
+        documentation.Should().NotContain(".Compose(composer =>");
+        invoiceSample.Should().Contain("public sealed class InvoiceTemplate : PdfTemplate<Invoice>");
+        invoiceSample.Should().Contain("template.Save(");
+        invoiceSample.Should().Contain("SellerHeaderComponent");
+        invoiceSample.Should().Contain("CustomerAddressComponent");
+        invoiceSample.Should().Contain("InvoiceTotalsComponent");
+        invoiceSample.Should().NotContain("HttpClient");
+        invoiceSample.Should().NotContain("DbContext");
+        invoiceSample.Should().NotContain("IServiceProvider");
     }
 
     [Theory]
@@ -36,5 +79,11 @@ public sealed class DocumentationTests
         }
 
         throw new FileNotFoundException($"Repository file '{relativePath}' was not found.");
+    }
+
+    private static string ReadProjectVersion()
+    {
+        var project = XDocument.Load(FindRepositoryFile("PdfBuilder.csproj"));
+        return project.Descendants("Version").Single().Value;
     }
 }

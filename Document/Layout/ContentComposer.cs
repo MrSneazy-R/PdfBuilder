@@ -76,6 +76,14 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal ContentComposer Table(TableElement table)
+        {
+            if (table == null) throw new ArgumentNullException(nameof(table));
+            _collection.Owner.ApplyTableDefaults(table);
+            _collection.Component(new TableComponent(table));
+            return this;
+        }
+
         public ContentComposer Column(Action<LayoutComponentCollection.ColumnComponentBuilder> configure)
         {
             _collection.Column(configure);
