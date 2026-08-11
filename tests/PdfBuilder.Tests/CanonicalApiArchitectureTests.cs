@@ -27,6 +27,10 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ImageSourceInfo),
         typeof(ImageQuality),
         typeof(ImageCropAlignment),
+        typeof(ICanvasDescriptor),
+        typeof(CanvasSize),
+        typeof(CanvasLayer),
+        typeof(CanvasLinePattern),
         typeof(IChartDescriptor),
         typeof(IChartAxisDescriptor),
         typeof(IChartSeriesDescriptor),
@@ -92,6 +96,7 @@ public sealed class CanonicalApiArchitectureTests
             "CanonicalPageDescriptor",
             "CanonicalContainer",
             "CanonicalImageDescriptor",
+            "CanonicalCanvasDescriptor",
             "CanonicalChartDescriptor",
             "CanonicalTableDescriptor",
             "CanonicalTableColumnsDescriptor",
@@ -134,6 +139,7 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Api/ChartContracts.cs",
             "Document/Api/MediaContracts.cs",
             "Document/Api/ImageSource.cs",
+            "Document/Api/GraphicsContracts.cs",
             "Document/Api/NavigationContracts.cs"
         ];
         string[] adapterFiles =
@@ -146,6 +152,7 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Canonical/CanonicalTableDescriptor.cs",
             "Document/Canonical/CanonicalChartDescriptor.cs",
             "Document/Canonical/CanonicalMediaDescriptor.cs",
+            "Document/Canonical/CanonicalGraphicsDescriptor.cs",
             "Document/Canonical/CanonicalNavigationDescriptor.cs"
         ];
 

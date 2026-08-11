@@ -225,7 +225,31 @@ public partial class PdfDocument
         {
             if (string.IsNullOrWhiteSpace(markup)) throw new ArgumentException("SVG markup is required.", nameof(markup));
             if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "SVG dimensions must be positive.");
-            _content.Add(composer => composer.Svg(width, height, element => element.SvgContent = markup));
+            _content.Add(composer => composer.DynamicSvg(width, height, _ => markup));
+        }
+        public void DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
+        {
+            if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
+            if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
+            _content.Add(composer => composer.DynamicSvg(height, markupFactory));
+        }
+        public void Canvas(float width, float height, Action<ICanvasDescriptor> draw)
+        {
+            if (!float.IsFinite(width) || width <= 0f) throw new ArgumentOutOfRangeException(nameof(width));
+            if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            _content.Add(composer => composer.Canvas(width, height, builder =>
+                draw(new CanonicalCanvasDescriptor(builder, new CanvasSize(width, height), _theme))));
+        }
+        public void Canvas(float height, Action<ICanvasDescriptor, CanvasSize> draw)
+        {
+            if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            _content.Add(composer => composer.Canvas(height, (builder, size) =>
+            {
+                var descriptor = new CanonicalCanvasDescriptor(builder, size, _theme);
+                draw(descriptor, size);
+            }));
         }
         public void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4)
         {

@@ -380,6 +380,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public ContentComposer Canvas(float height, Action<CanvasBuilder, CanvasSize> draw)
+        {
+            _collection.Canvas(height, draw);
+            return this;
+        }
+
         public ContentComposer Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4, Action<BarcodeElement>? configure = null)
         {
             _collection.Barcode(value, kind, moduleSize, quietZone, configure);
@@ -389,6 +395,18 @@ namespace PdfBuilder.Document.Layout
         public ContentComposer Svg(float width, float height, Action<SvgElement> configure)
         {
             _collection.Svg(width, height, configure);
+            return this;
+        }
+
+        public ContentComposer DynamicSvg(float width, float height, Func<CanvasSize, string> markupFactory)
+        {
+            _collection.DynamicSvg(width, height, markupFactory);
+            return this;
+        }
+
+        public ContentComposer DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
+        {
+            _collection.DynamicSvg(height, markupFactory);
             return this;
         }
     }

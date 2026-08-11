@@ -121,6 +121,12 @@ public interface IContainer
     IImageDescriptor Image(ImageSource source);
     /// <summary>Adds sanitised inline SVG markup without exposing image elements.</summary>
     void Svg(string markup, float width, float height);
+    /// <summary>Adds SVG generated from the final available size during bounded layout.</summary>
+    void DynamicSvg(float height, Func<CanvasSize, string> markupFactory);
+    /// <summary>Adds a fixed-size canonical vector canvas.</summary>
+    void Canvas(float width, float height, Action<ICanvasDescriptor> draw);
+    /// <summary>Adds a canonical vector canvas whose width and callback context use final available size.</summary>
+    void Canvas(float height, Action<ICanvasDescriptor, CanvasSize> draw);
     /// <summary>Adds a vector QR Code or Code 128 barcode.</summary>
     void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4);
     /// <summary>Adds a vector chart using PdfColor rather than System.Drawing types.</summary>

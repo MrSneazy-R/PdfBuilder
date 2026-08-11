@@ -8,6 +8,10 @@ policy is [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- An available-size-aware canonical canvas with isolated graphics state, finite transforms,
+  clipping, dashed and dotted strokes, bounded vector gradients and shadows, deterministic
+  background/content/foreground layers, dynamic SVG, and render-limit integration.
+
 - Thread-safe `ImageSource` loading from bytes, read-only memory, streams, local files,
   embedded resources, reusable preloaded instances, and caller-owned lazy factories; DPI-aware
   intrinsic sizing, crop alignment, quality controls, effective-DPI downsampling, JPEG quality,

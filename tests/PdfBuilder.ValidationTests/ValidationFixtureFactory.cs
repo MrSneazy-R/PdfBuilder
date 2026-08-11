@@ -25,6 +25,7 @@ internal static class ValidationFixtureFactory
             "multilingual-latin" => MultilingualLatin(),
             "layout-primitives" => LayoutPrimitives(),
             "canonical-navigation" => CanonicalNavigation(),
+            "graphics-primitives" => GraphicsPrimitives(),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown validation fixture.")
         };
 
@@ -179,6 +180,56 @@ internal static class ValidationFixtureFactory
             section.Text("Introduction body")));
         document.Page(page => page.Content().Section("details", "Details", section =>
             section.Text("Details body"), options => options.Level(2)));
+    });
+
+    private static PdfDocument GraphicsPrimitives() => PdfDocument.Create(document =>
+    {
+        document.Theme(theme => theme
+            .Color("Navy", "#17324D")
+            .Color("Blue", "#2D7DD2")
+            .Color("Sky", "#D9EEFF")
+            .Color("Mint", "#B8E0D2")
+            .Color("Shadow", "#506070"));
+        document.Page(page =>
+        {
+            page.Size(PageSizes.A4);
+            page.Margin(40);
+            page.Content().Column(column =>
+            {
+                column.Spacing(14);
+                column.Item().Text("Graphics primitives").FontSize(20).Bold().Color("Navy");
+                column.Item().Canvas(180, (canvas, size) =>
+                {
+                    canvas.Layer(CanvasLayer.Background, background =>
+                        background.LinearGradient(0, 0, size.Width, size.Height, "Sky", "Mint", angleDegrees: 18, steps: 28));
+                    canvas.Layer(CanvasLayer.Content, content =>
+                    {
+                        content.RectangleShadow(28, 30, 150, 92, "Shadow", offsetX: 4, offsetY: -4, blurRadius: 6, steps: 10);
+                        content.FillColor("#FFFFFF").StrokeColor("Navy").LineWidth(1.5f)
+                            .Rectangle(28, 30, 150, 92, stroke: true, fill: true);
+                        content.State(state => state
+                            .ClipRectangle(205, 24, 130, 116)
+                            .Translate(270, 82)
+                            .Rotate(24)
+                            .Scale(1.15f, 0.85f)
+                            .FillColor("Blue")
+                            .Rectangle(-62, -28, 124, 56, stroke: false, fill: true));
+                        content.RadialGradient(size.Width - 72, 84, 42, "#FFFFFF", "Blue", steps: 24);
+                        content.StrokeColor("Navy").LineWidth(2)
+                            .LinePattern(CanvasLinePattern.Dashed, 7, 4).Line(40, 142, size.Width - 40, 142)
+                            .LinePattern(CanvasLinePattern.Dotted, gapLength: 5).Line(40, 18, size.Width - 40, 18);
+                    });
+                    canvas.Layer(CanvasLayer.Foreground, foreground => foreground
+                        .StrokeColor("Navy").LineWidth(1).LinePattern(CanvasLinePattern.Solid)
+                        .Rectangle(1, 1, size.Width - 2, size.Height - 2));
+                });
+                column.Item().DynamicSvg(54, size =>
+                    $"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size.Width} {size.Height}'>" +
+                    "<defs><linearGradient id='safe' x1='0' x2='1'><stop offset='0' stop-color='#17324D'/><stop offset='1' stop-color='#2D7DD2'/></linearGradient></defs>" +
+                    $"<rect x='1' y='1' width='{size.Width - 2}' height='{size.Height - 2}' rx='8' fill='url(#safe)'/>" +
+                    "</svg>");
+            });
+        });
     });
 
     private static byte[] CreatePng()

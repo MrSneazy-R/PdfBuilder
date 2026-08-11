@@ -79,6 +79,16 @@ alpha-aware encoding. Remote URLs remain outside the core API. `container.Svg` a
 sanitised inline SVG and blocks scripts, active content, DTDs, event handlers, and network/file
 resources.
 
+## Canvas and graphics
+
+`container.Canvas` provides an available-size-aware vector surface with isolated graphics
+state, finite translation/rotation/scaling/flipping transforms, rectangular clipping,
+solid/dashed/dotted strokes, bounded linear and radial gradients, bounded vector shadows,
+and explicit background/content/foreground paint ordering. `container.DynamicSvg` generates
+sanitised SVG from the final available size. Canvas command bytes, command counts, and effect
+steps participate in document render limits. See
+[documentation/Canvas_and_Svg.md](documentation/Canvas_and_Svg.md).
+
 ## Headers and footers
 
 `page.Header()`, `page.Content()`, and `page.Footer()` all accept normal containers. Existing `{page}` and `{pages}` footer templates remain compatible.

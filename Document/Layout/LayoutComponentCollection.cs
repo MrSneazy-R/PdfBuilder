@@ -597,7 +597,18 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             var canvasBuilder = new CanvasBuilder(element);
             draw(canvasBuilder);
+            canvasBuilder.Complete();
             _components.Add(new CanvasComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection Canvas(float height, Action<CanvasBuilder, CanvasSize> draw)
+        {
+            if (draw == null) throw new ArgumentNullException(nameof(draw));
+            if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
+            var flow = _owner.GetFlow();
+            var element = new CanvasElement(flow.X, flow.Y, 0f, height);
+            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing, draw, useAvailableWidth: true));
             return this;
         }
 
@@ -627,6 +638,20 @@ namespace PdfBuilder.Document.Layout
             element.Y = flow.Y;
             element.Refresh();
             _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection DynamicSvg(float width, float height, Func<CanvasSize, string> markupFactory)
+        {
+            if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
+            _components.Add(new DynamicSvgComponent(width, height, markupFactory, _owner.DefaultSpacing));
+            return this;
+        }
+
+        public LayoutComponentCollection DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
+        {
+            if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
+            _components.Add(new DynamicSvgComponent(null, height, markupFactory, _owner.DefaultSpacing));
             return this;
         }
 

@@ -83,6 +83,21 @@ PdfBuilder.Document.AnchorBuilder.Add() -> PdfBuilder.Document.ColumnBuilder!
 PdfBuilder.Document.AnchorBuilder.AnchorBuilder(PdfBuilder.Document.ColumnBuilder! col, string! id, float x, float y) -> void
 PdfBuilder.Document.AnchorBuilder.Level(int lvl) -> PdfBuilder.Document.AnchorBuilder!
 PdfBuilder.Document.AnchorBuilder.Title(string! t) -> PdfBuilder.Document.AnchorBuilder!
+PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Background = 0 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Content = 1 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Foreground = 2 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Dashed = 1 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Dotted = 2 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Solid = 0 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasSize
+PdfBuilder.Document.CanvasSize.CanvasSize() -> void
+PdfBuilder.Document.CanvasSize.CanvasSize(float Width, float Height) -> void
+PdfBuilder.Document.CanvasSize.Height.get -> float
+PdfBuilder.Document.CanvasSize.Height.init -> void
+PdfBuilder.Document.CanvasSize.Width.get -> float
+PdfBuilder.Document.CanvasSize.Width.init -> void
 PdfBuilder.Document.ChartBuilder
 PdfBuilder.Document.ChartBuilder.Add() -> float
 PdfBuilder.Document.ChartBuilder.AddBars(string! name, System.Drawing.Color fill, System.Drawing.Color stroke, float strokeW, params float[]! values) -> PdfBuilder.Document.ChartBuilder!
@@ -298,6 +313,37 @@ PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor c
 PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(string! themeColor) -> void
 PdfBuilder.Document.IBarChartSeriesDescriptor
 PdfBuilder.Document.IBarChartSeriesDescriptor.Gap(float ratio) -> void
+PdfBuilder.Document.ICanvasDescriptor
+PdfBuilder.Document.ICanvasDescriptor.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.ClipRectangle(float x, float y, float width, float height) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.ClosePath() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.CurveTo(float control1X, float control1Y, float control2X, float control2Y, float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Fill() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FillAndStroke() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FillColor(string! color) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FlipHorizontal() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FlipVertical() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Layer(PdfBuilder.Document.CanvasLayer layer, System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Line(float x1, float y1, float x2, float y2) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LinearGradient(float x, float y, float width, float height, string! startColor, string! endColor, float angleDegrees = 0, int steps = 32) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LinePattern(PdfBuilder.Document.CanvasLinePattern pattern, float dashLength = 4, float gapLength = 2, float phase = 0) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LineTo(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LineWidth(float width) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.MoveTo(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.RadialGradient(float centerX, float centerY, float radius, string! centerColor, string! edgeColor, int steps = 32) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rectangle(float x, float y, float width, float height, bool stroke = true, bool fill = false) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.RectangleShadow(float x, float y, float width, float height, string! color, float offsetX = 2, float offsetY = -2, float blurRadius = 4, int steps = 8) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Restore() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rotate(float degrees) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rotate(float degrees, float centerX, float centerY) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Save() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Scale(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Size.get -> PdfBuilder.Document.CanvasSize
+PdfBuilder.Document.ICanvasDescriptor.State(System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Stroke() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.StrokeColor(string! color) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Transform(float a, float b, float c, float d, float e, float f) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Translate(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
 PdfBuilder.Document.IChartAxisDescriptor
 PdfBuilder.Document.IChartAxisDescriptor.Format(System.Func<float, string!>! formatter) -> void
 PdfBuilder.Document.IChartAxisDescriptor.Range(float? minimum = null, float? maximum = null) -> void
@@ -344,11 +390,14 @@ PdfBuilder.Document.IContainer.BorderBottom(float width = 1, string! color = "#0
 PdfBuilder.Document.IContainer.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderRight(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderTop(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Canvas(float height, System.Action<PdfBuilder.Document.ICanvasDescriptor!, PdfBuilder.Document.CanvasSize>! draw) -> void
+PdfBuilder.Document.IContainer.Canvas(float width, float height, System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> void
 PdfBuilder.Document.IContainer.Column(System.Action<PdfBuilder.Document.IColumnDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Component(PdfBuilder.Document.IPdfComponent! component) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Component<TModel>(PdfBuilder.Document.IPdfComponent<TModel>! component, TModel model) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.ContinuationPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.CornerRadius(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> void
 PdfBuilder.Document.IContainer.EnsureSpace(float minimumHeight) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.EvenPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Extend() -> PdfBuilder.Document.IContainer!
@@ -663,18 +712,41 @@ PdfBuilder.Document.ITextStyleDescriptor.WordSpacing(float value) -> PdfBuilder.
 PdfBuilder.Document.ITextStyleDescriptor.Wrap() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.Layout.CanvasBuilder
 PdfBuilder.Document.Layout.CanvasBuilder.AvoidBreakInside(bool value = true) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.ClipRectangle(float x, float y, float width, float height) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.ClosePath() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.CurveTo(float control1X, float control1Y, float control2X, float control2Y, float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Dash(float dashLength, float gapLength, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Dotted(float gapLength = 2, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Fill() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FillAndStroke() -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.FillColor(string! hex) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FlipHorizontal() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FlipVertical() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Layer(PdfBuilder.Document.CanvasLayer layer, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Line(float x1, float y1, float x2, float y2) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Line(float x1, float y1, float x2, float y2, float width, string? color = null) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LinearGradient(float x, float y, float width, float height, string! startColor, string! endColor, float angleDegrees = 0, int steps = 32) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LinePattern(PdfBuilder.Document.CanvasLinePattern pattern, float dashLength = 4, float gapLength = 2, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.LineTo(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LineWidth(float width) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Margin(float all) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Margin(float left, float top, float right, float bottom) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.MoveTo(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RadialGradient(float centerX, float centerY, float radius, string! centerColor, string! edgeColor, int steps = 32) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Raw(string! command) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Rect(float x, float y, float width, float height, bool stroke = true, bool fill = false) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RectangleShadow(float x, float y, float width, float height, string! color, float offsetX = 2, float offsetY = -2, float blurRadius = 4, int steps = 8) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RestoreState() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Rotate(float degrees) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Rotate(float degrees, float centerX, float centerY) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.SaveState() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Scale(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.State(System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Stroke() -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.StrokeColor(string! hex) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Transform(float a, float b, float c, float d, float e, float f) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Translate(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.Components.ColumnComponent
 PdfBuilder.Document.Layout.Components.ColumnComponent.Add(PdfBuilder.Document.Layout.IMeasurable! child) -> PdfBuilder.Document.Layout.Components.ColumnComponent!
 PdfBuilder.Document.Layout.Components.ColumnComponent.ColumnComponent() -> void
@@ -724,6 +796,7 @@ PdfBuilder.Document.Layout.ContentComposer.AspectRatio(float ratio, System.Actio
 PdfBuilder.Document.Layout.ContentComposer.Background(string! color, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content, float opacity = 1) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Barcode(string! value, PdfBuilder.Elements.BarcodeKind kind = PdfBuilder.Elements.BarcodeKind.QrCode, float moduleSize = 2, int quietZone = 4, System.Action<PdfBuilder.Elements.BarcodeElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Border(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions!>? configure, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Canvas(float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!, PdfBuilder.Document.CanvasSize>! draw) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Canvas(float width, float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw, System.Action<CanvasElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float spacing = 8) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.ColumnComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -731,6 +804,8 @@ PdfBuilder.Document.Layout.ContentComposer.Component(PdfBuilder.Document.Layout.
 PdfBuilder.Document.Layout.ContentComposer.Component(System.Func<PdfBuilder.Document.Layout.LayoutMeasureContext!, PdfBuilder.Document.Layout.LayoutMeasurement!>! measure, System.Action<PdfBuilder.Document.Layout.LayoutDrawContext!, PdfBuilder.Document.Layout.LayoutMeasurement!>! draw) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Decorate(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder!>! configure, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.DefaultTextStyle(System.Action<PdfBuilder.Models.TextStyleDefaults!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.DynamicSvg(float width, float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Extend(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.ExtendHeight(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.ExtendWidth(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -794,6 +869,7 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeColor.g
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeColor.set -> void
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeWidth.get -> float
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeWidth.set -> void
+PdfBuilder.Document.Layout.LayoutComponentCollection.Canvas(float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!, PdfBuilder.Document.CanvasSize>! draw) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Canvas(float width, float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw, System.Action<CanvasElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float spacing = 8) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.ColumnComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
@@ -809,6 +885,8 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder.Decoratio
 PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder.Foreground(System.Action<PdfBuilder.Document.Layout.DecorationDrawContext>! action) -> PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder!
 PdfBuilder.Document.Layout.LayoutComponentCollection.DefaultTextStyle(System.Action<PdfBuilder.Models.TextStyleDefaults!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Dynamic<T>(System.Collections.Generic.IEnumerable<T>! source, System.Action<T, PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.DynamicSvg(float width, float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Extend(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.ExtendHeight(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.ExtendWidth(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
@@ -982,6 +1060,12 @@ PdfBuilder.Document.Layout.PdfPaginationStabilizationException
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassCount.get -> int
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassLimit.get -> int
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PdfPaginationStabilizationException(int passCount, int passLimit) -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommandBytes.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommandBytes.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.set -> void
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.set -> void
 PdfBuilder.Document.Layout.PdfTableRowSplitException
