@@ -869,9 +869,35 @@ namespace PdfBuilder.Document
 
                 if (!string.IsNullOrWhiteSpace(style.Color))
                     style.Color = ResolveThemeColor(style.Color);
+                if (!string.IsNullOrWhiteSpace(style.BackgroundColor))
+                    style.BackgroundColor = ResolveThemeColor(style.BackgroundColor);
+                if (!string.IsNullOrWhiteSpace(style.DecorationColor))
+                    style.DecorationColor = ResolveThemeColor(style.DecorationColor);
 
                 cell.TextStyle ??= new PdfBuilder.Elements.Table.TextStyle();
                 style.ApplyTo(cell.TextStyle);
+                if (style.MaximumLines.HasValue) cell.MaxLines = style.MaximumLines;
+
+                ApplyCanonicalTableOverrides(cell);
+            }
+
+            foreach (TableCell cell in table.Rows.SelectMany(row => row.Cells).Where(cell => string.IsNullOrWhiteSpace(cell.ThemeStyleName)))
+            {
+                if (cell.CanonicalStyleOverrides == null)
+                    continue;
+                cell.TextStyle ??= new PdfBuilder.Elements.Table.TextStyle();
+                ApplyCanonicalTableOverrides(cell);
+            }
+
+            void ApplyCanonicalTableOverrides(TableCell cell)
+            {
+                if (cell.CanonicalStyleOverrides == null || cell.TextStyle == null) return;
+                var direct = cell.CanonicalStyleOverrides.Clone();
+                if (!string.IsNullOrWhiteSpace(direct.Color)) direct.Color = ResolveThemeColor(direct.Color);
+                if (!string.IsNullOrWhiteSpace(direct.BackgroundColor)) direct.BackgroundColor = ResolveThemeColor(direct.BackgroundColor);
+                if (!string.IsNullOrWhiteSpace(direct.DecorationColor)) direct.DecorationColor = ResolveThemeColor(direct.DecorationColor);
+                direct.ApplyTo(cell.TextStyle);
+                if (direct.MaximumLines.HasValue) cell.MaxLines = direct.MaximumLines;
             }
         }
 

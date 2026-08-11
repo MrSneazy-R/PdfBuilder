@@ -46,6 +46,7 @@ namespace PdfBuilder.Writer
             public float FontSize;
             public bool Underline;
             public bool Strikethrough;
+            public bool Overline;
             public Color? DecorationColor;
             public float? DecorationThickness;
             public TextDecorationStyle DecorationStyle = TextDecorationStyle.Solid;
@@ -832,7 +833,9 @@ namespace PdfBuilder.Writer
                 smallCaps: run.Style.SmallCaps,
                 monospace: false,
                 fallbackFonts: run.FallbackFonts,
-                flowDirection: run.Style.FlowDirection);
+                flowDirection: run.Style.Direction.HasValue
+                    ? TypographyDirectionResolver.Resolve(run.Style.Direction.Value, text, run.Style.FlowDirection)
+                    : run.Style.FlowDirection);
 
             var paragraph = TextShaper.Shared.ShapeParagraph(request);
             var shapedLine = paragraph.Lines.FirstOrDefault()
@@ -1076,6 +1079,11 @@ namespace PdfBuilder.Writer
                 {
                     DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
                 }
+            }
+            if (run.Overline)
+            {
+                float offset = baselineY + size * 0.8f;
+                DrawDecorationStroke(sb, style, startX, offset, startX + fragmentWidth, offset, startX, baselineY, rotationDeg);
             }
         }
 
@@ -1328,6 +1336,9 @@ namespace PdfBuilder.Writer
                             }
 
                             var encoded = GlyphRunEncoder.Encode(shapedRun, context);
+                            bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(shapedRun.Text);
+                            if (preserveLogicalOrder)
+                                sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(shapedRun.Text)} >> BDC\n");
                             sb.Append("q ");
                             sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(runCursor)} {N(ty)} cm ");
                             sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} 0 0 cm ");
@@ -1337,6 +1348,8 @@ namespace PdfBuilder.Writer
                             sb.Append(' ');
                             sb.Append($"{encoded.TjCommand} ET\n");
                             sb.Append("Q\n");
+                            if (preserveLogicalOrder)
+                                sb.Append("EMC\n");
                             runCursor += shapedRun.Width;
                         }
                     }
@@ -1351,17 +1364,22 @@ namespace PdfBuilder.Writer
                             }
 
                             var encoded = GlyphRunEncoder.Encode(shapedRun, context);
+                            bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(shapedRun.Text);
+                            if (preserveLogicalOrder)
+                                sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(shapedRun.Text)} >> BDC\n");
                             sb.Append("BT ");
                             sb.Append($"{encoded.FontResourceName} {N(shapedRun.FontSize)} Tf ");
                             sb.Append(fill);
                             sb.Append(' ');
                             sb.Append($"{N(runCursor)} {N(ty)} Td ");
                             sb.Append($"{encoded.TjCommand} ET\n");
+                            if (preserveLogicalOrder)
+                                sb.Append("EMC\n");
                             runCursor += shapedRun.Width;
                         }
                     }
 
-                    if (run.Underline || run.Strikethrough)
+                    if (run.Underline || run.Strikethrough || run.Overline)
                         DrawTextDecorations(sb, run, fragment.Width, tx, ty, rotation);
 
                     cursorX += isRtl ? -fragment.Width : fragment.Width;
@@ -2054,6 +2072,9 @@ namespace PdfBuilder.Writer
             if (cell.TextStyle != null)
                 MergeTextStyles(style, cell.TextStyle);
 
+            if (style.Direction.HasValue)
+                style.FlowDirection = TypographyDirectionResolver.Resolve(style.Direction.Value, cell.Text, style.FlowDirection);
+
             return style;
         }
 
@@ -2100,6 +2121,7 @@ namespace PdfBuilder.Writer
             target.SmallCaps = source.SmallCaps;
             target.Underline = source.Underline;
             target.Strikethrough = source.Strikethrough;
+            target.Overline = source.Overline;
             target.TextColor = source.TextColor;
             if (source.BackgroundColor.HasValue)
                 target.BackgroundColor = source.BackgroundColor;
@@ -2130,6 +2152,8 @@ namespace PdfBuilder.Writer
                 target.ToolTip = source.ToolTip;
             target.HorizontalAlign = source.HorizontalAlign;
             target.VerticalAlign = source.VerticalAlign;
+            target.Direction = source.Direction;
+            target.FlowDirection = source.FlowDirection;
         }
 
         private static List<ResolvedRun> ResolveRuns(TableCell cell, TableModels.TextStyle baseStyle)
@@ -2164,6 +2188,7 @@ namespace PdfBuilder.Writer
                 FontSize = style.FontSize > 0 ? style.FontSize : 10f,
                 Underline = style.Underline,
                 Strikethrough = style.Strikethrough,
+                Overline = style.Overline,
                 DecorationColor = style.DecorationColor,
                 DecorationThickness = style.DecorationThickness,
                 DecorationStyle = style.DecorationStyle,

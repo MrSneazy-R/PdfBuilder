@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using PdfBuilder.Document.Layout;
+using PdfBuilder.Fonts;
 using PdfBuilder.Models;
 
 namespace PdfBuilder.Document
@@ -34,6 +35,8 @@ namespace PdfBuilder.Document
 
         /// <summary>Gets configurable rendering safeguards for this document.</summary>
         public PdfRenderLimits RenderLimits { get; } = new();
+
+        internal FontCatalogSnapshot FontSnapshot { get; } = FontCatalog.CaptureSnapshot();
 
         public PdfDocument()
         {

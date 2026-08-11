@@ -41,6 +41,7 @@ namespace PdfBuilder.Elements.Table
         // Decorations
         public bool Underline { get; set; }
         public bool Strikethrough { get; set; }
+        public bool Overline { get; set; }
         public Color? DecorationColor { get; set; }
         public float? DecorationThickness { get; set; }
         public TextDecorationStyle DecorationStyle { get; set; } = TextDecorationStyle.Solid;
@@ -54,6 +55,7 @@ namespace PdfBuilder.Elements.Table
         public TextWrapMode Wrap { get; set; } = TextWrapMode.Wrap;
 
         public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
+        public TextDirection? Direction { get; set; }
 
         // Hyperlinks
         public string? Hyperlink { get; set; }
@@ -82,6 +84,7 @@ namespace PdfBuilder.Elements.Table
             ParagraphSpacingAfter = ParagraphSpacingAfter,
             Underline = Underline,
             Strikethrough = Strikethrough,
+            Overline = Overline,
             DecorationColor = DecorationColor,
             DecorationThickness = DecorationThickness,
             DecorationStyle = DecorationStyle,
@@ -93,6 +96,8 @@ namespace PdfBuilder.Elements.Table
             ToolTip = ToolTip,
             FallbackFonts = FallbackFonts == null ? null : new List<string>(FallbackFonts),
             FlowDirection = FlowDirection
+            ,
+            Direction = Direction
         };
     }
 

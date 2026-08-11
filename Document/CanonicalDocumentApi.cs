@@ -128,6 +128,8 @@ public interface IContainer
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
     ITextDescriptor Text(string text);
+    /// <summary>Adds a rich-text paragraph with independently styled spans.</summary>
+    void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>
     IImageDescriptor Image(byte[] data, float width, float height);
     /// <summary>Adds sanitised inline SVG markup without exposing image elements.</summary>
@@ -233,6 +235,52 @@ public interface ITextStyleDescriptor
     ITextStyleDescriptor FontSize(float size);
     /// <summary>Uses a bold font style.</summary>
     ITextStyleDescriptor Bold();
+    /// <summary>Uses an italic font style.</summary>
+    ITextStyleDescriptor Italic();
+    /// <summary>Sets the text colour or a named colour token.</summary>
+    ITextStyleDescriptor Color(string color);
+    /// <summary>Sets an optional text highlight/background colour.</summary>
+    ITextStyleDescriptor Highlight(string color);
+    /// <summary>Sets the line-height multiplier.</summary>
+    ITextStyleDescriptor LineHeight(float value);
+    /// <summary>Sets extra spacing between glyphs in points.</summary>
+    ITextStyleDescriptor LetterSpacing(float value);
+    /// <summary>Sets extra spacing for whitespace glyphs in points.</summary>
+    ITextStyleDescriptor WordSpacing(float value);
+    /// <summary>Draws an underline.</summary>
+    ITextStyleDescriptor Underline();
+    /// <summary>Draws a strikethrough.</summary>
+    ITextStyleDescriptor Strikethrough();
+    /// <summary>Draws an overline where the active renderer supports it.</summary>
+    ITextStyleDescriptor Overline();
+    /// <summary>Sets decoration colour, thickness, and stroke style.</summary>
+    ITextStyleDescriptor Decoration(string? color = null, float? thickness = null, TextDecorationStyle style = TextDecorationStyle.Solid);
+    /// <summary>Raises text relative to the paragraph baseline.</summary>
+    ITextStyleDescriptor Superscript();
+    /// <summary>Lowers text relative to the paragraph baseline.</summary>
+    ITextStyleDescriptor Subscript();
+    /// <summary>Aligns text to the left.</summary>
+    ITextStyleDescriptor AlignLeft();
+    /// <summary>Centres text.</summary>
+    ITextStyleDescriptor AlignCenter();
+    /// <summary>Aligns text to the right.</summary>
+    ITextStyleDescriptor AlignRight();
+    /// <summary>Justifies non-final wrapped lines.</summary>
+    ITextStyleDescriptor Justify();
+    /// <summary>Selects automatic, left-to-right, or right-to-left direction.</summary>
+    ITextStyleDescriptor Direction(TextDirection direction);
+    /// <summary>Enables ordinary wrapping.</summary>
+    ITextStyleDescriptor Wrap();
+    /// <summary>Disables automatic wrapping.</summary>
+    ITextStyleDescriptor NoWrap();
+    /// <summary>Enables wrapping with hyphenation of overlong words.</summary>
+    ITextStyleDescriptor Hyphenate();
+    /// <summary>Ellipsizes constrained final text.</summary>
+    ITextStyleDescriptor Ellipsis();
+    /// <summary>Limits the visible paragraph to a maximum number of lines.</summary>
+    ITextStyleDescriptor MaximumLines(int value);
+    /// <summary>Sets the ordered fallback-font chain.</summary>
+    ITextStyleDescriptor FallbackFonts(params string[] families);
 }
 
 /// <summary>Configures text content added to a container.</summary>
@@ -240,6 +288,15 @@ public interface ITextDescriptor : ITextStyleDescriptor
 {
     /// <summary>Applies a named text style from the current document theme.</summary>
     ITextDescriptor Style(string name);
+}
+
+/// <summary>Configures one canonical rich-text paragraph.</summary>
+public interface IRichTextDescriptor
+{
+    /// <summary>Returns the paragraph/default span style.</summary>
+    ITextDescriptor DefaultStyle();
+    /// <summary>Adds an independently styled span.</summary>
+    ITextDescriptor Span(string text);
 }
 
 /// <summary>Configures a canonical raster image.</summary>
@@ -272,6 +329,8 @@ public interface IChartDescriptor
     void Size(float width, float height);
     /// <summary>Sets the chart title.</summary>
     void Title(string value);
+    /// <summary>Applies common typography to chart axis and legend labels where supported.</summary>
+    void LabelStyle(Action<ITextStyleDescriptor> configure);
     /// <summary>Adds a line series with values plotted against ordinal positions.</summary>
     void Line(string name, IEnumerable<float> values, PdfColor color, float strokeWidth = 1f);
     /// <summary>Adds a bar series with values plotted against ordinal positions.</summary>
@@ -364,7 +423,8 @@ public partial class PdfDocument
     {
         if (configure == null) throw new ArgumentNullException(nameof(configure));
         var document = new PdfDocument();
-        configure(new CanonicalDocumentDescriptor(document));
+        using (PdfBuilder.Fonts.FontCatalog.EnterSnapshot(document.FontSnapshot))
+            configure(new CanonicalDocumentDescriptor(document));
         return document;
     }
 
@@ -599,6 +659,13 @@ public partial class PdfDocument
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
+        public void RichText(Action<IRichTextDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var descriptor = new CanonicalRichTextDescriptor(_theme);
+            configure(descriptor);
+            _content.Add(composer => descriptor.Compose(composer));
+        }
         public IImageDescriptor Image(byte[] data, float width, float height)
         {
             if (data == null) throw new ArgumentNullException(nameof(data));
@@ -622,7 +689,7 @@ public partial class PdfDocument
         public void Chart(Action<IChartDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var descriptor = new CanonicalChartDescriptor();
+            var descriptor = new CanonicalChartDescriptor(_theme);
             configure(descriptor);
             _content.Add(composer => composer.Component(new Layout.Components.ChartComponent(descriptor.Chart)));
         }
@@ -789,7 +856,9 @@ public partial class PdfDocument
 
     private sealed class CanonicalChartDescriptor : IChartDescriptor
     {
+        private readonly DocumentTheme _theme;
         public ChartElement Chart { get; } = new();
+        public CanonicalChartDescriptor(DocumentTheme theme) => _theme = theme;
         public void Size(float width, float height)
         {
             if (width <= 0f || height <= 0f || float.IsNaN(width) || float.IsNaN(height)) throw new ArgumentOutOfRangeException(nameof(width));
@@ -797,6 +866,13 @@ public partial class PdfDocument
             Chart.Height = height;
         }
         public void Title(string value) => Chart.Title = value ?? string.Empty;
+        public void LabelStyle(Action<ITextStyleDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var style = new CanonicalTextStyle();
+            configure(style);
+            style.Apply(Chart, _theme);
+        }
         public void Line(string name, IEnumerable<float> values, PdfColor color, float strokeWidth = 1f)
         {
             if (values == null) throw new ArgumentNullException(nameof(values));
@@ -936,11 +1012,39 @@ public partial class PdfDocument
     private sealed class CanonicalTableTextDescriptor : ITextDescriptor
     {
         private readonly TableCell _cell;
-        public CanonicalTableTextDescriptor(TableCell cell) => _cell = cell;
+        private readonly TextStyleDefaults _style = TextStyleDefaults.CreateOverrides();
+        public CanonicalTableTextDescriptor(TableCell cell)
+        {
+            _cell = cell;
+            _cell.CanonicalStyleOverrides = _style;
+        }
         public ITextDescriptor Style(string name) { _cell.ThemeStyleName = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("A style name is required.", nameof(name)) : name; return this; }
-        public ITextStyleDescriptor FontFamily(string family) { _cell.Font = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
-        public ITextStyleDescriptor FontSize(float size) { _cell.FontSize = size <= 0f ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
-        public ITextStyleDescriptor Bold() { _cell.Bold = true; return this; }
+        public ITextStyleDescriptor FontFamily(string family) { _style.FontFamily = RequireText(family, nameof(family)); return this; }
+        public ITextStyleDescriptor FontSize(float size) { _style.FontSize = Positive(size, nameof(size)); return this; }
+        public ITextStyleDescriptor Bold() { _style.Bold = true; return this; }
+        public ITextStyleDescriptor Italic() { _style.Italic = true; return this; }
+        public ITextStyleDescriptor Color(string color) { _style.Color = RequireText(color, nameof(color)); return this; }
+        public ITextStyleDescriptor Highlight(string color) { _style.BackgroundColor = RequireText(color, nameof(color)); return this; }
+        public ITextStyleDescriptor LineHeight(float value) { _style.LineHeight = Positive(value, nameof(value)); return this; }
+        public ITextStyleDescriptor LetterSpacing(float value) { _style.LetterSpacing = Finite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor WordSpacing(float value) { _style.WordSpacing = Finite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor Underline() { _style.Underline = true; return this; }
+        public ITextStyleDescriptor Strikethrough() { _style.Strikethrough = true; return this; }
+        public ITextStyleDescriptor Overline() { _style.Overline = true; return this; }
+        public ITextStyleDescriptor Decoration(string? color = null, float? thickness = null, TextDecorationStyle style = TextDecorationStyle.Solid) { SetDecoration(_style, color, thickness, style); return this; }
+        public ITextStyleDescriptor Superscript() { _style.Superscript = true; _style.Subscript = false; return this; }
+        public ITextStyleDescriptor Subscript() { _style.Subscript = true; _style.Superscript = false; return this; }
+        public ITextStyleDescriptor AlignLeft() { _style.Alignment = TextAlignment.Left; return this; }
+        public ITextStyleDescriptor AlignCenter() { _style.Alignment = TextAlignment.Center; return this; }
+        public ITextStyleDescriptor AlignRight() { _style.Alignment = TextAlignment.Right; return this; }
+        public ITextStyleDescriptor Justify() { _style.Alignment = TextAlignment.Justify; return this; }
+        public ITextStyleDescriptor Direction(TextDirection direction) { _style.Direction = direction; return this; }
+        public ITextStyleDescriptor Wrap() { _style.Wrapping = TextWrapping.Wrap; return this; }
+        public ITextStyleDescriptor NoWrap() { _style.Wrapping = TextWrapping.NoWrap; return this; }
+        public ITextStyleDescriptor Hyphenate() { _style.Wrapping = TextWrapping.Hyphenate; return this; }
+        public ITextStyleDescriptor Ellipsis() { _style.Ellipsis = true; return this; }
+        public ITextStyleDescriptor MaximumLines(int value) { _style.MaximumLines = PositiveLines(value); return this; }
+        public ITextStyleDescriptor FallbackFonts(params string[] families) { _style.FallbackFonts = ValidateFamilies(families); return this; }
     }
 
     private static string ValidateColor(string color) => string.IsNullOrWhiteSpace(color) ? throw new ArgumentException("A color is required.", nameof(color)) : color;
@@ -1099,14 +1203,138 @@ public partial class PdfDocument
         internal readonly record struct BorderSide(float Width, string Color);
     }
 
-    private sealed class CanonicalTextStyle : ITextDescriptor
+    private class CanonicalTextStyle : ITextDescriptor
     {
-        private string? _family; private float? _size; private bool _bold; private string? _styleName;
-        public ITextStyleDescriptor FontFamily(string family) { _family = string.IsNullOrWhiteSpace(family) ? throw new ArgumentException("A font family is required.", nameof(family)) : family; return this; }
-        public ITextStyleDescriptor FontSize(float size) { _size = size <= 0 ? throw new ArgumentOutOfRangeException(nameof(size)) : size; return this; }
-        public ITextStyleDescriptor Bold() { _bold = true; return this; }
+        private readonly TextStyleDefaults _style = TextStyleDefaults.CreateOverrides();
+        private string? _styleName;
+        public ITextStyleDescriptor FontFamily(string family) { _style.FontFamily = RequireText(family, nameof(family)); return this; }
+        public ITextStyleDescriptor FontSize(float size) { _style.FontSize = Positive(size, nameof(size)); return this; }
+        public ITextStyleDescriptor Bold() { _style.Bold = true; return this; }
+        public ITextStyleDescriptor Italic() { _style.Italic = true; return this; }
+        public ITextStyleDescriptor Color(string color) { _style.Color = RequireText(color, nameof(color)); return this; }
+        public ITextStyleDescriptor Highlight(string color) { _style.BackgroundColor = RequireText(color, nameof(color)); return this; }
+        public ITextStyleDescriptor LineHeight(float value) { _style.LineHeight = Positive(value, nameof(value)); return this; }
+        public ITextStyleDescriptor LetterSpacing(float value) { _style.LetterSpacing = Finite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor WordSpacing(float value) { _style.WordSpacing = Finite(value, nameof(value)); return this; }
+        public ITextStyleDescriptor Underline() { _style.Underline = true; return this; }
+        public ITextStyleDescriptor Strikethrough() { _style.Strikethrough = true; return this; }
+        public ITextStyleDescriptor Overline() { _style.Overline = true; return this; }
+        public ITextStyleDescriptor Decoration(string? color = null, float? thickness = null, TextDecorationStyle style = TextDecorationStyle.Solid) { SetDecoration(_style, color, thickness, style); return this; }
+        public ITextStyleDescriptor Superscript() { _style.Superscript = true; _style.Subscript = false; return this; }
+        public ITextStyleDescriptor Subscript() { _style.Subscript = true; _style.Superscript = false; return this; }
+        public ITextStyleDescriptor AlignLeft() { _style.Alignment = TextAlignment.Left; return this; }
+        public ITextStyleDescriptor AlignCenter() { _style.Alignment = TextAlignment.Center; return this; }
+        public ITextStyleDescriptor AlignRight() { _style.Alignment = TextAlignment.Right; return this; }
+        public ITextStyleDescriptor Justify() { _style.Alignment = TextAlignment.Justify; return this; }
+        public ITextStyleDescriptor Direction(TextDirection direction) { _style.Direction = direction; return this; }
+        public ITextStyleDescriptor Wrap() { _style.Wrapping = TextWrapping.Wrap; return this; }
+        public ITextStyleDescriptor NoWrap() { _style.Wrapping = TextWrapping.NoWrap; return this; }
+        public ITextStyleDescriptor Hyphenate() { _style.Wrapping = TextWrapping.Hyphenate; return this; }
+        public ITextStyleDescriptor Ellipsis() { _style.Ellipsis = true; return this; }
+        public ITextStyleDescriptor MaximumLines(int value) { _style.MaximumLines = PositiveLines(value); return this; }
+        public ITextStyleDescriptor FallbackFonts(params string[] families) { _style.FallbackFonts = ValidateFamilies(families); return this; }
         public ITextDescriptor Style(string name) { _styleName = string.IsNullOrWhiteSpace(name) ? throw new ArgumentException("A named style is required.", nameof(name)) : name; return this; }
-        public void Apply(TextStyleDefaults defaults) { if (_family != null) defaults.FontFamily = _family; if (_size.HasValue) defaults.FontSize = _size; if (_bold) defaults.Bold = true; }
-        public void Apply(TextElement element) { element.ThemeStyleName = _styleName; if (_family != null) element.FontFamily = _family; if (_size.HasValue) element.FontSize = _size.Value; if (_bold) element.Bold = true; }
+        public void Apply(TextStyleDefaults defaults) => ApplyResolved(defaults, null);
+        public void Apply(TextElement element) { element.ThemeStyleName = _styleName; element.CanonicalStyleOverrides = _style.Clone(); _style.ApplyTo(element); }
+        public void Apply(RichTextElement element, DocumentTheme theme)
+        {
+            if (_styleName != null)
+            {
+                if (!theme.TryGetTextStyle(_styleName, out var named)) throw new KeyNotFoundException($"Theme text style '{_styleName}' is not defined.");
+                named.ApplyTo(element);
+            }
+            _style.ApplyTo(element);
+        }
+        public void Apply(RichRun run, DocumentTheme theme)
+        {
+            if (_styleName != null)
+            {
+                if (!theme.TryGetTextStyle(_styleName, out var named)) throw new KeyNotFoundException($"Theme text style '{_styleName}' is not defined.");
+                named.ApplyTo(run);
+            }
+            _style.ApplyTo(run);
+        }
+        public void Apply(ChartElement chart, DocumentTheme theme)
+        {
+            var resolved = TextStyleDefaults.CreateOverrides();
+            ApplyResolved(resolved, theme);
+            if (!string.IsNullOrWhiteSpace(resolved.FontFamily))
+            {
+                chart.Font = MapFontVariant(resolved.FontFamily!, resolved.Bold == true, resolved.Italic == true);
+                chart.LegendFont = chart.Font;
+            }
+            if (resolved.FontSize.HasValue)
+            {
+                chart.FontSize = resolved.FontSize.Value;
+                chart.LegendFontSize = resolved.FontSize.Value;
+            }
+            if (!string.IsNullOrWhiteSpace(resolved.Color))
+                chart.AxisColor = System.Drawing.ColorTranslator.FromHtml(theme.ResolveColor(resolved.Color!));
+        }
+        private void ApplyResolved(TextStyleDefaults target, DocumentTheme? theme)
+        {
+            if (_styleName != null && theme != null)
+            {
+                if (!theme.TryGetTextStyle(_styleName, out var named)) throw new KeyNotFoundException($"Theme text style '{_styleName}' is not defined.");
+                target.CopyFrom(named);
+            }
+            CopyDefined(_style, target);
+        }
+    }
+
+    private sealed class CanonicalRichTextDescriptor : IRichTextDescriptor
+    {
+        private readonly DocumentTheme _theme;
+        private readonly CanonicalTextStyle _defaultStyle = new();
+        private readonly List<(string Text, CanonicalTextStyle Style)> _spans = new();
+        public CanonicalRichTextDescriptor(DocumentTheme theme) => _theme = theme;
+        public ITextDescriptor DefaultStyle() => _defaultStyle;
+        public ITextDescriptor Span(string text) { var style = new CanonicalTextStyle(); _spans.Add((text ?? string.Empty, style)); return style; }
+        public void Compose(Layout.ContentComposer composer)
+        {
+            composer.RichText(element =>
+            {
+                element.AvoidBreakInside = false;
+                _defaultStyle.Apply(element, _theme);
+                foreach (var span in _spans)
+                {
+                    var run = new RichRun { Text = span.Text, FontFamily = element.FontFamily, FontSize = element.FontSize, Color = element.Color, FallbackFonts = element.FallbackFonts?.ToList() };
+                    _defaultStyle.Apply(run, _theme);
+                    span.Style.Apply(run, _theme);
+                    element.Runs.Add(run);
+                }
+            });
+        }
+    }
+
+    private static void CopyDefined(TextStyleDefaults source, TextStyleDefaults target)
+    {
+        source.ApplyOverridesTo(target);
+    }
+
+    private static string RequireText(string value, string parameterName) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("A value is required.", parameterName) : value;
+    private static float Positive(float value, string parameterName) => value <= 0f || float.IsNaN(value) || float.IsInfinity(value) ? throw new ArgumentOutOfRangeException(parameterName) : value;
+    private static float Finite(float value, string parameterName) => float.IsNaN(value) || float.IsInfinity(value) ? throw new ArgumentOutOfRangeException(parameterName) : value;
+    private static int PositiveLines(int value) => value <= 0 ? throw new ArgumentOutOfRangeException(nameof(value)) : value;
+    private static List<string> ValidateFamilies(string[] families)
+    {
+        if (families == null) throw new ArgumentNullException(nameof(families));
+        var result = families.Where(family => !string.IsNullOrWhiteSpace(family)).Select(family => family.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (result.Count == 0) throw new ArgumentException("At least one fallback font family is required.", nameof(families));
+        return result;
+    }
+    private static void SetDecoration(TextStyleDefaults target, string? color, float? thickness, TextDecorationStyle style)
+    {
+        if (color != null) target.DecorationColor = RequireText(color, nameof(color));
+        if (thickness.HasValue) target.DecorationThickness = Positive(thickness.Value, nameof(thickness));
+        target.DecorationStyle = style;
+    }
+    private static string MapFontVariant(string family, bool bold, bool italic)
+    {
+        if (!bold && !italic) return family;
+        if (family.Contains("Helvetica", StringComparison.OrdinalIgnoreCase)) return bold && italic ? "Helvetica-BoldOblique" : bold ? "Helvetica-Bold" : "Helvetica-Oblique";
+        if (family.Contains("Times", StringComparison.OrdinalIgnoreCase)) return bold && italic ? "Times-BoldItalic" : bold ? "Times-Bold" : "Times-Italic";
+        if (family.Contains("Courier", StringComparison.OrdinalIgnoreCase)) return bold && italic ? "Courier-BoldOblique" : bold ? "Courier-Bold" : "Courier-Oblique";
+        return family;
     }
 }

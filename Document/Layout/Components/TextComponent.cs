@@ -42,7 +42,7 @@ namespace PdfBuilder.Document.Layout.Components
             string textContent = text.Text ?? string.Empty;
 
             float availableWidth = Math.Max(0f, column.Width - marginLeft - marginRight);
-            float maxWidthConstraint = text.MaxWidth ?? availableWidth;
+            float maxWidthConstraint = text.MaxWidth.HasValue ? Math.Min(text.MaxWidth.Value, availableWidth) : availableWidth;
             float textMaxWidth = Math.Max(0f, maxWidthConstraint - paddingLeft - paddingRight);
 
             var shapedParagraph = TextElementLayouter.Layout(text, textMaxWidth);

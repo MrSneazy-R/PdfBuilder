@@ -14,7 +14,8 @@ namespace PdfBuilder.TextShaping
         {
             if (element == null) throw new ArgumentNullException(nameof(element));
 
-            float availableWidth = innerWidth > 0f ? innerWidth : float.PositiveInfinity;
+            float constraintWidth = innerWidth > 0f ? innerWidth : float.PositiveInfinity;
+            float availableWidth = element.Wrapping == TextWrapping.NoWrap ? float.PositiveInfinity : constraintWidth;
             var segments = EnumerateSegments(element).ToList();
 
             var lines = new List<RichTextLine>();
@@ -108,7 +109,49 @@ namespace PdfBuilder.TextShaping
                 totalHeight += lineHeightEmpty;
             }
 
+            int maximumLines = element.MaximumLines.GetValueOrDefault();
+            bool wasTruncated = maximumLines > 0 && lines.Count > maximumLines;
+            if (wasTruncated)
+            {
+                lines = lines.Take(maximumLines).ToList();
+                if (element.EllipsisWhenConstrained && lines.Count > 0 && !float.IsPositiveInfinity(constraintWidth))
+                    lines[^1] = EllipsizeLine(lines[^1], constraintWidth, element);
+                totalHeight = lines.Sum(line => line.LineHeight);
+                maxLineWidth = lines.Count == 0 ? 0f : lines.Max(line => line.Width);
+            }
+            else if (element.Wrapping == TextWrapping.NoWrap && element.EllipsisWhenConstrained && lines.Count > 0 && lines[0].Width > constraintWidth)
+            {
+                lines[0] = EllipsizeLine(lines[0], constraintWidth, element);
+                totalHeight = lines.Sum(line => line.LineHeight);
+                maxLineWidth = lines.Max(line => line.Width);
+            }
+
             return new RichTextLayoutResult(lines, maxLineWidth, totalHeight);
+        }
+
+        private static RichTextLine EllipsizeLine(RichTextLine line, float availableWidth, RichTextElement element)
+        {
+            var segments = line.Segments.ToList();
+            RichTextSegment? template = segments.LastOrDefault();
+            string family = template?.ShapedRun.FontFamily ?? element.FontFamily;
+            float size = template?.ShapedRun.FontSize ?? element.FontSize;
+            bool bold = template?.ShapedRun.Bold ?? false;
+            bool italic = template?.ShapedRun.Italic ?? false;
+            var request = new TextShapingRequest("…", family, size, 1f, 0f, bold, italic, false, false,
+                element.FallbackFonts, element.FlowDirection);
+            var ellipsisRun = TextShaper.Shared.ShapeParagraph(request).Lines[0].Runs[0];
+            while (segments.Count > 0 && segments.Sum(segment => segment.ShapedRun.Width) + ellipsisRun.Width > availableWidth)
+                segments.RemoveAt(segments.Count - 1);
+
+            var ellipsis = new RichTextSegment(ellipsisRun, template?.Color ?? element.Color,
+                template?.Underline ?? false, template?.Strikethrough ?? false, template?.Overline ?? false,
+                template?.BackgroundColor, template?.DecorationColor, template?.DecorationThickness,
+                template?.DecorationStyle ?? TextDecorationStyle.Solid, template?.BaselineOffset ?? 0f, null, null);
+            segments.Add(ellipsis);
+            float width = segments.Sum(segment => segment.ShapedRun.Width);
+            float ascent = Math.Max(line.Ascent, ellipsisRun.Ascent);
+            float descent = Math.Max(line.Descent, ellipsisRun.Descent);
+            return new RichTextLine(segments, width, ascent, descent, line.LineHeight);
         }
 
         private static IEnumerable<LayoutSegment> EnumerateSegments(RichTextElement element)
@@ -134,7 +177,10 @@ namespace PdfBuilder.TextShaping
 
                         var shapedRun = ShapeToken(token, run, element);
                         bool isWhitespace = token.All(char.IsWhiteSpace);
-                        yield return new LayoutSegment(shapedRun, isWhitespace, false, run.Color, run.Underline, run.Strikethrough, run.LinkUrl, run.LinkAnchor);
+                        float baselineOffset = run.Superscript ? shapedRun.FontSize * 0.35f : run.Subscript ? shapedRun.FontSize * -0.20f : 0f;
+                        yield return new LayoutSegment(shapedRun, isWhitespace, false, run.Color, run.Underline, run.Strikethrough,
+                            run.Overline, run.BackgroundColor, run.DecorationColor, run.DecorationThickness, run.DecorationStyle,
+                            baselineOffset, run.LinkUrl, run.LinkAnchor);
                     }
 
                     if (i < lines.Length - 1)
@@ -186,7 +232,7 @@ namespace PdfBuilder.TextShaping
                 smallCaps: run.SmallCaps,
                 monospace: monospace,
                 fallbackFonts: run.FallbackFonts,
-                element.FlowDirection,
+                TypographyDirectionResolver.Resolve(element.Direction, text, element.FlowDirection),
                 run.LetterSpacing,
                 run.WordSpacing,
                 run.Transform ?? TextTransform.None);
@@ -230,6 +276,12 @@ namespace PdfBuilder.TextShaping
                 string color,
                 bool underline,
                 bool strikethrough,
+                bool overline,
+                string? backgroundColor,
+                string? decorationColor,
+                float? decorationThickness,
+                TextDecorationStyle decorationStyle,
+                float baselineOffset,
                 string? url,
                 string? anchor)
             {
@@ -239,6 +291,12 @@ namespace PdfBuilder.TextShaping
                 Color = color ?? "#000";
                 Underline = underline;
                 Strikethrough = strikethrough;
+                Overline = overline;
+                BackgroundColor = backgroundColor;
+                DecorationColor = decorationColor;
+                DecorationThickness = decorationThickness;
+                DecorationStyle = decorationStyle;
+                BaselineOffset = baselineOffset;
                 Url = url;
                 Anchor = anchor;
             }
@@ -251,6 +309,12 @@ namespace PdfBuilder.TextShaping
                 Color = "#000";
                 Underline = false;
                 Strikethrough = false;
+                Overline = false;
+                BackgroundColor = null;
+                DecorationColor = null;
+                DecorationThickness = null;
+                DecorationStyle = TextDecorationStyle.Solid;
+                BaselineOffset = 0f;
                 Url = null;
                 Anchor = null;
             }
@@ -261,13 +325,20 @@ namespace PdfBuilder.TextShaping
             public string Color { get; }
             public bool Underline { get; }
             public bool Strikethrough { get; }
+            public bool Overline { get; }
+            public string? BackgroundColor { get; }
+            public string? DecorationColor { get; }
+            public float? DecorationThickness { get; }
+            public TextDecorationStyle DecorationStyle { get; }
+            public float BaselineOffset { get; }
             public string? Url { get; }
             public string? Anchor { get; }
 
             public static LayoutSegment LineBreak() => new LayoutSegment(true);
 
             public RichTextSegment ToRichTextSegment() =>
-                new RichTextSegment(ShapedRun, Color, Underline, Strikethrough, Url, Anchor);
+                new RichTextSegment(ShapedRun, Color, Underline, Strikethrough, Overline, BackgroundColor,
+                    DecorationColor, DecorationThickness, DecorationStyle, BaselineOffset, Url, Anchor);
         }
     }
 }

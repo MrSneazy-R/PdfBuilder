@@ -65,7 +65,7 @@ namespace PdfBuilder.Tests
             stream.Should().Contain("] TJ");
 
             var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
-            var normalized = string.Join(" ", blocks.Select(NormalizeBidiBlock))
+            var normalized = string.Join(" ", blocks)
                                    .Replace("  ", " ", StringComparison.Ordinal)
                                    .Trim();
 
@@ -230,7 +230,7 @@ namespace PdfBuilder.Tests
             var blocks = PdfTextExtractor.ExtractTextBlocks(pdfBytes);
             blocks.Should().NotBeEmpty();
 
-            var normalized = string.Join(" ", blocks.Select(NormalizeBidiBlock))
+            var normalized = string.Join(" ", blocks)
                                    .Replace("  ", " ", StringComparison.Ordinal)
                                    .Trim();
 
@@ -295,16 +295,5 @@ namespace PdfBuilder.Tests
             return sb.ToString().Normalize(NormalizationForm.FormC);
         }
 
-        private static string NormalizeBidiBlock(string block)
-        {
-            if (string.IsNullOrEmpty(block))
-                return block;
-
-            bool containsRtl = block.Any(ch =>
-                (ch >= 0x0590 && ch <= 0x08FF) ||
-                (ch >= 0xFB1D && ch <= 0xFEFC));
-
-            return containsRtl ? new string(block.Reverse().ToArray()) : block;
-        }
     }
 }

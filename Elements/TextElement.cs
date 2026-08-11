@@ -54,12 +54,16 @@ public class TextElement : PdfElement
     public float LineHeight { get; set; } = 1.2f;
     public float? LetterSpacing { get; set; }
     public float? WordSpacing { get; set; }
+    public TextWrapping Wrapping { get; set; } = TextWrapping.Wrap;
+    public bool EllipsisWhenConstrained { get; set; }
+    public int? MaximumLines { get; set; }
 
     // Position, alignment
     public float Rotation { get; set; } = 0;
     public TextAlignment Alignment { get; set; } = TextAlignment.Left;
     public float? BaselineOffset { get; set; }
     public FlowDirection FlowDirection { get; set; } = FlowDirection.LeftToRight;
+    public TextDirection Direction { get; set; } = TextDirection.Automatic;
     public TextTransform Transform { get; set; } = TextTransform.None;
 
     // Decorations
@@ -84,6 +88,7 @@ public class TextElement : PdfElement
 
     internal ShapedParagraph? ShapedLayout { get; set; }
     internal string? ThemeStyleName { get; set; }
+    internal TextStyleDefaults? CanonicalStyleOverrides { get; set; }
     internal int ShapedStartLine { get; set; }
     internal int ShapedLineCount { get; set; }
 }
@@ -101,6 +106,16 @@ public sealed class TextSpan
     public float? WordSpacing { get; set; }
     public TextTransform? Transform { get; set; }
     public List<string>? FallbackFonts { get; set; }
+    public string? Color { get; set; }
+    public string? BackgroundColor { get; set; }
+    public bool? Underline { get; set; }
+    public bool? Strikethrough { get; set; }
+    public bool? Overline { get; set; }
+    public string? DecorationColor { get; set; }
+    public float? DecorationThickness { get; set; }
+    public TextDecorationStyle? DecorationStyle { get; set; }
+    public bool? Superscript { get; set; }
+    public bool? Subscript { get; set; }
 
     public TextSpan Clone()
     {
@@ -117,6 +132,26 @@ public sealed class TextSpan
             WordSpacing = WordSpacing,
             Transform = Transform,
             FallbackFonts = FallbackFonts == null ? null : new List<string>(FallbackFonts)
+            ,
+            Color = Color
+            ,
+            BackgroundColor = BackgroundColor
+            ,
+            Underline = Underline
+            ,
+            Strikethrough = Strikethrough
+            ,
+            Overline = Overline
+            ,
+            DecorationColor = DecorationColor
+            ,
+            DecorationThickness = DecorationThickness
+            ,
+            DecorationStyle = DecorationStyle
+            ,
+            Superscript = Superscript
+            ,
+            Subscript = Subscript
         };
     }
 }

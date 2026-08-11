@@ -9,6 +9,7 @@ using System.Threading;
 using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
+using PdfBuilder.Fonts;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Fonts;
 
@@ -95,6 +96,7 @@ namespace PdfBuilder.Writer
 
         private void WriteDocument(PdfDocument doc, Stream destination, DateTimeOffset now, CancellationToken cancellationToken)
         {
+            using var fontSnapshotScope = FontCatalog.EnterSnapshot(doc.FontSnapshot);
             cancellationToken.ThrowIfCancellationRequested();
             if (doc.Pages.Count == 0) throw new InvalidOperationException("Document has no pages.");
 

@@ -49,6 +49,12 @@ namespace PdfBuilder.Document.TextShaping
             string color,
             bool underline,
             bool strikethrough,
+            bool overline,
+            string? backgroundColor,
+            string? decorationColor,
+            float? decorationThickness,
+            PdfBuilder.Models.TextDecorationStyle decorationStyle,
+            float baselineOffset,
             string? url,
             string? anchor)
         {
@@ -56,6 +62,12 @@ namespace PdfBuilder.Document.TextShaping
             Color = color ?? "black";
             Underline = underline;
             Strikethrough = strikethrough;
+            Overline = overline;
+            BackgroundColor = backgroundColor;
+            DecorationColor = decorationColor;
+            DecorationThickness = decorationThickness;
+            DecorationStyle = decorationStyle;
+            BaselineOffset = baselineOffset;
             Url = url;
             Anchor = anchor;
         }
@@ -67,6 +79,12 @@ namespace PdfBuilder.Document.TextShaping
         public bool Underline { get; }
 
         public bool Strikethrough { get; }
+        public bool Overline { get; }
+        public string? BackgroundColor { get; }
+        public string? DecorationColor { get; }
+        public float? DecorationThickness { get; }
+        public PdfBuilder.Models.TextDecorationStyle DecorationStyle { get; }
+        public float BaselineOffset { get; }
 
         public string? Url { get; }
 

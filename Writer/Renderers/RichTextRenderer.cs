@@ -30,15 +30,19 @@ namespace PdfBuilder.Writer
             if (outLinks == null) throw new ArgumentNullException(nameof(outLinks));
 
             var layout = EnsureLayout(element);
+            int startLine = Math.Clamp(element.ShapedStartLine, 0, Math.Max(0, layout.Lines.Count - 1));
+            int remaining = layout.Lines.Count - startLine;
+            int lineCount = element.ShapedLineCount > 0 ? Math.Min(element.ShapedLineCount, remaining) : remaining;
+            var lines = layout.Lines.Skip(startLine).Take(Math.Max(1, lineCount)).ToList();
             float padTop = element.PaddingTop ?? 0f;
             float padBottom = element.PaddingBottom ?? 0f;
-            float totalHeight = layout.TotalHeight + padTop + padBottom;
+            float totalHeight = lines.Sum(line => line.LineHeight) + padTop + padBottom;
 
             float effectiveWidth = element.MaxWidth ?? layout.MaxLineWidth;
             float baseline = element.Y;
 
             bool isRtl = element.FlowDirection == FlowDirection.RightToLeft;
-            foreach (var line in layout.Lines)
+            foreach (var line in lines)
             {
                 float cursorX = element.X;
                 if (element.Alignment == TextAlignment.Center)
@@ -54,29 +58,45 @@ namespace PdfBuilder.Writer
                         continue;
 
                     var encoded = GlyphRunEncoder.Encode(segment.ShapedRun, context);
+                    bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(segment.ShapedRun.Text);
+                    if (preserveLogicalOrder)
+                        sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(segment.ShapedRun.Text)} >> BDC\n");
 
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(segment.ShapedRun.FontSize)} Tf {ColorRgb(segment.Color)} rg ");
                     float runWidth = segment.ShapedRun.Width;
                     float runStart = isRtl ? cursorX - runWidth : cursorX;
-                    sb.Append($"{N(runStart)} {N(baseline)} Td ");
-                    sb.Append($"{encoded.TjCommand} ET\n");
-
-                    if (segment.Underline || segment.Strikethrough)
+                    float runBaseline = baseline + segment.BaselineOffset;
+                    if (!string.IsNullOrWhiteSpace(segment.BackgroundColor))
                     {
-                        float underlineY = baseline - segment.ShapedRun.FontSize * 0.15f;
-                        float strikeY = baseline + segment.ShapedRun.FontSize * 0.30f;
-                        float strokeWidth = Math.Max(0.7f, segment.ShapedRun.FontSize * 0.05f);
+                        float bottom = runBaseline - segment.ShapedRun.Descent;
+                        float height = segment.ShapedRun.Ascent + segment.ShapedRun.Descent;
+                        sb.Append($"q {ColorRgb(segment.BackgroundColor)} rg {N(runStart)} {N(bottom)} {N(runWidth)} {N(height)} re f Q\n");
+                    }
+                    sb.Append($"{N(runStart)} {N(runBaseline)} Td ");
+                    sb.Append($"{encoded.TjCommand} ET\n");
+                    if (preserveLogicalOrder)
+                        sb.Append("EMC\n");
+
+                    if (segment.Underline || segment.Strikethrough || segment.Overline)
+                    {
+                        float underlineY = runBaseline - segment.ShapedRun.FontSize * 0.15f;
+                        float strikeY = runBaseline + segment.ShapedRun.FontSize * 0.30f;
+                        float overlineY = runBaseline + segment.ShapedRun.Ascent;
+                        float strokeWidth = segment.DecorationThickness ?? Math.Max(0.7f, segment.ShapedRun.FontSize * 0.05f);
+                        string decorationColor = segment.DecorationColor ?? segment.Color;
                         if (segment.Underline)
-                            DrawLine(sb, runStart, underlineY, runStart + runWidth, underlineY, segment.Color, strokeWidth);
+                            DrawDecoration(sb, runStart, underlineY, runStart + runWidth, underlineY, decorationColor, strokeWidth, segment.DecorationStyle);
                         if (segment.Strikethrough)
-                            DrawLine(sb, runStart, strikeY, runStart + runWidth, strikeY, segment.Color, strokeWidth);
+                            DrawDecoration(sb, runStart, strikeY, runStart + runWidth, strikeY, decorationColor, strokeWidth, segment.DecorationStyle);
+                        if (segment.Overline)
+                            DrawDecoration(sb, runStart, overlineY, runStart + runWidth, overlineY, decorationColor, strokeWidth, segment.DecorationStyle);
                     }
 
                     if (segment.HasLink)
                     {
-                        float top = baseline + segment.ShapedRun.Ascent;
-                        float bottom = baseline - segment.ShapedRun.Descent;
+                        float top = runBaseline + segment.ShapedRun.Ascent;
+                        float bottom = runBaseline - segment.ShapedRun.Descent;
                         outLinks.Add(new LinkRect
                         {
                             X1 = runStart,
@@ -117,10 +137,24 @@ namespace PdfBuilder.Writer
             return element.ShapedLayout!;
         }
 
-        private static void DrawLine(StringBuilder sb, float x1, float y1, float x2, float y2, string color, float width)
+        private static void DrawDecoration(StringBuilder sb, float x1, float y1, float x2, float y2, string color, float width, TextDecorationStyle style)
         {
+            if (style == TextDecorationStyle.Double)
+            {
+                float half = Math.Max(0.25f, width / 2f);
+                float offset = Math.Max(0.6f, width);
+                DrawDecoration(sb, x1, y1 - offset, x2, y2 - offset, color, half, TextDecorationStyle.Solid);
+                DrawDecoration(sb, x1, y1 + offset, x2, y2 + offset, color, half, TextDecorationStyle.Solid);
+                return;
+            }
             var rgb = ColorRgb(color);
-            sb.Append($"q {rgb} RG {N(width)} w {N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
+            string dash = style switch
+            {
+                TextDecorationStyle.Dotted => "[1 2] 0 d ",
+                TextDecorationStyle.Dashed => "[4 3] 0 d ",
+                _ => string.Empty
+            };
+            sb.Append($"q {rgb} RG {N(width)} w {dash}{N(x1)} {N(y1)} m {N(x2)} {N(y2)} l S Q\n");
         }
 
         private static string ColorRgb(string color)

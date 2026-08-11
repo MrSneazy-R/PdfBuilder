@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using PdfBuilder.Models;
 
 namespace PdfBuilder.Document
@@ -115,7 +116,7 @@ namespace PdfBuilder.Document
         {
             ValidateName(name, nameof(name));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var style = new TextStyleDefaults();
+            var style = TextStyleDefaults.CreateOverrides();
             configure(new ThemeTextStyleBuilder(style));
             _theme.SetTextStyle(name, style);
             return this;
@@ -152,6 +153,7 @@ namespace PdfBuilder.Document
         public ThemeTextStyleBuilder FontFamily(string value) { _style.FontFamily = value; return this; }
         public ThemeTextStyleBuilder FontSize(float value) { _style.FontSize = value; return this; }
         public ThemeTextStyleBuilder Color(string value) { _style.Color = value; return this; }
+        public ThemeTextStyleBuilder Highlight(string value) { _style.BackgroundColor = value; return this; }
         public ThemeTextStyleBuilder LineHeight(float value) { _style.LineHeight = value; return this; }
         public ThemeTextStyleBuilder LetterSpacing(float value) { _style.LetterSpacing = value; return this; }
         public ThemeTextStyleBuilder WordSpacing(float value) { _style.WordSpacing = value; return this; }
@@ -159,5 +161,21 @@ namespace PdfBuilder.Document
         public ThemeTextStyleBuilder Italic(bool value = true) { _style.Italic = value; return this; }
         public ThemeTextStyleBuilder Underline(bool value = true) { _style.Underline = value; return this; }
         public ThemeTextStyleBuilder Strikethrough(bool value = true) { _style.Strikethrough = value; return this; }
+        public ThemeTextStyleBuilder Overline(bool value = true) { _style.Overline = value; return this; }
+        public ThemeTextStyleBuilder Decoration(string? color = null, float? thickness = null, TextDecorationStyle style = TextDecorationStyle.Solid)
+        {
+            if (color != null) _style.DecorationColor = color;
+            if (thickness.HasValue) _style.DecorationThickness = thickness;
+            _style.DecorationStyle = style;
+            return this;
+        }
+        public ThemeTextStyleBuilder Superscript(bool value = true) { _style.Superscript = value; if (value) _style.Subscript = false; return this; }
+        public ThemeTextStyleBuilder Subscript(bool value = true) { _style.Subscript = value; if (value) _style.Superscript = false; return this; }
+        public ThemeTextStyleBuilder Alignment(TextAlignment value) { _style.Alignment = value; return this; }
+        public ThemeTextStyleBuilder Direction(TextDirection value) { _style.Direction = value; return this; }
+        public ThemeTextStyleBuilder Wrapping(TextWrapping value) { _style.Wrapping = value; return this; }
+        public ThemeTextStyleBuilder Ellipsis(bool value = true) { _style.Ellipsis = value; return this; }
+        public ThemeTextStyleBuilder MaximumLines(int value) { _style.MaximumLines = value <= 0 ? throw new ArgumentOutOfRangeException(nameof(value)) : value; return this; }
+        public ThemeTextStyleBuilder FallbackFonts(params string[] families) { _style.FallbackFonts = families?.Where(value => !string.IsNullOrWhiteSpace(value)).Select(value => value.Trim()).ToList() ?? throw new ArgumentNullException(nameof(families)); return this; }
     }
 }
