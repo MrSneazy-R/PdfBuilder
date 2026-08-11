@@ -35,6 +35,7 @@ function Assert-Entry([System.IO.Compression.ZipArchive]$archive, [string]$path)
 $packageArchive = Open-Package $package
 $symbolsArchive = Open-Package $symbols
 try {
+    Assert-Entry $packageArchive 'THIRD-PARTY-NOTICES.md' | Out-Null
     foreach ($framework in @('net8.0', 'net10.0')) {
         Assert-Entry $packageArchive "lib/$framework/PdfBuilder.dll" | Out-Null
         Assert-Entry $packageArchive "lib/$framework/PdfBuilder.xml" | Out-Null
@@ -74,4 +75,4 @@ finally {
     $symbolsArchive.Dispose()
 }
 
-Write-Host "Verified .NET 8/.NET 10 assemblies, XML docs, portable SourceLink symbols, and repository metadata."
+Write-Host "Verified .NET 8/.NET 10 assemblies, XML docs, portable SourceLink symbols, repository metadata, and third-party notices."

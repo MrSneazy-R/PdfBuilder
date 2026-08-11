@@ -126,6 +126,8 @@ Treat PDFs and media as untrusted inputs. Enforce application-level size limits,
 
 Pre-release versions may add or refine APIs. Deprecated legacy APIs remain functional with `PDFB00x` migration warnings until an announced major release. **No public NuGet publishing is enabled until the repository owner approves a licence.** Local/private packages remain supported.
 
+Runtime dependency notices are retained in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). This notice does not grant a licence for PdfBuilder itself.
+
 ## Migration
 
 See [legacy-to-canonical-api.md](documentation/migration/legacy-to-canonical-api.md). Every maintained sample uses the canonical API; legacy `Add()` finalisers are compatibility-only.

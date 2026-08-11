@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Prepared blocked internal pre-release artifacts with canonical maintained samples, packaged third-party notices, CycloneDX SBOM generation, SHA-256 manifests, strict preview-version/tag validation, and an exact-commit evidence checklist; public or 1.0 RC publication remains blocked by retained CI and licence approval.
 - Established a checked-in .NET 10 Windows benchmark baseline for 15 generation scenarios, with deterministic CI gates, isolated scheduled captures, timing comparisons, allocation/output/resource metrics, and retained hardware/runtime metadata.
 - Multi-targeted the package for .NET 8 and .NET 10, with clean consumer checks for both frameworks and package archive validation for assemblies, XML documentation, portable symbols, and repository metadata.
 - Added a sanitised deterministic production fixture corpus covering business documents, multilingual shaping, image-heavy output, 1,000-row and split-row tables, navigation, repeated-content variants, concurrent batches, and serializer edge cases, with retained page counts, extraction markers, selected visual baselines, and CI PDF artifacts.

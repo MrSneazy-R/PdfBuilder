@@ -16,10 +16,11 @@ Replace terminal `Add()` calls with the canonical terminal operation, for exampl
 [legacy-to-canonical-api.md](../migration/legacy-to-canonical-api.md) for mappings.
 
 The package targets `net8.0` and `net10.0`. Release validation must retain clean consumer runs for both target frameworks and confirm the `.nupkg`/`.snupkg` contain both assemblies, XML documentation, portable PDBs with SourceLink data, and repository metadata.
+The package also contains `THIRD-PARTY-NOTICES.md`; the draft workflow emits a CycloneDX dependency SBOM and a SHA-256 manifest covering the package, symbols, and SBOM.
 
 ## Supported platforms and formats
 
-The maintained target is .NET 10. CI covers Windows, Ubuntu, and macOS. PNG, JPEG, and
+The maintained targets are .NET 8 and .NET 10. CI covers Windows, Ubuntu, and macOS. PNG, JPEG, and
 still WebP use the shared Skia pipeline; WebP must not be released until its tests have a
 retained green run on all three platforms. Inline SVG is parsed with DTDs disabled,
 sanitised, and prevented from resolving network or file resources.
@@ -44,10 +45,12 @@ the latest pre-release development line only. Security reports are handled under
 ## Versioning and publication
 
 Semantic Versioning is the intended policy. Pre-release identifiers signal that
-breaking changes remain possible before 1.0. The `Release candidate` workflow is
-manual, creates `.nupkg`, `.snupkg`, and SHA-256 files, and attaches them to a draft
-GitHub release. It never publishes to NuGet.org. Public publishing is blocked until
-the owner approves a licence; private/internal distribution remains an owner decision.
+breaking changes remain possible before 1.0. The `Internal pre-release draft` workflow
+is manual, creates `.nupkg`, `.snupkg`, a CycloneDX SBOM, and SHA-256 checksums, and
+attaches them to a draft GitHub release. It rejects versions that differ from the
+project file, stable versions, and `1.0.0-rc.*` labels while mandatory gates remain
+unresolved. It never publishes to NuGet.org. Public publishing is blocked until the
+owner approves a licence; private/internal distribution remains an owner decision.
 
 Build and consume the current private package with the project version unchanged:
 
@@ -61,3 +64,4 @@ dotnet add package PdfBuilder --version 0.1.0-preview.2 --source ./artifacts
 See [PRODUCTION-READINESS.md](../engineering/PRODUCTION-READINESS.md) for the
 authoritative gate table. In particular, a package version alone is not evidence that
 cross-platform visual, native-concurrency, or production-fixture gates have passed.
+The current release decision remains `BLOCKED` because exact-commit retained CI and an approved PdfBuilder licence are missing.
