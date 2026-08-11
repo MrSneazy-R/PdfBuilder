@@ -65,7 +65,7 @@ Use `Text`, `FontSize`, `Bold`, and `DefaultTextStyle`. Font registration and fa
 
 ## Tables
 
-`container.Table` supports relative/fixed columns, headers, repeating continuation headers, and normal flow pagination. Cells are normal canonical containers: `Cell().Text(...)` remains convenient, while rich text, images, SVG, barcodes, nested layouts, layers, and reusable components use the same composition path as page content. [samples/Invoice](samples/Invoice) demonstrates a multi-page invoice table.
+`container.Table` supports constrained fixed/relative/auto columns, explicit placement and spans, header/body/footer groups, configurable repeated headers and footers, continuous banding, border-collapse controls, and stable multi-page widths. Cells are normal canonical containers: `Cell().Text(...)` remains convenient, while rich text, images, SVG, barcodes, nested layouts, layers, and reusable components use the same composition path as page content. [samples/Invoice](samples/Invoice) demonstrates a multi-page invoice table.
 
 [samples/CanonicalReport](samples/CanonicalReport) demonstrates the canonical Phase 1 surface: first-page and continuation headers, final `Page X of Y` tokens, a forward table of contents, internal and external links, outlines, and last-page-only content.
 

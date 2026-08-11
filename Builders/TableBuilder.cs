@@ -237,7 +237,7 @@ namespace PdfBuilder.Document
         /// <summary>Add a footer-like row (just a body row with your styling).</summary>
         public TableBuilder FooterRow(params Action<TableCellBuilder>[] cells)
         {
-            var row = new TableRow();
+            var row = new TableRow { IsFooter = true };
             foreach (var build in cells ?? Array.Empty<Action<TableCellBuilder>>())
             {
                 var cell = new TableCell();
