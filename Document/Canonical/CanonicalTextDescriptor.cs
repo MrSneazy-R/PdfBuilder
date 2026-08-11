@@ -88,10 +88,22 @@ public partial class PdfDocument
     {
         private readonly DocumentTheme _theme;
         private readonly CanonicalTextStyle _defaultStyle = new();
-        private readonly List<(string Text, CanonicalTextStyle Style)> _spans = new();
+        private readonly List<(string Text, CanonicalTextStyle Style, string? Url, string? Anchor)> _spans = new();
         public CanonicalRichTextDescriptor(DocumentTheme theme) => _theme = theme;
         public ITextDescriptor DefaultStyle() => _defaultStyle;
-        public ITextDescriptor Span(string text) { var style = new CanonicalTextStyle(); _spans.Add((text ?? string.Empty, style)); return style; }
+        public ITextDescriptor Span(string text) { var style = new CanonicalTextStyle(); _spans.Add((text ?? string.Empty, style, null, null)); return style; }
+        public ITextDescriptor ExternalLink(string text, string uri)
+        {
+            var style = new CanonicalTextStyle();
+            _spans.Add((text ?? string.Empty, style, NavigationUriPolicy.ValidateExternal(uri), null));
+            return style;
+        }
+        public ITextDescriptor InternalLink(string text, string anchorId)
+        {
+            var style = new CanonicalTextStyle();
+            _spans.Add((text ?? string.Empty, style, null, NavigationUriPolicy.ValidateAnchorId(anchorId, nameof(anchorId))));
+            return style;
+        }
         public void Compose(Layout.ContentComposer composer)
         {
             composer.RichText(element =>
@@ -100,7 +112,16 @@ public partial class PdfDocument
                 _defaultStyle.Apply(element, _theme);
                 foreach (var span in _spans)
                 {
-                    var run = new RichRun { Text = span.Text, FontFamily = element.FontFamily, FontSize = element.FontSize, Color = element.Color, FallbackFonts = element.FallbackFonts?.ToList() };
+                    var run = new RichRun
+                    {
+                        Text = span.Text,
+                        FontFamily = element.FontFamily,
+                        FontSize = element.FontSize,
+                        Color = element.Color,
+                        FallbackFonts = element.FallbackFonts?.ToList(),
+                        LinkUrl = span.Url,
+                        LinkAnchor = span.Anchor
+                    };
                     _defaultStyle.Apply(run, _theme);
                     span.Style.Apply(run, _theme);
                     element.Runs.Add(run);

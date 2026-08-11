@@ -37,11 +37,11 @@ namespace PdfBuilder.Writer
             if (element == null) throw new ArgumentNullException(nameof(element));
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            if (element.PageTextTemplate != null)
+            if (element.PageTextTemplate != null || element.PageReferenceAnchorId != null)
             {
-                if (pageContext == null)
+                if (element.PageTextTemplate != null && pageContext == null)
                     throw new InvalidOperationException("Page-aware text requires a final PageContext. Render it through PdfDocument generation.");
-                AppendResolvedPageText(sb, element, pageHeight, context, pageContext);
+                AppendResolvedFinalText(sb, element, pageHeight, context, pageContext);
                 return;
             }
 
@@ -139,23 +139,29 @@ namespace PdfBuilder.Writer
             }
         }
 
-        private static void AppendResolvedPageText(
+        private static void AppendResolvedFinalText(
             StringBuilder sb,
             TextElement element,
             float pageHeight,
             PdfRenderContext context,
-            PageContext pageContext)
+            PageContext? pageContext)
         {
             string measurementText = element.Text;
-            string template = element.PageTextTemplate!;
+            string? pageTemplate = element.PageTextTemplate;
+            string? referenceAnchor = element.PageReferenceAnchorId;
             ShapedParagraph? measurementLayout = element.ShapedLayout;
             int measurementStartLine = element.ShapedStartLine;
             int measurementLineCount = element.ShapedLineCount;
 
             try
             {
-                element.Text = PageTextFormatter.Resolve(template, pageContext);
+                element.Text = pageTemplate != null
+                    ? PageTextFormatter.Resolve(pageTemplate, pageContext!)
+                    : context.Pagination?.TryGetPageNumber(referenceAnchor!, out int pageNumber) == true
+                        ? PageReferenceFormatter.Resolve(element.PageReferenceFormat!, pageNumber)
+                        : element.PageReferencePendingText ?? "…";
                 element.PageTextTemplate = null;
+                element.PageReferenceAnchorId = null;
                 element.ShapedLayout = null;
                 element.ShapedStartLine = 0;
                 element.ShapedLineCount = 0;
@@ -164,7 +170,8 @@ namespace PdfBuilder.Writer
             finally
             {
                 element.Text = measurementText;
-                element.PageTextTemplate = template;
+                element.PageTextTemplate = pageTemplate;
+                element.PageReferenceAnchorId = referenceAnchor;
                 element.ShapedLayout = measurementLayout;
                 element.ShapedStartLine = measurementStartLine;
                 element.ShapedLineCount = measurementLineCount;

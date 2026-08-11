@@ -88,6 +88,9 @@ public class TextElement : PdfElement
 
     internal ShapedParagraph? ShapedLayout { get; set; }
     internal string? PageTextTemplate { get; set; }
+    internal string? PageReferenceAnchorId { get; set; }
+    internal string? PageReferenceFormat { get; set; }
+    internal string? PageReferencePendingText { get; set; }
     internal string? ThemeStyleName { get; set; }
     internal TextStyleDefaults? CanonicalStyleOverrides { get; set; }
     internal int ShapedStartLine { get; set; }

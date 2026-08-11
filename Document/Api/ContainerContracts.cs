@@ -83,6 +83,20 @@ public interface IContainer
     ITextDescriptor Text(string text);
     /// <summary>Adds text containing final-pagination tokens such as current page and total pages.</summary>
     ITextDescriptor PageText(string template);
+    /// <summary>Adds a zero-height internal navigation anchor.</summary>
+    IContainer Anchor(string id);
+    /// <summary>Adds an anchor that is also exposed as a PDF outline/bookmark.</summary>
+    IContainer Bookmark(string id, string title, int level = 1);
+    /// <summary>Adds canonical linked text targeting an allowed external URI.</summary>
+    ITextDescriptor ExternalLink(string text, string uri);
+    /// <summary>Adds canonical linked text targeting an internal anchor.</summary>
+    ITextDescriptor InternalLink(string text, string anchorId);
+    /// <summary>Adds a section anchor and its canonical content.</summary>
+    void Section(string id, string title, Action<IContainer> content, Action<ISectionDescriptor>? configure = null);
+    /// <summary>Adds a table of contents that may precede its referenced sections.</summary>
+    void TableOfContents(Action<ITableOfContentsDescriptor>? configure = null);
+    /// <summary>Adds a final-pagination page reference targeting an internal anchor.</summary>
+    ITextDescriptor PageReference(string anchorId, string format = "{0}", string pendingText = "…");
     /// <summary>Adds a rich-text paragraph with independently styled spans.</summary>
     void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>

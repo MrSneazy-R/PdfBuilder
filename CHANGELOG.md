@@ -17,6 +17,9 @@ policy is [Semantic Versioning](https://semver.org/).
 - Thread-safe byte, stream, file, and directory font registration with deterministic
   fallback order, strict missing-font failures, size guardrails, retained diagnostics,
   versioned cache keys, and immutable per-document catalogue snapshots.
+- Canonical sections, forward tables of contents, anchors, external and internal links,
+  hierarchical outlines, final-pagination page references, URI safety policy, and
+  retained broken-target diagnostics.
 
 ### Changed
 

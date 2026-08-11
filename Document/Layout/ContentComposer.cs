@@ -52,6 +52,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal ContentComposer NavigationAnchor(string id, string? title, int level)
+        {
+            _collection.NavigationAnchor(id, title, level);
+            return this;
+        }
+
         internal ContentComposer EnsureSpace(float minimumHeight, Action<ContentComposer> configure)
         {
             _collection.EnsureSpace(minimumHeight, inner => configure(new ContentComposer(inner)));
@@ -67,6 +73,25 @@ namespace PdfBuilder.Document.Layout
         public ContentComposer Text(string content, Action<TextElement>? configure = null)
         {
             _collection.Text(content, configure);
+            return this;
+        }
+
+        internal ContentComposer PageReference(
+            string anchorId,
+            string format,
+            string pendingText,
+            Action<TextElement>? configure = null)
+        {
+            string measurement = PageReferenceFormatter.CreateConservativeMeasurementText(format);
+            _collection.Text(measurement, element =>
+            {
+                configure?.Invoke(element);
+                element.PageReferenceAnchorId = anchorId;
+                element.PageReferenceFormat = format;
+                element.PageReferencePendingText = pendingText;
+                element.Wrapping = TextWrapping.NoWrap;
+                element.MaximumLines = 1;
+            });
             return this;
         }
 

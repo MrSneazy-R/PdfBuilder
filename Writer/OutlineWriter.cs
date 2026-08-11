@@ -16,32 +16,79 @@ namespace PdfBuilder.Writer
         {
             if (items.Count == 0) return 0;
 
-            // Write the outline root first so every child can reference a valid parent object.
-            // PdfStreamWriter assigns sequential object ids, allowing the child range to be
-            // determined before those objects are emitted.
-            int topId = w.BeginObject();
-            int firstNodeId = topId + 1;
-            int lastNodeId = topId + items.Count;
+            var root = new OutlineNode(null, 0);
+            var stack = new List<OutlineNode>();
+            foreach (OutlineEntry item in items)
+            {
+                int level = Math.Max(1, item.Level);
+                while (stack.Count > 0 && stack[^1].Level >= level)
+                    stack.RemoveAt(stack.Count - 1);
+
+                OutlineNode parent = stack.Count > 0 ? stack[^1] : root;
+                var node = new OutlineNode(item, level) { Parent = parent };
+                parent.Children.Add(node);
+                stack.Add(node);
+            }
+
+            int topId = w.ReserveObject();
+            root.ObjectId = topId;
+            var allNodes = Flatten(root.Children).ToList();
+            foreach (OutlineNode node in allNodes)
+                node.ObjectId = w.ReserveObject();
+
+            w.BeginReservedObject(topId);
             w.WriteLine("<< /Type /Outlines");
-            w.WriteLine($"/First {firstNodeId} 0 R /Last {lastNodeId} 0 R /Count {items.Count}");
+            w.WriteLine($"/First {root.Children[0].ObjectId} 0 R /Last {root.Children[^1].ObjectId} 0 R /Count {allNodes.Count}");
             w.WriteLine(">>");
             w.EndObject();
 
-            for (int index = 0; index < items.Count; index++)
+            foreach (OutlineNode node in allNodes)
             {
-                var item = items[index];
-                int id = w.BeginObject();
+                OutlineEntry item = node.Entry!;
+                int siblingIndex = node.Parent!.Children.IndexOf(node);
+                w.BeginReservedObject(node.ObjectId);
                 w.WriteLine("<<");
                 w.WriteLine($"/Title {PdfStringEncoder.Encode(item.Title)}");
-                w.WriteLine($"/Parent {topId} 0 R");
-                if (index > 0) w.WriteLine($"/Prev {id - 1} 0 R");
-                if (index < items.Count - 1) w.WriteLine($"/Next {id + 1} 0 R");
+                w.WriteLine($"/Parent {node.Parent.ObjectId} 0 R");
+                if (siblingIndex > 0) w.WriteLine($"/Prev {node.Parent.Children[siblingIndex - 1].ObjectId} 0 R");
+                if (siblingIndex < node.Parent.Children.Count - 1) w.WriteLine($"/Next {node.Parent.Children[siblingIndex + 1].ObjectId} 0 R");
+                if (node.Children.Count > 0)
+                {
+                    w.WriteLine($"/First {node.Children[0].ObjectId} 0 R");
+                    w.WriteLine($"/Last {node.Children[^1].ObjectId} 0 R");
+                    w.WriteLine($"/Count {Flatten(node.Children).Count()}");
+                }
                 w.WriteLine($"/Dest [{item.PageObjId} 0 R /XYZ {item.X:0.###} {item.Y:0.###} null]");
                 w.WriteLine(">>");
                 w.EndObject();
             }
 
             return topId;
+        }
+
+        private static IEnumerable<OutlineNode> Flatten(IEnumerable<OutlineNode> nodes)
+        {
+            foreach (OutlineNode node in nodes)
+            {
+                yield return node;
+                foreach (OutlineNode child in Flatten(node.Children))
+                    yield return child;
+            }
+        }
+
+        private sealed class OutlineNode
+        {
+            internal OutlineNode(OutlineEntry? entry, int level)
+            {
+                Entry = entry;
+                Level = level;
+            }
+
+            internal OutlineEntry? Entry { get; }
+            internal int Level { get; }
+            internal int ObjectId { get; set; }
+            internal OutlineNode? Parent { get; set; }
+            internal List<OutlineNode> Children { get; } = new();
         }
     }
 }

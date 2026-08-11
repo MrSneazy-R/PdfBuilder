@@ -1,67 +1,85 @@
-Pagination, Sections, and Anchors
-=================================
+# Pagination, sections, anchors, and navigation
 
-ColumnBuilder Sections
-----------------------
-- `Section(string title, Action<SectionContext>? configure = null, int level = 1, bool startOnNewPage = false, bool includeInToc = true)`:
-  - Assigns an anchor id (auto-slugged), registers a `SectionEntry` with the `PaginationRegistry`, and inserts an invisible anchor at the current flow position.
-  - `level` controls numbering (e.g., 1.2.3) and indentation within the table of contents.
-  - `startOnNewPage` triggers a page break before the section if the current column already contains content.
-  - `includeInToc` toggles whether the section appears in the generated TOC.
-  - `SectionContext` callback lets you add headings, numbering, or side effects inside the section boundary.
+The canonical API resolves navigation after final pagination. A table of contents can
+therefore appear before the sections it references, and page references remain correct
+when content flows onto additional pages or tables continue.
 
-AnchorBuilder
--------------
-- `ColumnBuilder.Anchor(string id)`: returns an `AnchorBuilder`.
-- Chain `.Title(string)` and `.Level(int)` to describe the anchor for outlines/TOC.
-- Call `.Add()` to insert the anchor at the current flow position.
+## Canonical sections and tables of contents
 
-Table of Contents
------------------
-- `ColumnBuilder.TableOfContents(Action<TableOfContentsOptions>? configure = null)`:
-  - Generates a table listing sections recorded so far.
-  - Default columns: left column for title, right column for page number stub.
-  - Options: `IncludeNumbers`, `IndentPerLevel`, `PageNumberColumnWidth`, `PageNumberFormat`, `PendingPageText`, `NumberSeparator`.
-  - During final rendering, `PaginationRegistry` resolves page numbers and replaces placeholders.
+Use an explicit, document-unique ID for every section. Titles do not have to be unique.
+Section levels drive hierarchical numbering, table-of-contents indentation, and PDF
+outline nesting.
 
-Linking Sections from Text
---------------------------
-- In `RichTextBuilder` or `TableCellBuilder`, set `RichRun.LinkAnchor = "<anchor-id>"` to jump to anchors registered earlier (sections or manual anchors).
-- `LinkUrl` supports external URIs.
-
-Example
--------
 ```csharp
-builder.Compose(doc =>
+PdfDocument document = PdfDocument.Create(document =>
 {
-    doc.Page(page =>
+    document.Page(page =>
     {
-        page.Content(col =>
+        page.Content().Text("Contents").Bold();
+        page.Content().TableOfContents(options =>
         {
-            col.TableOfContents(options =>
-            {
-                options.PageNumberColumnWidth = 56;
-                options.PendingPageText = "...";
-            });
-
-            col.Section("Overview", section =>
-            {
-                col.Text(section.TitleWithNumber).FontSize(18).Bold().Add();
-                col.Text("High-level summary of findings.").Add();
-            });
-
-            col.Section("Detailed Metrics", section =>
-            {
-                col.Text(section.TitleWithNumber).FontSize(18).Bold().Add();
-                col.Text("Charts and tables go here.").Add();
-            });
+            options.IncludeSectionNumbers();
+            options.PageNumberFormat("page {0}");
         });
     });
+
+    document.Page(page => page.Content().Section(
+        "introduction",
+        "Introduction",
+        content => content.Text("Introduction body")));
+
+    document.Page(page => page.Content().Section(
+        "details",
+        "Details",
+        content => content.Text("Details body"),
+        section =>
+        {
+            section.Level(2);
+            section.StartOnNewPage();
+        }));
 });
 ```
 
-Expected Outcome
-----------------
-- First page shows a two-column table of contents with entries "1 Overview" and "2 Detailed Metrics". Initial page numbers render as the pending token (`...`) during layout, but pagination replaces them with actual numbers in the final PDF.
-- Section headings inside the flow inherit numbering (`1 Overview`, `2 Detailed Metrics`) due to `SectionContext.TitleWithNumber`.
-- Clicking TOC entries or outlines jumps to the respective sections, thanks to the anchors created automatically by `Section`.
+`Numbered(false)` omits a section number. `IncludeInOutline(false)` and
+`IncludeInTableOfContents(false)` independently control those two navigation surfaces.
+`StartOnNewPage()` inserts a bounded layout page break before the section.
+
+## Anchors, outlines, and page references
+
+`Anchor(id)` adds a zero-height internal target. `Bookmark(id, title, level)` adds the
+same target and exposes it in the PDF outline. `PageReference(id, format, pendingText)`
+uses the final page number and reserves conservative width during layout.
+
+```csharp
+page.Content().Bookmark("appendix", "Appendix", level: 1);
+page.Content().Text("See appendix on ");
+page.Content().PageReference("appendix", "page {0}");
+```
+
+Duplicate IDs throw `PdfNavigationException` during composition. Missing internal-link
+or page-reference targets add a `PDFNAV001` entry to
+`document.NavigationDiagnostics.Entries`; dead link annotations are omitted.
+
+## Links
+
+Both ordinary linked text and independently styled rich-text spans are canonical:
+
+```csharp
+page.Content().InternalLink("Jump to appendix", "appendix").Underline();
+page.Content().ExternalLink("Project site", "https://example.com").Underline();
+page.Content().RichText(text =>
+{
+    text.Span("Read ");
+    text.ExternalLink("the guide", "https://example.com/guide").Underline();
+});
+```
+
+External links accept absolute `http`, `https`, and `mailto` URIs. Executable, file,
+data, and other schemes are rejected by default. URI values and Unicode outline titles
+reuse the central PDF string encoder.
+
+## Legacy API
+
+`ColumnBuilder.Section`, `AnchorBuilder`, `RichRun.LinkAnchor`, `RichRun.LinkUrl`, and
+`ColumnBuilder.TableOfContents` remain supported. The canonical API is preferred for new
+documents because it can discover later sections before building an earlier TOC.
