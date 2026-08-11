@@ -44,6 +44,17 @@ namespace PdfBuilder.Document
         public static HeaderFooterRenderContext Current
             => CurrentContext.Value ?? throw new InvalidOperationException("Header/footer tokens are accessed outside of a render scope.");
 
+        internal static bool TryGetCurrent(out HeaderFooterRenderContext context)
+        {
+            if (CurrentContext.Value is HeaderFooterRenderContext current)
+            {
+                context = current;
+                return true;
+            }
+            context = default;
+            return false;
+        }
+
         public static IDisposable Push(HeaderFooterRenderContext context)
         {
             var previous = CurrentContext.Value;

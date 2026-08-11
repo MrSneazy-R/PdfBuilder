@@ -22,12 +22,19 @@ public partial class PdfDocument
         private string? _debugLabel;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
+        private readonly PageVisibilityRule _visibilityRule = new();
 
-        public CanonicalContainer(DocumentTheme theme, List<Type>? componentPath = null, PaginationRegistry? pagination = null)
+        public CanonicalContainer(
+            DocumentTheme theme,
+            List<Type>? componentPath = null,
+            PaginationRegistry? pagination = null,
+            CanonicalCompositionState? compositionState = null)
         {
             _theme = theme ?? throw new ArgumentNullException(nameof(theme));
             _componentPath = componentPath ?? new List<Type>();
             _pagination = pagination ?? new PaginationRegistry();
+            _compositionState = compositionState;
         }
 
         public IContainer Padding(float value) => Padding(value, value, value, value);
@@ -71,10 +78,20 @@ public partial class PdfDocument
         public IContainer KeepTogether() { _keepTogether = true; return this; }
         public IContainer KeepWithNext() { _keepWithNext = true; return this; }
         public IContainer ShowIf(bool condition) { _visible &= condition; return this; }
+        public IContainer ShowOnce() => SetPageVisibility(_visibilityRule.ShowOnce);
+        public IContainer SkipOnce() => SetPageVisibility(_visibilityRule.SkipOnce);
+        public IContainer FirstPageOnly() => SetPageVisibility(_visibilityRule.OnFirstPage);
+        public IContainer LastPageOnly() => SetPageVisibility(_visibilityRule.OnLastPage);
+        public IContainer OddPagesOnly() => SetPageVisibility(_visibilityRule.OnOddPages);
+        public IContainer EvenPagesOnly() => SetPageVisibility(_visibilityRule.OnEvenPages);
+        public IContainer ContinuationPagesOnly() => SetPageVisibility(_visibilityRule.OnContinuationPages);
+        internal PageVisibilityRule VisibilityRule => _visibilityRule.Clone();
         public IContainer DebugLabel(string label)
         {
             if (string.IsNullOrWhiteSpace(label)) throw new ArgumentException("A debug label is required.", nameof(label));
             _debugLabel = label;
+            if (!_visibilityRule.IsAllPages)
+                _compositionState?.RegisterPageAwareVisibility(label);
             return this;
         }
         public IContainer Component(IPdfComponent component)
@@ -148,7 +165,7 @@ public partial class PdfDocument
                 options.IsInTableOfContents,
                 options.IsNumbered);
             bool hasPriorContent = _content.Count > 0;
-            var child = new CanonicalContainer(_theme, _componentPath, _pagination);
+            var child = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState);
             content(child);
 
             _content.Add(composer =>
@@ -251,38 +268,38 @@ public partial class PdfDocument
         public void Column(Action<IColumnDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var column = new CanonicalColumnDescriptor(_theme, _componentPath, _pagination); configure(column);
+            var column = new CanonicalColumnDescriptor(_theme, _componentPath, _pagination, _compositionState); configure(column);
             _content.Add(composer => composer.Column(builder => column.Compose(builder)));
         }
         public void Row(Action<IRowDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var row = new CanonicalRowDescriptor(_theme, _componentPath, _pagination); configure(row);
+            var row = new CanonicalRowDescriptor(_theme, _componentPath, _pagination, _compositionState); configure(row);
             _content.Add(composer => composer.Row(builder => row.Compose(builder)));
         }
         public void Grid(Action<IGridDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var grid = new CanonicalGridDescriptor(_theme, _componentPath, _pagination); configure(grid);
+            var grid = new CanonicalGridDescriptor(_theme, _componentPath, _pagination, _compositionState); configure(grid);
             _content.Add(composer => composer.Grid(builder => grid.Compose(builder)));
         }
         public void Stack(Action<IStackDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var stack = new CanonicalStackDescriptor(_theme, _componentPath, _pagination); configure(stack);
+            var stack = new CanonicalStackDescriptor(_theme, _componentPath, _pagination, _compositionState); configure(stack);
             _content.Add(composer => composer.Stack(builder => stack.Compose(builder)));
         }
         public void Layer(Action<ILayerDescriptor> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var layer = new CanonicalLayerDescriptor(_theme, _componentPath, _pagination); configure(layer);
+            var layer = new CanonicalLayerDescriptor(_theme, _componentPath, _pagination, _compositionState); configure(layer);
             _content.Add(composer => composer.Layer(builder => layer.Compose(builder)));
         }
         public void Repeat(int count, Action<int, IContainer> configure)
         {
             if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(_theme, _componentPath, _pagination); configure(index, item); _content.Add(item.Compose); }
+            for (var index = 0; index < count; index++) { var item = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState); configure(index, item); _content.Add(item.Compose); }
         }
         public void Compose(Layout.ContentComposer composer) => Compose(composer, null);
 
@@ -301,8 +318,22 @@ public partial class PdfDocument
             else if (_ensureSpace.HasValue) { var next = content; content = inner => inner.EnsureSpace(_ensureSpace.Value, next); }
             if (_keepTogether || _keepWithNext) { var next = content; content = inner => inner.KeepTogether(next); }
             var label = _debugLabel ?? automaticLabel;
+            if (!_visibilityRule.IsAllPages)
+            {
+                var next = content;
+                string visibilityPath = label ?? "Document > Page-aware content";
+                _compositionState?.RegisterPageAwareVisibility(visibilityPath);
+                content = inner => inner.PageVisibility(_visibilityRule, visibilityPath, next);
+            }
             if (label != null) { var next = content; content = inner => inner.DebugLabel(label, next); }
             content(composer);
+        }
+
+        private IContainer SetPageVisibility(Action configure)
+        {
+            configure();
+            _compositionState?.RegisterPageAwareVisibility(_debugLabel);
+            return this;
         }
         private void ComposeCore(Layout.ContentComposer composer)
         {
@@ -369,12 +400,13 @@ public partial class PdfDocument
         private readonly DocumentTheme _theme;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
         private readonly List<CanonicalContainer> _items = new();
         private float _spacing = 8f;
-        public CanonicalColumnDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination) { _theme = theme; _componentPath = componentPath; _pagination = pagination; }
+        public CanonicalColumnDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState) { _theme = theme; _componentPath = componentPath; _pagination = pagination; _compositionState = compositionState; }
         public void Spacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _spacing = value; }
         public void Spacing(string spacingToken) => Spacing(_theme.Spacing[spacingToken]);
-        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination); _items.Add(item); return item; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.ColumnComponentBuilder builder)
         {
             builder.Spacing(_spacing);
@@ -392,15 +424,16 @@ public partial class PdfDocument
         private readonly DocumentTheme _theme;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
         private readonly List<(RowItemKind kind, float value, CanonicalContainer container)> _items = new();
-        public CanonicalRowDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination) { _theme = theme; _componentPath = componentPath; _pagination = pagination; }
+        public CanonicalRowDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState) { _theme = theme; _componentPath = componentPath; _pagination = pagination; _compositionState = compositionState; }
         public IContainer ConstantItem(float width) => Add(RowItemKind.Constant, width);
         public IContainer RelativeItem(float weight = 1f) => Add(RowItemKind.Relative, weight);
         public IContainer AutoItem() => Add(RowItemKind.Auto, 0f);
         private IContainer Add(RowItemKind kind, float value)
         {
             if (value < 0 || (kind == RowItemKind.Relative && value == 0)) throw new ArgumentOutOfRangeException(nameof(value));
-            var container = new CanonicalContainer(_theme, _componentPath, _pagination); _items.Add((kind, value, container)); return container;
+            var container = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState); _items.Add((kind, value, container)); return container;
         }
         public void Compose(Layout.LayoutComponentCollection.RowComponentBuilder builder)
         {
@@ -424,16 +457,17 @@ public partial class PdfDocument
         private readonly DocumentTheme _theme;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
         private readonly List<CanonicalContainer> _items = new();
         private int _columns = 1;
         private float _rowGap = 8f, _columnGap = 8f;
-        public CanonicalGridDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination) { _theme = theme; _componentPath = componentPath; _pagination = pagination; }
+        public CanonicalGridDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState) { _theme = theme; _componentPath = componentPath; _pagination = pagination; _compositionState = compositionState; }
         public void Columns(int value) { if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value)); _columns = value; }
         public void RowSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _rowGap = value; }
         public void RowSpacing(string spacingToken) => RowSpacing(_theme.Spacing[spacingToken]);
         public void ColumnSpacing(float value) { if (value < 0) throw new ArgumentOutOfRangeException(nameof(value)); _columnGap = value; }
         public void ColumnSpacing(string spacingToken) => ColumnSpacing(_theme.Spacing[spacingToken]);
-        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination); _items.Add(item); return item; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.GridComponentBuilder builder)
         {
             builder.Columns(_columns).RowGap(_rowGap).ColumnGap(_columnGap);
@@ -446,9 +480,10 @@ public partial class PdfDocument
         private readonly DocumentTheme _theme;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
+        private readonly CanonicalCompositionState? _compositionState;
         private readonly List<CanonicalContainer> _items = new();
-        public CanonicalStackDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination) { _theme = theme; _componentPath = componentPath; _pagination = pagination; }
-        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination); _items.Add(item); return item; }
+        public CanonicalStackDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState) { _theme = theme; _componentPath = componentPath; _pagination = pagination; _compositionState = compositionState; }
+        public IContainer Item() { var item = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState); _items.Add(item); return item; }
         public void Compose(Layout.LayoutComponentCollection.StackComponentBuilder builder) { foreach (var item in _items) builder.Item(item.Compose); }
     }
 
@@ -458,11 +493,11 @@ public partial class PdfDocument
         private readonly CanonicalContainer _content;
         private readonly CanonicalContainer _foreground;
         private bool _hasBackground, _hasContent, _hasForeground;
-        public CanonicalLayerDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination)
+        public CanonicalLayerDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState)
         {
-            _background = new CanonicalContainer(theme, componentPath, pagination);
-            _content = new CanonicalContainer(theme, componentPath, pagination);
-            _foreground = new CanonicalContainer(theme, componentPath, pagination);
+            _background = new CanonicalContainer(theme, componentPath, pagination, compositionState);
+            _content = new CanonicalContainer(theme, componentPath, pagination, compositionState);
+            _foreground = new CanonicalContainer(theme, componentPath, pagination, compositionState);
         }
         public IContainer Background() { _hasBackground = true; return _background; }
         public IContainer Content() { _hasContent = true; return _content; }

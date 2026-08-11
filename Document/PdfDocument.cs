@@ -41,6 +41,7 @@ namespace PdfBuilder.Document
 
         internal FontCatalogSnapshot FontSnapshot { get; } = FontCatalog.CaptureSnapshot();
         internal object GenerationSyncRoot { get; } = new();
+        internal int CompositionTotalPagesHint { get; set; }
 
         public PdfDocument()
         {
@@ -61,6 +62,7 @@ namespace PdfBuilder.Document
                 Theme = Theme.Clone()
             };
             Pages.Add(page);
+            page.CompositionPageNumber = Pages.Count;
             page.Owner = this;
             page.Pagination = Pagination;
             page.ProfilerSession = ProfilerSession;

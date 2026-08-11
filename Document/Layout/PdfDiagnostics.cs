@@ -95,9 +95,12 @@ public sealed class PdfPaginationStabilizationException : PdfCompositionExceptio
 {
     /// <summary>Initializes an actionable pagination-stabilization failure.</summary>
     public PdfPaginationStabilizationException(int passCount, int passLimit)
-        : base($"Final pagination did not stabilize within {passLimit} pass(es). "
-            + "Remove page-context callbacks that add or remove pages, or increase "
-            + $"{nameof(PdfRenderLimits.MaximumPaginationPasses)} when the document intentionally requires more passes.")
+        : this(passCount, passLimit, Array.Empty<string>())
+    {
+    }
+
+    internal PdfPaginationStabilizationException(int passCount, int passLimit, IReadOnlyList<string> diagnosticPaths)
+        : base(BuildMessage(passLimit, diagnosticPaths))
     {
         PassCount = passCount;
         PassLimit = passLimit;
@@ -107,6 +110,17 @@ public sealed class PdfPaginationStabilizationException : PdfCompositionExceptio
     public int PassCount { get; }
     /// <summary>Gets the configured pass limit.</summary>
     public int PassLimit { get; }
+
+    private static string BuildMessage(int passLimit, IReadOnlyList<string> diagnosticPaths)
+    {
+        string paths = diagnosticPaths.Count == 0
+            ? ""
+            : $" Diagnostic paths: {string.Join(", ", diagnosticPaths)}.";
+        return $"Final pagination did not stabilize within {passLimit} pass(es)."
+            + paths
+            + " Inspect page-aware visibility and repeated-content rules for a page-count loop, or increase "
+            + $"{nameof(PdfRenderLimits.MaximumPaginationPasses)} when the document intentionally requires more passes.";
+    }
 }
 
 /// <summary>Contains the data required to diagnose a layout failure.</summary>
@@ -203,9 +217,9 @@ public sealed class PdfRenderLimits
             throw new PdfRenderLimitException(nameof(MaximumImagePixels), $"The image contains {pixels} pixels, exceeding the configured maximum of {MaximumImagePixels}.");
     }
 
-    internal void ValidatePaginationPass(int passCount)
+    internal void ValidatePaginationPass(int passCount, IReadOnlyList<string>? diagnosticPaths = null)
     {
         if (MaximumPaginationPasses <= 0 || passCount > MaximumPaginationPasses)
-            throw new PdfPaginationStabilizationException(passCount, MaximumPaginationPasses);
+            throw new PdfPaginationStabilizationException(passCount, MaximumPaginationPasses, diagnosticPaths ?? Array.Empty<string>());
     }
 }

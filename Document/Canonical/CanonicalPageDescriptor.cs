@@ -9,7 +9,11 @@ public partial class PdfDocument
         private readonly PdfDocument _document;
         private readonly CanonicalContainer _content;
         private readonly CanonicalContainer _header;
+        private readonly CanonicalContainer _firstPageHeader;
+        private readonly CanonicalContainer _continuationHeader;
         private readonly CanonicalContainer _footer;
+        private readonly CanonicalContainer _firstPageFooter;
+        private readonly CanonicalContainer _continuationFooter;
         private readonly CanonicalContainer _background;
         private PageSize _size = PageSizes.Letter;
         private PageOrientation _orientation = PageOrientation.Portrait;
@@ -17,15 +21,23 @@ public partial class PdfDocument
         private readonly CanonicalTextStyle _defaultStyle = new();
         private int _columnCount = 1;
         private float _columnGutter = 14f;
-        private bool _hasHeader, _hasFooter, _hasBackground, _firstPageDifferent, _hideFooterOnLastPage;
+        private bool _hasHeader, _hasFirstPageHeader, _hasContinuationHeader;
+        private bool _hasFooter, _hasFirstPageFooter, _hasContinuationFooter;
+        private bool _hasBackground, _firstPageDifferent, _hideFooterOnLastPage;
+        private readonly CanonicalCompositionState _compositionState;
 
-        public CanonicalPageDescriptor(PdfDocument document)
+        public CanonicalPageDescriptor(PdfDocument document, CanonicalCompositionState compositionState)
         {
             _document = document;
-            _content = new CanonicalContainer(document.Theme, pagination: document.Pagination);
-            _header = new CanonicalContainer(document.Theme, pagination: document.Pagination);
-            _footer = new CanonicalContainer(document.Theme, pagination: document.Pagination);
-            _background = new CanonicalContainer(document.Theme, pagination: document.Pagination);
+            _compositionState = compositionState;
+            _content = NewContainer();
+            _header = NewContainer();
+            _firstPageHeader = NewContainer();
+            _continuationHeader = NewContainer();
+            _footer = NewContainer();
+            _firstPageFooter = NewContainer();
+            _continuationFooter = NewContainer();
+            _background = NewContainer();
 
             if (document.Theme.Page.Margin.HasValue)
                 _left = _top = _right = _bottom = document.Theme.Page.Margin.Value;
@@ -49,9 +61,41 @@ public partial class PdfDocument
         }
         public IContainer Content() => _content;
         public IContainer Header() { _hasHeader = true; return _header; }
+        public IContainer FirstPageHeader()
+        {
+            if (!_hasFirstPageHeader) _firstPageHeader.FirstPageOnly();
+            _hasFirstPageHeader = true;
+            return _firstPageHeader;
+        }
+        public IContainer ContinuationHeader()
+        {
+            if (!_hasContinuationHeader) _continuationHeader.ContinuationPagesOnly();
+            _hasContinuationHeader = true;
+            return _continuationHeader;
+        }
         public IContainer Footer() { _hasFooter = true; return _footer; }
+        public IContainer FirstPageFooter()
+        {
+            if (!_hasFirstPageFooter) _firstPageFooter.FirstPageOnly();
+            _hasFirstPageFooter = true;
+            return _firstPageFooter;
+        }
+        public IContainer ContinuationFooter()
+        {
+            if (!_hasContinuationFooter) _continuationFooter.ContinuationPagesOnly();
+            _hasContinuationFooter = true;
+            return _continuationFooter;
+        }
         public IContainer Background() { _hasBackground = true; return _background; }
-        public void FirstPageDifferent() => _firstPageDifferent = true;
+        public void FirstPageDifferent()
+        {
+            if (!_firstPageDifferent)
+            {
+                _header.ContinuationPagesOnly();
+                _footer.ContinuationPagesOnly();
+            }
+            _firstPageDifferent = true;
+        }
         public void HideFooterOnLastPage() => _hideFooterOnLastPage = true;
         public void Columns(int count, float gutter = 14f)
         {
@@ -68,20 +112,58 @@ public partial class PdfDocument
                 page.BackgroundColor = page.Theme.ResolveColor(page.Theme.Page.BackgroundColor!);
             page.Columns = new ColumnLayoutSpec { Columns = _columnCount, Gutter = _columnGutter };
             _defaultStyle.Apply(page.TextDefaults);
-            if (_hasHeader || _hasFooter)
+            if (HasAnyHeader || HasAnyFooter)
             {
                 page.HeaderFooterOverride = new HeaderFooterSpec
                 {
-                    HeaderLayout = _hasHeader ? new HeaderFooterLayoutDefinition(_header.Compose) : null,
-                    FooterLayout = _hasFooter ? new HeaderFooterLayoutDefinition(_footer.Compose) : null,
+                    HeaderLayout = HasAnyHeader ? new HeaderFooterLayoutDefinition(ComposeHeader) : null,
+                    FooterLayout = HasAnyFooter ? new HeaderFooterLayoutDefinition(ComposeFooter) : null,
                     FirstPageDifferent = _firstPageDifferent,
-                    HideOnLastPage = _hideFooterOnLastPage
+                    HideOnLastPage = _hideFooterOnLastPage,
+                    HeaderVisibilityRules = HeaderRules(),
+                    FooterVisibilityRules = FooterRules()
                 };
             }
             if (_hasBackground)
                 new PdfPageBuilder(page, _document).Margin(0).Content(column => column.ComposeContent(_background.Compose));
             new PdfPageBuilder(page, _document).Margin(0).AutoPaginate(_document).Content(column =>
                 column.ComposeContent(composer => _content.Compose(composer)));
+        }
+
+        private bool HasAnyHeader => _hasHeader || _hasFirstPageHeader || _hasContinuationHeader;
+        private bool HasAnyFooter => _hasFooter || _hasFirstPageFooter || _hasContinuationFooter;
+        private CanonicalContainer NewContainer() => new(_document.Theme, pagination: _document.Pagination, compositionState: _compositionState);
+
+        private void ComposeHeader(Layout.ContentComposer composer)
+        {
+            if (_hasHeader) _header.Compose(composer, "Header");
+            if (_hasFirstPageHeader) _firstPageHeader.Compose(composer, "First-page header");
+            if (_hasContinuationHeader) _continuationHeader.Compose(composer, "Continuation header");
+        }
+
+        private void ComposeFooter(Layout.ContentComposer composer)
+        {
+            if (_hasFooter) _footer.Compose(composer, "Footer");
+            if (_hasFirstPageFooter) _firstPageFooter.Compose(composer, "First-page footer");
+            if (_hasContinuationFooter) _continuationFooter.Compose(composer, "Continuation footer");
+        }
+
+        private List<PageVisibilityRule> HeaderRules()
+        {
+            var rules = new List<PageVisibilityRule>();
+            if (_hasHeader) rules.Add(_header.VisibilityRule);
+            if (_hasFirstPageHeader) rules.Add(_firstPageHeader.VisibilityRule);
+            if (_hasContinuationHeader) rules.Add(_continuationHeader.VisibilityRule);
+            return rules;
+        }
+
+        private List<PageVisibilityRule> FooterRules()
+        {
+            var rules = new List<PageVisibilityRule>();
+            if (_hasFooter) rules.Add(_footer.VisibilityRule);
+            if (_hasFirstPageFooter) rules.Add(_firstPageFooter.VisibilityRule);
+            if (_hasContinuationFooter) rules.Add(_continuationFooter.VisibilityRule);
+            return rules;
         }
     }
 }

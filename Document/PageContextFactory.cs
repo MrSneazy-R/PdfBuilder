@@ -10,13 +10,11 @@ internal static class PageContextFactory
         if (currentPage <= 0) throw new ArgumentOutOfRangeException(nameof(currentPage));
         if (totalPages < currentPage) throw new ArgumentOutOfRangeException(nameof(totalPages));
 
-        bool suppressRepeatedContent = spec?.FirstPageDifferent == true && currentPage == 1;
-        bool headerVisible = !suppressRepeatedContent
-            && spec != null
+        bool headerVisible = spec != null
+            && spec.IsHeaderVisible(currentPage, totalPages)
             && (spec.HeaderLayout != null || !string.IsNullOrWhiteSpace(spec.HeaderTemplate));
-        bool footerVisible = !suppressRepeatedContent
-            && !(spec?.HideOnLastPage == true && currentPage == totalPages)
-            && spec != null
+        bool footerVisible = spec != null
+            && spec.IsFooterVisible(currentPage, totalPages)
             && (spec.FooterLayout != null || !string.IsNullOrWhiteSpace(spec.FooterTemplate));
 
         float availableWidth = Math.Max(0f, page.Width - page.MarginLeft - page.MarginRight);

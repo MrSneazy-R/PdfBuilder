@@ -97,6 +97,8 @@ namespace PdfBuilder.Document
         {
             return component is DebugLabelComponent labeled
                 ? labeled.Label
+                : component is IPageAwareMeasurable pageAware
+                    ? pageAware.DiagnosticPath
                 : component?.GetType().Name ?? "unknown";
         }
 
@@ -143,10 +145,15 @@ namespace PdfBuilder.Document
                 var hf = _hfForPage(page);
                 if (hf != null)
                 {
-                    headerH = hf.HeaderLayout != null || !string.IsNullOrWhiteSpace(hf.HeaderTemplate)
+                    int totalPagesHint = page.Owner?.CompositionTotalPagesHint ?? 0;
+                    int pageNumber = Math.Max(1, page.CompositionPageNumber);
+                    bool useCanonicalVisibility = totalPagesHint > 0;
+                    bool headerVisible = !useCanonicalVisibility || hf.IsHeaderVisible(pageNumber, Math.Max(pageNumber, totalPagesHint));
+                    bool footerVisible = !useCanonicalVisibility || hf.IsFooterVisible(pageNumber, Math.Max(pageNumber, totalPagesHint));
+                    headerH = headerVisible && (hf.HeaderLayout != null || !string.IsNullOrWhiteSpace(hf.HeaderTemplate))
                         ? Math.Max(0f, hf.HeaderHeight)
                         : 0f;
-                    footerH = hf.FooterLayout != null || !string.IsNullOrWhiteSpace(hf.FooterTemplate)
+                    footerH = footerVisible && (hf.FooterLayout != null || !string.IsNullOrWhiteSpace(hf.FooterTemplate))
                         ? Math.Max(0f, hf.FooterHeight)
                         : 0f;
                 }
@@ -676,7 +683,7 @@ namespace PdfBuilder.Document
 
         private LayoutMeasurement MeasureWithCache(IMeasurable component, LayoutMeasureContext context)
         {
-            if (!_layoutOptions.EnableMeasurementCaching)
+            if (!_layoutOptions.EnableMeasurementCaching || component is IPageAwareMeasurable)
             {
                 return MeasureCore(component, context);
             }

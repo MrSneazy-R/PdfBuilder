@@ -36,12 +36,12 @@ namespace PdfBuilder.Document
                     var context = new HeaderFooterRenderContext(document, page, pageContext, timestampUtc);
                     using (HeaderFooterRenderScope.Push(context))
                     {
-                        page.SetHeaderElements(spec.FirstPageDifferent && pageContext.IsFirstPage
-                            ? Array.Empty<PdfElement>()
-                            : Render(spec.HeaderLayout, isHeader: true, page, spec));
-                        page.SetFooterElements((spec.FirstPageDifferent && pageContext.IsFirstPage) || (spec.HideOnLastPage && pageContext.IsLastPage)
-                            ? Array.Empty<PdfElement>()
-                            : Render(spec.FooterLayout, isHeader: false, page, spec));
+                        page.SetHeaderElements(spec.IsHeaderVisible(pageContext.CurrentPage, pageContext.TotalPages)
+                            ? Render(spec.HeaderLayout, isHeader: true, page, spec)
+                            : Array.Empty<PdfElement>());
+                        page.SetFooterElements(spec.IsFooterVisible(pageContext.CurrentPage, pageContext.TotalPages)
+                            ? Render(spec.FooterLayout, isHeader: false, page, spec)
+                            : Array.Empty<PdfElement>());
                     }
                 }
 
@@ -102,6 +102,10 @@ namespace PdfBuilder.Document
                 Theme = page.Theme.Clone(),
                 BackgroundColor = page.BackgroundColor
             };
+            tempPage.Owner = page.Owner;
+            tempPage.Pagination = page.Pagination;
+            tempPage.ProfilerSession = page.ProfilerSession;
+            tempPage.CompositionPageNumber = page.CompositionPageNumber;
             tempPage.LayoutOptions = page.LayoutOptions.Clone();
 
             float defaultSpacing = layout.DefaultSpacing ?? 4f;

@@ -17,8 +17,16 @@ public interface IPageDescriptor
     IContainer Content();
     /// <summary>Returns the repeating header container.</summary>
     IContainer Header();
+    /// <summary>Returns header content rendered only on the first page.</summary>
+    IContainer FirstPageHeader();
+    /// <summary>Returns header content rendered only on continuation pages.</summary>
+    IContainer ContinuationHeader();
     /// <summary>Returns the repeating footer container.</summary>
     IContainer Footer();
+    /// <summary>Returns footer content rendered only on the first page.</summary>
+    IContainer FirstPageFooter();
+    /// <summary>Returns footer content rendered only on continuation pages.</summary>
+    IContainer ContinuationFooter();
     /// <summary>Returns the page background container.</summary>
     IContainer Background();
     /// <summary>Suppresses the canonical header and footer on this page when it is the document's first page.</summary>

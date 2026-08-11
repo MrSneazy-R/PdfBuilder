@@ -64,6 +64,19 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal LayoutComponentCollection PageVisibility(
+            PageVisibilityRule rule,
+            string diagnosticPath,
+            Action<LayoutComponentCollection> configure)
+        {
+            if (rule == null) throw new ArgumentNullException(nameof(rule));
+            _components.Add(new PageVisibilityComponent(
+                BuildComposite(configure, nameof(PageVisibility)),
+                rule,
+                diagnosticPath));
+            return this;
+        }
+
         public LayoutComponentCollection Component(
             Func<LayoutMeasureContext, LayoutMeasurement> measure,
             Action<LayoutDrawContext, LayoutMeasurement> draw)

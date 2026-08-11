@@ -75,6 +75,20 @@ public interface IContainer
     IContainer KeepWithNext();
     /// <summary>Includes this container only when <paramref name="condition"/> is true.</summary>
     IContainer ShowIf(bool condition);
+    /// <summary>Shows repeated content only on its first page occurrence.</summary>
+    IContainer ShowOnce();
+    /// <summary>Skips the first page occurrence and shows repeated content on continuation pages.</summary>
+    IContainer SkipOnce();
+    /// <summary>Shows this container only on the first page.</summary>
+    IContainer FirstPageOnly();
+    /// <summary>Shows this container only on the final page after bounded pagination stabilization.</summary>
+    IContainer LastPageOnly();
+    /// <summary>Shows this container only on odd-numbered pages.</summary>
+    IContainer OddPagesOnly();
+    /// <summary>Shows this container only on even-numbered pages.</summary>
+    IContainer EvenPagesOnly();
+    /// <summary>Shows repeated content only on pages after the first.</summary>
+    IContainer ContinuationPagesOnly();
     /// <summary>Associates a source label with this container for layout diagnostics.</summary>
     IContainer DebugLabel(string label);
     /// <summary>Forces subsequent content onto a new page.</summary>

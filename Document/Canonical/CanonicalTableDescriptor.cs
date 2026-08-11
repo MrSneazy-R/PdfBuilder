@@ -42,7 +42,7 @@ public partial class PdfDocument
         {
             if (_table.ColumnDefinitions.Count == 0)
                 throw new InvalidOperationException("A table requires at least one column.");
-            return _table;
+            return Layout.LayoutSplitUtils.CloneTable(_table);
         }
 
         private void AddRow(Action<ITableRowDescriptor> configure, bool isHeader)

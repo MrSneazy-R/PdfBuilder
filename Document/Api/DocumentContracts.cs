@@ -14,6 +14,9 @@ public interface IDocumentDescriptor
     /// <summary>Configures optional layout diagnostics before pages are composed.</summary>
     void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure);
 
+    /// <summary>Configures bounded rendering and pagination limits before canonical pages are composed.</summary>
+    void RenderLimits(Action<Layout.PdfRenderLimits> configure);
+
     /// <summary>Adds and configures a page.</summary>
     void Page(Action<IPageDescriptor> configure);
 }

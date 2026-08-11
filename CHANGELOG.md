@@ -20,6 +20,10 @@ policy is [Semantic Versioning](https://semver.org/).
 - Canonical sections, forward tables of contents, anchors, external and internal links,
   hierarchical outlines, final-pagination page references, URI safety policy, and
   retained broken-target diagnostics.
+- Deterministic page-aware visibility for first, last, odd, even, one-time, and
+  continuation content, including explicit first-page and continuation header/footer variants.
+- A canonical Phase 1 report sample combining final page numbers, forward TOC entries,
+  links, outlines, and repeated-content variants without raw element usage.
 
 ### Changed
 
