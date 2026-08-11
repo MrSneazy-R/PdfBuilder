@@ -26,9 +26,28 @@ internal static class ValidationFixtureFactory
             "layout-primitives" => LayoutPrimitives(),
             "canonical-navigation" => CanonicalNavigation(),
             "graphics-primitives" => GraphicsPrimitives(),
+            "production-invoice" => ProductionFixtureFactory.Invoice(),
+            "production-credit-note" => ProductionFixtureFactory.CreditNote(),
+            "production-customer-statement" => ProductionFixtureFactory.CustomerStatement(),
+            "production-fuel-transactions" => ProductionFixtureFactory.FuelTransactions(),
+            "production-operational-report" => ProductionFixtureFactory.OperationalReport(),
+            "production-management-report" => ProductionFixtureFactory.ManagementReport(),
+            "production-multilingual-latin" => ProductionFixtureFactory.MultilingualLatin(),
+            "production-arabic-rtl" => ProductionFixtureFactory.ArabicRtl(),
+            "production-hebrew-mixed" => ProductionFixtureFactory.HebrewMixed(),
+            "production-cjk" => ProductionFixtureFactory.Cjk(),
+            "production-image-heavy" => ProductionFixtureFactory.ImageHeavy(),
+            "production-1000-row-table" => ProductionFixtureFactory.ThousandRowTable(),
+            "production-spanned-split-row" => ProductionFixtureFactory.SpannedAndSplitRow(),
+            "production-navigation" => ProductionFixtureFactory.Navigation(),
+            "production-page-variants" => ProductionFixtureFactory.PageVariants(),
+            "production-concurrent-batch" => ProductionFixtureFactory.ConcurrentBatchSummary(),
+            "production-serializer-edge" => ProductionFixtureFactory.SerializerEdge(),
             _ => throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown validation fixture.")
         };
 
+        document.ApplyOutputPreset(PdfOutputPreset.Deterministic);
+        document.GenerationOptions.DocumentIdSeed = "validation-fixture:" + name;
         document.Metadata.CreatedUtc = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         document.Metadata.ModifiedUtc = document.Metadata.CreatedUtc;
         return new PdfWriter().GenerateBytes(document);

@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -122,9 +124,10 @@ namespace PdfBuilder.Tests
                 {
                     string token = $"PDFBUILDERACTUAL{actualIndex++}";
                     string value = match.Groups["value"].Value;
-                    actualText[token] = value.StartsWith('<')
+                    string replacement = value.StartsWith('<')
                         ? DecodeUnicodeHex(value[1..^1].StartsWith("FEFF", StringComparison.OrdinalIgnoreCase) ? value[5..^1] : value[1..^1])
                         : DecodeLiteralString(value[1..^1]);
+                    actualText[token] = RestoreLogicalRtlClusterOrder(replacement);
                     return $"({token}) Tj";
                 });
 
@@ -185,6 +188,28 @@ namespace PdfBuilder.Tests
             }
 
             return blocks;
+        }
+
+        private static string RestoreLogicalRtlClusterOrder(string value)
+        {
+            static bool IsRightToLeft(char character) =>
+                character is >= '\u0590' and <= '\u08FF'
+                    or >= '\uFB1D' and <= '\uFDFF'
+                    or >= '\uFE70' and <= '\uFEFF';
+
+            bool hasRightToLeft = value.Any(IsRightToLeft);
+            bool hasLeftToRightLetter = value.Any(character => char.IsLetter(character) && !IsRightToLeft(character));
+            if (!hasRightToLeft || hasLeftToRightLetter)
+            {
+                return value;
+            }
+
+            var elements = new List<string>();
+            var enumerator = StringInfo.GetTextElementEnumerator(value);
+            while (enumerator.MoveNext())
+                elements.Add(enumerator.GetTextElement());
+            elements.Reverse();
+            return string.Concat(elements);
         }
 
         private static string DecodeArray(

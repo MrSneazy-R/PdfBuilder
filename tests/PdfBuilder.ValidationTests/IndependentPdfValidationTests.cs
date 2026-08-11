@@ -56,10 +56,14 @@ public sealed class IndependentPdfValidationTests
             File.WriteAllBytes(pdfPath, ValidationFixtureFactory.Generate(fixture.Name));
             var actualPages = PdfValidationHelpers.Rasterize(pdftoppm, pdfPath, directory);
             actualPages.Should().HaveCount(fixture.PageCount);
+            var selectedPages = fixture.VisualPages?.ToHashSet() ?? Enumerable.Range(1, fixture.PageCount).ToHashSet();
 
             for (var index = 0; index < actualPages.Count; index++)
             {
-                var approvedFileName = $"{fixture.Name}-{index + 1}.png";
+                var pageNumber = index + 1;
+                if (!selectedPages.Contains(pageNumber))
+                    continue;
+                var approvedFileName = $"{fixture.Name}-{pageNumber}.png";
                 var platformApproved = Path.Combine(baselineDirectory, GetPlatformBaselineDirectory(), approvedFileName);
                 var approved = File.Exists(platformApproved)
                     ? platformApproved
@@ -107,7 +111,7 @@ public sealed class IndependentPdfValidationTests
         try
         {
             Environment.SetEnvironmentVariable("PATH", string.Empty);
-            ValidationTools.TryRequire("qpdf", out _, out var reason).Should().BeFalse();
+            ValidationTools.TryRequire("qpdf", out _, out var reason, allowConfiguredPath: false).Should().BeFalse();
             reason.Should().Be("Independent PDF validation skipped locally: 'qpdf' was not found or could not be executed from PATH. Install qpdf and Poppler, or run the Linux CI job where they are required.");
         }
         finally

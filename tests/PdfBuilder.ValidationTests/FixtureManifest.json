@@ -7,8 +7,26 @@
   { "name": "rich-text", "coverage": "Rich text", "pageCount": 1, "textMarkers": [ "Rich", "styled", "text" ], "visual": true },
   { "name": "links-and-outline", "coverage": "External hyperlink, internal anchor and outline", "pageCount": 1, "textMarkers": [ "Introduction", "OpenAI" ], "visual": false },
   { "name": "header-footer", "coverage": "Header and footer", "pageCount": 1, "textMarkers": [ "Validation header", "Validation footer", "Body content" ], "visual": true },
-  { "name": "multilingual-latin", "coverage": "Sanitised French and Spanish Latin text", "pageCount": 1, "textMarkers": [ "Résumé", "Español" ], "visual": false }
-  ,{ "name": "layout-primitives", "coverage": "Canonical padding, decoration, grid and row layout", "pageCount": 1, "textMarkers": [ "Canonical composition API", "Grid one", "Relative" ], "visual": true },
+  { "name": "multilingual-latin", "coverage": "Sanitised French and Spanish Latin text", "pageCount": 1, "textMarkers": [ "Résumé", "Español" ], "visual": false },
+  { "name": "layout-primitives", "coverage": "Canonical padding, decoration, grid and row layout", "pageCount": 1, "textMarkers": [ "Canonical composition API", "Grid one", "Relative" ], "visual": true },
   { "name": "canonical-navigation", "coverage": "Forward TOC, outlines, internal links, external links and page references", "pageCount": 3, "textMarkers": [ "Navigation contents", "Introduction body", "Details body", "page 2", "page 3" ], "visual": false },
-  { "name": "graphics-primitives", "coverage": "Canonical canvas, transforms, clipping, line patterns, gradients, shadows, layers and dynamic SVG", "pageCount": 1, "textMarkers": [ "Graphics primitives" ], "visual": true }
+  { "name": "graphics-primitives", "coverage": "Canonical canvas, transforms, clipping, line patterns, gradients, shadows, layers and dynamic SVG", "pageCount": 1, "textMarkers": [ "Graphics primitives" ], "visual": true },
+
+  { "name": "production-invoice", "coverage": "Sanitised deterministic multi-page invoice", "pageCount": 3, "textMarkers": [ "INVOICE FIXTURE", "Synthetic invoice INV-2026-0042", "Consulting service 064" ], "visual": true, "visualPages": [ 1, 3 ] },
+  { "name": "production-credit-note", "coverage": "Sanitised deterministic credit note", "pageCount": 1, "textMarkers": [ "CREDIT NOTE FIXTURE", "Synthetic credit note CR-2026-0007", "Reversal line 018" ], "visual": true, "visualPages": [ 1 ] },
+  { "name": "production-customer-statement", "coverage": "Sanitised deterministic customer statement", "pageCount": 4, "textMarkers": [ "CUSTOMER STATEMENT FIXTURE", "Account transaction 082" ], "visual": true, "visualPages": [ 1, 4 ] },
+  { "name": "production-fuel-transactions", "coverage": "Sanitised deterministic fuel transaction report", "pageCount": 5, "textMarkers": [ "FUEL TRANSACTION FIXTURE", "Vehicle TEST-00" ], "visual": true, "visualPages": [ 1 ] },
+  { "name": "production-operational-report", "coverage": "Sanitised deterministic operational delivery and job report", "pageCount": 4, "textMarkers": [ "OPERATIONAL JOB FIXTURE", "Job JOB-00072" ], "visual": true, "visualPages": [ 1 ] },
+  { "name": "production-management-report", "coverage": "Management report with core vector charts", "pageCount": 1, "textMarkers": [ "MANAGEMENT REPORT FIXTURE", "Synthetic management report" ], "visual": true, "visualPages": [ 1 ] },
+  { "name": "production-multilingual-latin", "coverage": "Multilingual Latin production fixture", "pageCount": 1, "textMarkers": [ "MULTILINGUAL LATIN FIXTURE", "Résumé français", "información española" ], "visual": false },
+  { "name": "production-arabic-rtl", "coverage": "Arabic and RTL production fixture", "pageCount": 1, "textMarkers": [ "ARABIC RTL FIXTURE", "تقرير تشغيلي" ], "visual": false },
+  { "name": "production-hebrew-mixed", "coverage": "Hebrew and mixed-direction production fixture", "pageCount": 1, "textMarkers": [ "HEBREW MIXED FIXTURE", "דוח בדיקה" ], "visual": false },
+  { "name": "production-cjk", "coverage": "CJK production fixture", "pageCount": 1, "textMarkers": [ "CJK FIXTURE", "合成業務報告書" ], "visual": false },
+  { "name": "production-image-heavy", "coverage": "Image-heavy report with shared image sources and deduplication", "pageCount": 3, "textMarkers": [ "IMAGE HEAVY FIXTURE", "Synthetic image record 18" ], "visual": true, "visualPages": [ 1, 3 ] },
+  { "name": "production-1000-row-table", "coverage": "Canonical 1,000-row deterministic table", "pageCount": 42, "textMarkers": [ "THOUSAND ROW FIXTURE", "Synthetic ledger item 1000" ], "visual": true, "visualPages": [ 1, 42 ] },
+  { "name": "production-spanned-split-row", "coverage": "Spanned table plus controlled split-row continuation", "pageCount": 4, "textMarkers": [ "SPANNED SPLIT ROW FIXTURE", "CONTROLLED SPLIT ROW MARKER", "continuation paragraph 54" ], "visual": true, "visualPages": [ 2, 4 ] },
+  { "name": "production-navigation", "coverage": "TOC, links, page references and outlines", "pageCount": 3, "textMarkers": [ "NAVIGATION FIXTURE", "SYNTHETIC SUMMARY MARKER", "SYNTHETIC DETAIL MARKER" ], "visual": true, "visualPages": [ 1, 2, 3 ] },
+  { "name": "production-page-variants", "coverage": "First, continuation and last-page repeated-content semantics", "pageCount": 6, "textMarkers": [ "PAGE VARIANTS FIXTURE", "FIRST PAGE HEADER MARKER", "CONTINUATION HEADER MARKER", "LAST PAGE BODY MARKER" ], "visual": true, "visualPages": [ 1, 2, 6 ] },
+  { "name": "production-concurrent-batch", "coverage": "Concurrent deterministic batch generation", "pageCount": 1, "textMarkers": [ "CONCURRENT BATCH FIXTURE", "Concurrent batch generation fixture" ], "visual": true, "visualPages": [ 1 ] },
+  { "name": "production-serializer-edge", "coverage": "Serializer edge-case metadata, Unicode navigation and URI encoding", "pageCount": 1, "textMarkers": [ "SERIALIZER EDGE FIXTURE", "Unicode URI" ], "visual": false }
 ]

@@ -97,6 +97,7 @@ jobs:
         if: runner.os == 'Linux'
         env:
           PDFBUILDER_VISUAL_FAILURE_DIRECTORY: ${{ github.workspace }}/ValidationFailures
+          PDFBUILDER_FIXTURE_OUTPUT_DIRECTORY: ${{ github.workspace }}/ProductionFixtures
         run: dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore --logger "trx;LogFileName=pdf-validation.trx" --results-directory TestResults
       - name: Upload test and visual-regression artefacts
         if: always()
@@ -108,6 +109,7 @@ jobs:
             ValidationFailures/**/*.png
             ValidationFailures/**/*.pdf
             ValidationFailures/**/*.json
+            ProductionFixtures/**/*.pdf
           if-no-files-found: warn
 
   package-smoke:

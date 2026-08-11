@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Multi-targeted the package for .NET 8 and .NET 10, with clean consumer checks for both frameworks and package archive validation for assemblies, XML documentation, portable symbols, and repository metadata.
+- Added a sanitised deterministic production fixture corpus covering business documents, multilingual shaping, image-heavy output, 1,000-row and split-row tables, navigation, repeated-content variants, concurrent batches, and serializer edge cases, with retained page counts, extraction markers, selected visual baselines, and CI PDF artifacts.
 - Added `Debug`, `Balanced`, `SmallFile`, `PrintQuality`, and `Deterministic` output presets while preserving compressed-by-default and readable-debug output.
 - Added PDF 1.4 through 2.0 header selection, document language, validated custom XMP, and an explicit stable trailer identifier.
 - Exposed read-only generation metrics and enforced output-size limits for byte-array, stream, and file generation.

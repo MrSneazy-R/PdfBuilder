@@ -2,7 +2,14 @@ using System.Text.Json;
 
 namespace PdfBuilder.ValidationTests;
 
-public sealed record FixtureManifestEntry(string Name, string Coverage, int PageCount, string[] TextMarkers, bool Visual);
+public sealed record FixtureManifestEntry(
+    string Name,
+    string Coverage,
+    int PageCount,
+    string[] TextMarkers,
+    bool Visual,
+    bool Deterministic = true,
+    int[]? VisualPages = null);
 
 public static class FixtureManifest
 {
