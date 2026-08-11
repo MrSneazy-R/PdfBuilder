@@ -239,7 +239,9 @@ namespace PdfBuilder.Writer
                 float rowHeight = rowHeights[rowIndex];
                 float x = table.X;
                 int colIndex = 0;
-                var rowBand = ResolveRowBand(table, table.RowBandOffset + rowIndex);
+                var row = table.Rows[rowIndex];
+                int absoluteBodyIndex = row.BandIndex ?? table.RowBandOffset + bodyRowCounter;
+                var rowBand = row.IsHeader || row.IsFooter ? null : ResolveRowBand(table, absoluteBodyIndex);
 
                 while (colIndex < totalCols && covered.Contains((rowIndex, colIndex)))
                 {
@@ -247,13 +249,12 @@ namespace PdfBuilder.Writer
                     colIndex++;
                 }
 
-                var row = table.Rows[rowIndex];
-
                 // Row background: explicit -> header -> zebra (only if enabled)
                 bool isAlt = zebraEnabled
                              && !row.IsHeader
-                             && bodyRowCounter >= zebraStart
-                             && (bodyRowCounter - zebraStart) % zebraEvery == 0;
+                             && !row.IsFooter
+                             && absoluteBodyIndex >= zebraStart
+                             && (absoluteBodyIndex - zebraStart) % zebraEvery == 0;
 
                 // Cells
                 for (int i = 0; i < row.Cells.Count; i++)
@@ -433,7 +434,7 @@ namespace PdfBuilder.Writer
 
                 y -= rowHeight;
 
-                if (!row.IsHeader) bodyRowCounter++;
+                if (!row.IsHeader && !row.IsFooter) bodyRowCounter++;
                 rowIndex++;
             }
 

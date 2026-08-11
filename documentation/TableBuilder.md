@@ -46,6 +46,49 @@ Rows remain atomic in this release: content that cannot complete within one usab
 fails with an explicit error instead of silently clipping or looping. Controlled row
 continuation is introduced separately.
 
+Placement, groups, and continuation
+-----------------------------------
+Canonical rows and cells support zero-based explicit positions through `row.Position(...)`
+and `cell.Position(...)`. `ColumnSpan(...)` and `RowSpan(...)` use the same central grid
+validator as measurement and rendering. Duplicate positions, overlaps, out-of-range spans,
+and spans that cross header/body/footer boundaries fail before PDF output is written.
+
+Use `Header`, `Row`, and `Footer` to define groups. Headers repeat by default and can be
+disabled with `RepeatHeaders(false)`. Footer repetition is deliberately explicit:
+
+- `TableFooterRepeatMode.Never` renders the footer only at the logical end.
+- `TableFooterRepeatMode.EveryPage` renders it on every table segment.
+- `TableFooterRepeatMode.ContinuationPages` omits it from a split first segment and renders
+  it on every continuation, including the logical final segment. A single-page table still
+  renders its authored footer once.
+
+Repeated groups reserve their measured height before body rows are selected. Column widths
+are resolved once from the complete table and reused by every continuation. Body band
+indices continue across page breaks; repeated headers and footers do not consume them.
+`WidowOrphanRows(minimumAtPageStart, minimumAtPageEnd)` and row-level `KeepWithNext()`
+participate in the bounded break selection.
+
+```csharp
+table.Columns(columns =>
+{
+    columns.AutoColumn(minWidth: 80, maxWidth: 180);
+    columns.RelativeColumn(2, minWidth: 120, maxWidth: 260);
+    columns.FixedColumn(70, minWidth: 60, maxWidth: 80);
+});
+table.RepeatHeaders();
+table.RepeatFooters(TableFooterRepeatMode.EveryPage);
+table.WidowOrphanRows(minimumAtPageStart: 2, minimumAtPageEnd: 2);
+table.BorderCollapse(TableBorderCollapseMode.Collapse);
+table.OuterBorder(border => { border.Color("Rule"); border.Width(1.5f); });
+table.InnerBorder(border => { border.Color("Rule"); border.Width(0.5f); });
+table.RowBanding(banding =>
+{
+    banding.Step(1);
+    banding.Fill("Surface");
+    banding.Fill("SurfaceAlternate");
+});
+```
+
 Purpose
 -------
 `TableBuilder` creates `TableElement` instances with advanced pagination, styling, and typography controls. It supports headers, banding, per-cell overrides, spans, rotation, and HarfBuzz-shaped runs.

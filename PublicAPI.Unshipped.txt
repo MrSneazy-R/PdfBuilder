@@ -443,6 +443,18 @@ PdfBuilder.Document.ISectionDescriptor.Numbered(bool enabled = true) -> void
 PdfBuilder.Document.ISectionDescriptor.StartOnNewPage(bool enabled = true) -> void
 PdfBuilder.Document.IStackDescriptor
 PdfBuilder.Document.IStackDescriptor.Item() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ITableBandingDescriptor
+PdfBuilder.Document.ITableBandingDescriptor.Border(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableBandingDescriptor.Fill(string! color, System.Action<PdfBuilder.Document.ITableBorderDescriptor!>? border = null) -> void
+PdfBuilder.Document.ITableBandingDescriptor.Step(int value) -> void
+PdfBuilder.Document.ITableBorderDescriptor
+PdfBuilder.Document.ITableBorderDescriptor.Color(string! color) -> void
+PdfBuilder.Document.ITableBorderDescriptor.DashPattern(params float[]! values) -> void
+PdfBuilder.Document.ITableBorderDescriptor.DashPhase(float value) -> void
+PdfBuilder.Document.ITableBorderDescriptor.LineCap(PdfBuilder.Document.TableBorderLineCap value) -> void
+PdfBuilder.Document.ITableBorderDescriptor.LineJoin(PdfBuilder.Document.TableBorderLineJoin value) -> void
+PdfBuilder.Document.ITableBorderDescriptor.MiterLimit(float value) -> void
+PdfBuilder.Document.ITableBorderDescriptor.Width(float value) -> void
 PdfBuilder.Document.ITableCellDescriptor
 PdfBuilder.Document.ITableCellDescriptor.AlignCenter() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.AlignLeft() -> PdfBuilder.Document.ITableCellDescriptor!
@@ -453,32 +465,60 @@ PdfBuilder.Document.ITableCellDescriptor.AlignTop() -> PdfBuilder.Document.ITabl
 PdfBuilder.Document.ITableCellDescriptor.Background(string! color) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Border(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.BorderBottom(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderBottom(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderLeft(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.BorderRight(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderRight(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.BorderTop(float width = 1, string! color = "#000000") -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.BorderTop(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.ColumnSpan(int value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.CornerRadius(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Ellipsis() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Hyphenate() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.NoWrap() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Padding(float value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Padding(float left, float top, float right, float bottom) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Padding(string! spacingToken) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Position(int columnIndex) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.RowSpan(int value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Text(object? value, string? format) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Text(string! text) -> PdfBuilder.Document.ITextDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.Wrap() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableColumnsDescriptor
+PdfBuilder.Document.ITableColumnsDescriptor.AutoColumn(float? minWidth = null, float? maxWidth = null) -> void
 PdfBuilder.Document.ITableColumnsDescriptor.ConstantColumn(float width) -> void
+PdfBuilder.Document.ITableColumnsDescriptor.FixedColumn(float width, float? minWidth = null, float? maxWidth = null) -> void
 PdfBuilder.Document.ITableColumnsDescriptor.RelativeColumn(float weight = 1) -> void
+PdfBuilder.Document.ITableColumnsDescriptor.RelativeColumn(float weight, float? minWidth, float? maxWidth) -> void
 PdfBuilder.Document.ITableDescriptor
 PdfBuilder.Document.ITableDescriptor.Border(float width = 1, string! color = "#000000") -> void
+PdfBuilder.Document.ITableDescriptor.BorderCollapse(PdfBuilder.Document.TableBorderCollapseMode mode) -> void
 PdfBuilder.Document.ITableDescriptor.CellPadding(float value) -> void
+PdfBuilder.Document.ITableDescriptor.ColumnBanding(System.Action<PdfBuilder.Document.ITableBandingDescriptor!>! configure) -> void
 PdfBuilder.Document.ITableDescriptor.Columns(System.Action<PdfBuilder.Document.ITableColumnsDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.CornerRadius(float value) -> void
+PdfBuilder.Document.ITableDescriptor.Footer(System.Action<PdfBuilder.Document.ITableRowDescriptor!>! configure) -> void
 PdfBuilder.Document.ITableDescriptor.Header(System.Action<PdfBuilder.Document.ITableRowDescriptor!>! configure) -> void
 PdfBuilder.Document.ITableDescriptor.HeaderBackground(string! color) -> void
+PdfBuilder.Document.ITableDescriptor.InnerBorder(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.OuterBorder(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.RepeatFooters(PdfBuilder.Document.TableFooterRepeatMode mode) -> void
+PdfBuilder.Document.ITableDescriptor.RepeatHeaders(bool value = true) -> void
 PdfBuilder.Document.ITableDescriptor.Row(System.Action<PdfBuilder.Document.ITableRowDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.RowBanding(System.Action<PdfBuilder.Document.ITableBandingDescriptor!>! configure) -> void
+PdfBuilder.Document.ITableDescriptor.WidowOrphanRows(int minimumAtPageStart, int minimumAtPageEnd) -> void
 PdfBuilder.Document.ITableOfContentsDescriptor
 PdfBuilder.Document.ITableOfContentsDescriptor.IncludeSectionNumbers(bool enabled = true) -> void
 PdfBuilder.Document.ITableOfContentsDescriptor.IndentPerLevel(float value) -> void
 PdfBuilder.Document.ITableOfContentsDescriptor.PageNumberFormat(string! format) -> void
 PdfBuilder.Document.ITableOfContentsDescriptor.PendingPageText(string! value) -> void
 PdfBuilder.Document.ITableRowDescriptor
+PdfBuilder.Document.ITableRowDescriptor.Background(string! color) -> PdfBuilder.Document.ITableRowDescriptor!
 PdfBuilder.Document.ITableRowDescriptor.Cell() -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableRowDescriptor.Height(float value) -> PdfBuilder.Document.ITableRowDescriptor!
+PdfBuilder.Document.ITableRowDescriptor.KeepWithNext() -> PdfBuilder.Document.ITableRowDescriptor!
+PdfBuilder.Document.ITableRowDescriptor.Position(int rowIndex) -> PdfBuilder.Document.ITableRowDescriptor!
 PdfBuilder.Document.ITextDescriptor
 PdfBuilder.Document.ITextDescriptor.Style(string! name) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor
@@ -1015,6 +1055,17 @@ PdfBuilder.Document.SpacingTheme
 PdfBuilder.Document.SpacingTheme.SpacingTheme() -> void
 PdfBuilder.Document.SpacingTheme.this[string! name].get -> float
 PdfBuilder.Document.SpacingTheme.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, float>!
+PdfBuilder.Document.TableBorderCollapseMode
+PdfBuilder.Document.TableBorderCollapseMode.Collapse = 1 -> PdfBuilder.Document.TableBorderCollapseMode
+PdfBuilder.Document.TableBorderCollapseMode.Separate = 0 -> PdfBuilder.Document.TableBorderCollapseMode
+PdfBuilder.Document.TableBorderLineCap
+PdfBuilder.Document.TableBorderLineCap.Butt = 0 -> PdfBuilder.Document.TableBorderLineCap
+PdfBuilder.Document.TableBorderLineCap.Round = 1 -> PdfBuilder.Document.TableBorderLineCap
+PdfBuilder.Document.TableBorderLineCap.Square = 2 -> PdfBuilder.Document.TableBorderLineCap
+PdfBuilder.Document.TableBorderLineJoin
+PdfBuilder.Document.TableBorderLineJoin.Bevel = 2 -> PdfBuilder.Document.TableBorderLineJoin
+PdfBuilder.Document.TableBorderLineJoin.Miter = 0 -> PdfBuilder.Document.TableBorderLineJoin
+PdfBuilder.Document.TableBorderLineJoin.Round = 1 -> PdfBuilder.Document.TableBorderLineJoin
 PdfBuilder.Document.TableBuilder
 PdfBuilder.Document.TableBuilder.Add() -> float
 PdfBuilder.Document.TableBuilder.AltRowBackground(string! hex) -> PdfBuilder.Document.TableBuilder!
@@ -1121,6 +1172,10 @@ PdfBuilder.Document.TableBuilder.TableCellBuilder.VAlignMiddle() -> PdfBuilder.D
 PdfBuilder.Document.TableBuilder.TableCellBuilder.VAlignTop() -> PdfBuilder.Document.TableBuilder.TableCellBuilder!
 PdfBuilder.Document.TableBuilder.TableCellBuilder.WordBreak(PdfBuilder.Elements.CellWordBreak wb) -> PdfBuilder.Document.TableBuilder.TableCellBuilder!
 PdfBuilder.Document.TableBuilder.TableWidth(float width) -> PdfBuilder.Document.TableBuilder!
+PdfBuilder.Document.TableFooterRepeatMode
+PdfBuilder.Document.TableFooterRepeatMode.ContinuationPages = 2 -> PdfBuilder.Document.TableFooterRepeatMode
+PdfBuilder.Document.TableFooterRepeatMode.EveryPage = 1 -> PdfBuilder.Document.TableFooterRepeatMode
+PdfBuilder.Document.TableFooterRepeatMode.Never = 0 -> PdfBuilder.Document.TableFooterRepeatMode
 PdfBuilder.Document.TableOfContentsOptions
 PdfBuilder.Document.TableOfContentsOptions.IncludeNumbers.get -> bool
 PdfBuilder.Document.TableOfContentsOptions.IncludeNumbers.set -> void

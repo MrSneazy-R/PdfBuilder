@@ -23,6 +23,8 @@ namespace PdfBuilder.Document.Layout
         {
             if (totalCols <= 0)
                 return Array.Empty<float>();
+            if (table.ResolvedColumnWidths is { Length: > 0 } resolved && resolved.Length == totalCols)
+                return resolved.ToArray();
 
             var specs = BuildSpecs(table, totalCols);
 

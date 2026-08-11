@@ -11,6 +11,10 @@ policy is [Semantic Versioning](https://semver.org/).
 - Canonical table cells now implement the normal `IContainer` surface, so rich text,
   images, SVG, barcodes, nested layouts, layers, and reusable components share the
   ordinary measurement, rendering, theme, resource, and diagnostic paths inside cells.
+- Canonical tables now support explicit row/column placement, row and column spans,
+  header/body/footer groups, explicit footer repetition modes, constrained column modes,
+  continuous banding, collapsed and independent borders, row pagination controls, and
+  stable continuation widths.
 - Immutable final-pagination page context and canonical current-page/total-page text tokens
   with conservative measurement, bounded stabilization, and deterministic parallel generation.
 - A shared canonical typography surface for ordinary text, rich spans, theme styles,

@@ -61,6 +61,8 @@ namespace PdfBuilder.Elements
         public float OuterCornerRadiusBottomRight { get; set; }
         public float OuterCornerRadiusBottomLeft { get; set; }
         internal int RowBandOffset { get; set; } = 0;
+        internal float[]? ResolvedColumnWidths { get; set; }
+        internal TableFooterRepeatMode FooterRepeatMode { get; set; } = TableFooterRepeatMode.Never;
 
         // Per-column style defaults (optional, cell overrides win)
         public List<TableColumnStyle> ColumnStyles { get; set; } = new();
@@ -134,6 +136,9 @@ namespace PdfBuilder.Elements
         public Color? BackgroundColor { get; set; }
         public float? RowHeight { get; set; } = null;
         public bool IsHeader { get; set; } = false;
+        internal bool IsFooter { get; set; }
+        internal int? ExplicitRowIndex { get; set; }
+        internal int? BandIndex { get; set; }
 
         // Pagination hints
         public bool KeepWithNext { get; set; } = false;
@@ -227,6 +232,7 @@ namespace PdfBuilder.Elements
         // ---- Spanning ----
         public int ColSpan { get; set; } = 1;
         public int RowSpan { get; set; } = 1;
+        internal int? ExplicitColumnIndex { get; set; }
 
         public TableCell() { }
         public TableCell(string text) { Text = text; }

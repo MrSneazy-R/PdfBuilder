@@ -1,387 +1,254 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
-using PdfBuilder.Writer;
 
-namespace PdfBuilder.Document.Layout.Components
+namespace PdfBuilder.Document.Layout.Components;
+
+internal sealed class TableComponent : IMeasurable
 {
-    internal sealed class TableComponent : IMeasurable
+    private const float Epsilon = 0.1f;
+
+    private readonly TableElement _workingTable;
+    private readonly TableElement _rootTable;
+    private readonly bool _isContinuation;
+
+    public TableComponent(TableElement table)
+        : this(table ?? throw new ArgumentNullException(nameof(table)), table, isContinuation: false)
     {
-        private const float Epsilon = 0.1f;
+    }
 
-        private readonly TableElement _workingTable;
-        private readonly TableElement _rootTable;
-        private readonly bool _isContinuation;
+    private TableComponent(TableElement workingTable, TableElement rootTable, bool isContinuation)
+    {
+        _workingTable = workingTable;
+        _rootTable = rootTable;
+        _isContinuation = isContinuation;
+    }
 
-        public TableComponent(TableElement table)
-            : this(table ?? throw new ArgumentNullException(nameof(table)), table, isContinuation: false)
+    public LayoutMeasurement Measure(LayoutMeasureContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        TableGridValidator.Validate(_rootTable);
+        TableGridValidator.Validate(_workingTable);
+
+        float width = ResolveWidth(context.AvailableWidth);
+        EnsureStableColumnWidths(width);
+
+        List<TableRow> headers = _rootTable.Rows.Where(row => row.IsHeader).ToList();
+        List<TableRow> footers = _rootTable.Rows.Where(row => row.IsFooter).ToList();
+        List<TableRow> body = _workingTable.Rows.Where(row => !row.IsHeader && !row.IsFooter).ToList();
+        bool showHeader = headers.Count > 0 && (!_isContinuation || _rootTable.RepeatHeaders);
+        IReadOnlyList<TableRow> segmentHeaders = showHeader ? headers : Array.Empty<TableRow>();
+        float captionHeight = _isContinuation ? 0f : ComputeCaptionHeight(_workingTable);
+
+        float[] headerHeights = showHeader ? MeasureRows(headers, width, context).RowHeights : Array.Empty<float>();
+        float[] footerHeights = footers.Count > 0 ? MeasureRows(footers, width, context).RowHeights : Array.Empty<float>();
+        float[] bodyHeights = body.Count > 0 ? MeasureRows(body, width, context).RowHeights : Array.Empty<float>();
+
+        float pageContentHeight = context.Column.TopY - context.Column.BottomY;
+        if (headerHeights.Concat(footerHeights).Concat(bodyHeights).Any(height => height > pageContentHeight + Epsilon))
         {
+            throw new InvalidOperationException(
+                "A table row is larger than the available page height and row splitting is not enabled.");
         }
 
-        private TableComponent(TableElement workingTable, TableElement rootTable, bool isContinuation)
+        float headerHeight = Sum(headerHeights);
+        float footerHeight = Sum(footerHeights);
+        float bodyHeight = Sum(bodyHeights);
+        float completeHeight = captionHeight + headerHeight + bodyHeight + footerHeight;
+
+        if (completeHeight <= context.AvailableHeight + Epsilon)
+            return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
+
+        if (!_workingTable.EnablePageBreaks || _workingTable.AvoidBreakInside || context.AvailableHeight <= Epsilon)
+            return LayoutMeasurement.Wrap(width);
+
+        float reserved = captionHeight + headerHeight + footerHeight;
+        if (reserved > context.AvailableHeight + Epsilon)
+            return WrapOrThrow(context, width, "Table header/footer groups leave no usable space for a body row.");
+
+        int rowsTaken = FindRowsToTake(body, bodyHeights, context.AvailableHeight - reserved);
+        if (rowsTaken <= 0)
+            return WrapOrThrow(context, width, "Table widow/orphan or keep-with-next constraints prevent a valid page break.");
+
+        if (rowsTaken >= body.Count)
+            return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
+
+        bool repeatFooter = _rootTable.FooterRepeatMode == TableFooterRepeatMode.EveryPage
+            || (_rootTable.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
+        List<TableRow> segmentFooter = repeatFooter ? footers : [];
+        List<TableRow> segmentBody = body.Take(rowsTaken).ToList();
+        float segmentHeight = captionHeight + headerHeight + Sum(bodyHeights.Take(rowsTaken)) + (repeatFooter ? footerHeight : 0f);
+        TableElement segment = BuildSegment(segmentHeaders, segmentBody, segmentFooter, width, includeCaption: captionHeight > 0f);
+        TableComponent remainder = CreateRemainder(body.Skip(rowsTaken).ToList(), rowsTaken);
+
+        return new LayoutMeasurement(
+            marginTop: 0f,
+            contentHeight: segmentHeight,
+            marginBottom: 0f,
+            usedWidth: width,
+            metadata: new TableLayoutMetadata(segment, width),
+            avoidBreakInside: _workingTable.AvoidBreakInside,
+            result: LayoutResultKind.Partial,
+            remainder: remainder);
+    }
+
+    public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(measurement);
+        if (measurement.Metadata is not TableLayoutMetadata metadata)
+            throw new InvalidOperationException("Table measurement metadata missing.");
+
+        TableElement element = metadata.Element;
+        element.EnablePageBreaks = false;
+        element.X = context.ContentLeft;
+        element.Y = context.ContentTop;
+        element.TableWidth ??= metadata.Width;
+        element.PageTopY = context.Column.TopY;
+        element.PageBottomY = context.Column.BottomY;
+        context.Page.AddElement(element);
+        TableCellContainerLayout.AddContentGroups(element, context.Page, context.Options);
+    }
+
+    private LayoutMeasurement FullMeasurement(float width, float height, TableElement element)
+        => new(
+            marginTop: 0f,
+            contentHeight: height,
+            marginBottom: 0f,
+            usedWidth: width,
+            metadata: new TableLayoutMetadata(element, width),
+            avoidBreakInside: _workingTable.AvoidBreakInside,
+            result: LayoutResultKind.Full,
+            remainder: null);
+
+    private LayoutMeasurement WrapOrThrow(LayoutMeasureContext context, float width, string message)
+    {
+        float fullPageHeight = context.Column.TopY - context.Column.BottomY;
+        if (context.AvailableHeight + Epsilon < fullPageHeight)
+            return LayoutMeasurement.Wrap(width);
+        throw new InvalidOperationException(message + " Reduce the configured row constraints or repeated table groups.");
+    }
+
+    private int FindRowsToTake(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float budget)
+    {
+        int count = 0;
+        float used = 0f;
+        while (count < heights.Count && used + heights[count] <= budget + Epsilon)
         {
-            _workingTable = workingTable ?? throw new ArgumentNullException(nameof(workingTable));
-            _rootTable = rootTable ?? throw new ArgumentNullException(nameof(rootTable));
-            _isContinuation = isContinuation;
+            used += heights[count];
+            count++;
         }
-
-        public LayoutMeasurement Measure(LayoutMeasureContext context)
-        {
-            if (context == null) throw new ArgumentNullException(nameof(context));
-
-            TableGridValidator.Validate(_workingTable);
-
-            var width = ResolveWidth(context.AvailableWidth);
-            var metrics = TableMeasurementHelper.Measure(_workingTable, width, context.Page, context.Options);
-            var rowHeights = metrics.RowHeights;
-
-            // Rows are kept together by default. A row taller than the usable page area
-            // cannot make progress because row splitting is not implemented yet.
-            float pageContentHeight = context.Column.TopY - context.Column.BottomY;
-            if (rowHeights.Any(height => height > pageContentHeight + Epsilon))
-            {
-                throw new InvalidOperationException(
-                    "A table row is larger than the available page height and row splitting is not enabled.");
-            }
-
-            float captionHeight = ComputeCaptionHeight(_workingTable);
-            float totalBodyHeight = SumRows(rowHeights, 0, rowHeights.Length);
-            float totalHeight = captionHeight + totalBodyHeight;
-
-            bool mustRepeatHeader = _isContinuation && _workingTable.RepeatHeaders &&
-                (_rootTable.HeaderRowCount ?? CountLeadingHeaders(_rootTable)) > 0;
-
-            if (totalHeight <= context.AvailableHeight + Epsilon && !mustRepeatHeader)
-            {
-                var drawPieces = new List<TablePiece>
-                {
-                    new TablePiece(CreateSliceTable(_workingTable, 0, rowHeights.Length, width, includeCaption: true), totalHeight)
-                };
-
-                var metadata = new TableLayoutMetadata(drawPieces, width);
-                return new LayoutMeasurement(
-                    marginTop: 0f,
-                    contentHeight: totalHeight,
-                    marginBottom: 0f,
-                    usedWidth: width,
-                    metadata: metadata,
-                    avoidBreakInside: _workingTable.AvoidBreakInside,
-                    result: LayoutResultKind.Full,
-                    remainder: null);
-            }
-
-            if (!_workingTable.EnablePageBreaks || _workingTable.AvoidBreakInside || context.AvailableHeight <= Epsilon)
-            {
-                return LayoutMeasurement.Wrap(width);
-            }
-
-            var headerInfo = ResolveHeaderInfo(width, context.Page, context.Options);
-            float availableHeight = context.AvailableHeight;
-
-            if (captionHeight > 0f)
-            {
-                if (captionHeight > availableHeight + Epsilon)
-                    return LayoutMeasurement.Wrap(width);
-
-                availableHeight -= captionHeight;
-            }
-
-            var pieces = new List<TablePiece>();
-            bool captionAppliesToBody = captionHeight > 0f;
-
-            if (headerInfo != null)
-            {
-                if (headerInfo.Value.Height > availableHeight + Epsilon)
-                    return LayoutMeasurement.Wrap(width);
-
-                availableHeight -= headerInfo.Value.Height;
-                pieces.Add(headerInfo.Value.ToPiece());
-            }
-
-            if (rowHeights.Length == 0)
-            {
-                // Only caption/header to render this turn.
-                if (pieces.Count == 0)
-                    return LayoutMeasurement.Wrap(width);
-
-                float totalUsedHeight = captionHeight + pieces.Sum(p => p.Height);
-                var metadata = new TableLayoutMetadata(pieces, width);
-                return new LayoutMeasurement(
-                    marginTop: 0f,
-                    contentHeight: totalUsedHeight,
-                    marginBottom: 0f,
-                    usedWidth: width,
-                    metadata: metadata,
-                    avoidBreakInside: _workingTable.AvoidBreakInside,
-                    result: LayoutResultKind.Partial,
-                    remainder: CreateRemainderComponent(0));
-            }
-
-            int lastRowIndex = FindFittingRowIndex(_workingTable, rowHeights, availableHeight);
-            if (lastRowIndex < 0)
-            {
-                // Force first row so we always make progress.
-                lastRowIndex = 0;
-            }
-
-            int rowsTaken = Math.Min(rowHeights.Length, lastRowIndex + 1);
-            float bodyHeight = SumRows(rowHeights, 0, rowsTaken);
-
-            bool includeCaption = captionAppliesToBody && pieces.Count == 0;
-            var bodyTable = CreateSliceTable(_workingTable, 0, rowsTaken, width, includeCaption);
-            float bodyPieceHeight = bodyHeight + (includeCaption ? captionHeight : 0f);
-            pieces.Add(new TablePiece(bodyTable, bodyPieceHeight));
-
-            float totalSliceHeight = pieces.Sum(p => p.Height);
-            var metadataForSlice = new TableLayoutMetadata(pieces, width);
-
-            TableComponent? remainder = null;
-            if (rowsTaken < rowHeights.Length)
-            {
-                remainder = CreateRemainderComponent(rowsTaken);
-            }
-
-            var resultKind = remainder == null ? LayoutResultKind.Full : LayoutResultKind.Partial;
-            return new LayoutMeasurement(
-                marginTop: 0f,
-                contentHeight: totalSliceHeight,
-                marginBottom: 0f,
-                usedWidth: width,
-                metadata: metadataForSlice,
-                avoidBreakInside: _workingTable.AvoidBreakInside,
-                result: resultKind,
-                remainder: remainder);
-        }
-
-        public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
-        {
-            if (context == null) throw new ArgumentNullException(nameof(context));
-            if (measurement == null) throw new ArgumentNullException(nameof(measurement));
-
-            if (measurement.Metadata is not TableLayoutMetadata metadata)
-                throw new InvalidOperationException("Table measurement metadata missing.");
-
-            float cursorY = context.ContentTop;
-            foreach (var piece in metadata.Pieces)
-            {
-                var element = piece.Element;
-                element.EnablePageBreaks = false;
-                element.X = context.ContentLeft;
-                element.Y = cursorY;
-                element.TableWidth ??= metadata.Width;
-                element.PageTopY = context.Column.TopY;
-                element.PageBottomY = context.Column.BottomY;
-                context.Page.AddElement(element);
-                TableCellContainerLayout.AddContentGroups(element, context.Page, context.Options);
-
-                cursorY -= piece.Height;
-            }
-        }
-
-        private float ResolveWidth(float availableWidth)
-        {
-            if (_workingTable.TableWidth.HasValue && _workingTable.TableWidth.Value > 0f)
-                return Math.Min(availableWidth, _workingTable.TableWidth.Value);
-
-            return availableWidth;
-        }
-
-        private static float ComputeCaptionHeight(TableElement table)
-        {
-            if (table == null) throw new ArgumentNullException(nameof(table));
-            if (string.IsNullOrWhiteSpace(table.CaptionText))
-                return 0f;
-
-            float capSize = Math.Max(table.DefaultFontSize, 11f);
-            return capSize * PdfDefaults.LineHeightMultiplier + 4f;
-        }
-
-        private static float SumRows(float[] heights, int start, int count)
-        {
-            float sum = 0f;
-            int end = Math.Min(heights.Length, start + count);
-            for (int i = start; i < end; i++)
-                sum += heights[i];
-            return sum;
-        }
-
-        private HeaderInfo? ResolveHeaderInfo(float width, PdfPage page, LayoutOptions options)
-        {
-            if (!_isContinuation || !_workingTable.RepeatHeaders)
-                return null;
-
-            int headerCount = (_rootTable.HeaderRowCount ?? CountLeadingHeaders(_rootTable));
-            if (headerCount <= 0)
-                return null;
-
-            var headerRows = _rootTable.Rows.Take(headerCount).ToList();
-            if (headerRows.Count == 0)
-                return null;
-
-            var headerTable = LayoutSplitUtils.CloneTableWithRows(_rootTable, headerRows);
-            headerTable.CaptionText = null;
-            headerTable.EnablePageBreaks = false;
-            headerTable.TableWidth = width;
-
-            var metrics = TableMeasurementHelper.Measure(headerTable, width, page, options);
-            float height = ComputeCaptionHeight(headerTable) + SumRows(metrics.RowHeights, 0, metrics.RowHeights.Length);
-            return new HeaderInfo(headerTable, height);
-        }
-
-        private static int CountLeadingHeaders(TableElement table)
-        {
-            int count = 0;
-            foreach (var row in table.Rows)
-            {
-                if (row.IsHeader) count++; else break;
-            }
+        if (count == 0 || count >= rows.Count)
             return count;
+
+        bool[] blockedBreaks = ComputeBlockedBreaks(rows);
+        while (count > 0 && blockedBreaks[count - 1]) count--;
+        if (count == 0)
+            return 0;
+
+        int minimumAtEnd = Math.Min(_rootTable.MinRowsAtPageEnd, rows.Count);
+        if (count < minimumAtEnd)
+            return 0;
+
+        int remaining = rows.Count - count;
+        int minimumAtStart = Math.Min(_rootTable.MinRowsAtPageStart, rows.Count);
+        if (remaining > 0 && remaining < minimumAtStart)
+        {
+            count -= minimumAtStart - remaining;
+            while (count > 0 && blockedBreaks[count - 1]) count--;
         }
 
-        private int FindFittingRowIndex(TableElement table, float[] rowHeights, float budget)
+        return Math.Max(0, count);
+    }
+
+    private static bool[] ComputeBlockedBreaks(IReadOnlyList<TableRow> rows)
+    {
+        var blocked = new bool[rows.Count];
+        for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
-            if (rowHeights.Length == 0)
-                return -1;
+            if (rows[rowIndex].KeepWithNext && rowIndex < rows.Count - 1)
+                blocked[rowIndex] = true;
 
-            var blockedBreak = ComputeBlockedBreaks(table);
-
-            float running = 0f;
-            int end = -1;
-            for (int i = 0; i < rowHeights.Length; i++)
+            foreach (TableCell cell in rows[rowIndex].Cells)
             {
-                running += rowHeights[i];
-                if (running <= budget + Epsilon || i == 0)
-                {
-                    end = i;
-                }
-                else
-                {
-                    break;
-                }
+                int finalCoveredRow = Math.Min(rows.Count - 1, rowIndex + Math.Max(1, cell.RowSpan) - 1);
+                for (int breakAfter = rowIndex; breakAfter < finalCoveredRow; breakAfter++)
+                    blocked[breakAfter] = true;
             }
-
-            if (end < 0)
-                return -1;
-
-            while (end < rowHeights.Length - 1 && blockedBreak[end])
-            {
-                end++;
-            }
-
-            return Math.Min(end, rowHeights.Length - 1);
         }
+        return blocked;
+    }
 
-        private static bool[] ComputeBlockedBreaks(TableElement table)
+    private TableElement BuildSegment(
+        IReadOnlyList<TableRow> headers,
+        IReadOnlyList<TableRow> body,
+        IReadOnlyList<TableRow> footers,
+        float width,
+        bool includeCaption)
+    {
+        var rows = new List<TableRow>(headers.Count + body.Count + footers.Count);
+        rows.AddRange(headers);
+        rows.AddRange(body);
+        rows.AddRange(footers);
+        var segment = LayoutSplitUtils.CloneTableWithRows(_rootTable, rows);
+        segment.EnablePageBreaks = false;
+        segment.TableWidth = width;
+        segment.HeaderRowCount = headers.Count;
+        segment.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
+        if (!includeCaption) segment.CaptionText = null;
+        TableGridValidator.Validate(segment);
+        return segment;
+    }
+
+    private TableComponent CreateRemainder(List<TableRow> remainingBody, int rowsConsumed)
+    {
+        var remainderTable = LayoutSplitUtils.CloneTableWithRows(_workingTable, remainingBody);
+        remainderTable.CaptionText = null;
+        remainderTable.HeaderRowCount = 0;
+        remainderTable.EnablePageBreaks = _workingTable.EnablePageBreaks;
+        remainderTable.RowBandOffset = _workingTable.RowBandOffset + rowsConsumed;
+        remainderTable.TableWidth = _workingTable.TableWidth;
+        remainderTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
+        return new TableComponent(remainderTable, _rootTable, isContinuation: true);
+    }
+
+    private TableMeasurementHelper.TableMetrics MeasureRows(IReadOnlyList<TableRow> rows, float width, LayoutMeasureContext context)
+    {
+        var table = LayoutSplitUtils.CloneTableWithRows(_rootTable, rows);
+        table.CaptionText = null;
+        table.TableWidth = width;
+        table.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
+        return TableMeasurementHelper.Measure(table, width, context.Page, context.Options);
+    }
+
+    private void EnsureStableColumnWidths(float width)
+    {
+        if (_rootTable.ResolvedColumnWidths is { Length: > 0 })
         {
-            int rowCount = table.Rows.Count;
-            if (rowCount == 0) return Array.Empty<bool>();
-
-            int totalCols = table.Rows.Max(r => r.Cells.Sum(c => Math.Max(1, c.ColSpan)));
-            var covered = new HashSet<(int row, int col)>();
-            var blocked = new bool[rowCount];
-
-            for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
-            {
-                var row = table.Rows[rowIndex];
-                int colIndex = 0;
-
-                while (colIndex < totalCols && covered.Contains((rowIndex, colIndex))) colIndex++;
-
-                foreach (var cell in row.Cells)
-                {
-                    while (colIndex < totalCols && covered.Contains((rowIndex, colIndex))) colIndex++;
-
-                    int rowSpan = Math.Max(1, cell.RowSpan);
-                    int colSpan = Math.Max(1, cell.ColSpan);
-
-                    for (int r = rowIndex; r < Math.Min(rowCount - 1, rowIndex + rowSpan - 1); r++)
-                        blocked[r] = true;
-
-                    for (int r = 0; r < rowSpan; r++)
-                    {
-                        for (int c = 0; c < colSpan; c++)
-                        {
-                            if (!(r == 0 && c == 0))
-                                covered.Add((rowIndex + r, colIndex + c));
-                        }
-                    }
-
-                    colIndex += colSpan;
-                }
-            }
-
-            return blocked;
+            _workingTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths.ToArray();
+            return;
         }
 
-        private TableElement CreateSliceTable(TableElement source, int start, int count, float width, bool includeCaption)
-        {
-            var rows = source.Rows.Skip(start).Take(count).ToList();
-            var slice = LayoutSplitUtils.CloneTableWithRows(source, rows);
-            slice.EnablePageBreaks = false;
-            slice.TableWidth = width;
-            if (!includeCaption)
-                slice.CaptionText = null;
+        int totalColumns = _rootTable.ColumnDefinitions.Count > 0
+            ? _rootTable.ColumnDefinitions.Count
+            : _rootTable.Rows.Max(row => row.Cells.Sum(cell => Math.Max(1, cell.ColSpan)));
+        _rootTable.ResolvedColumnWidths = TableColumnWidthCalculator.Calculate(_rootTable, totalColumns, width);
+        _workingTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths.ToArray();
+    }
 
-            return slice;
-        }
+    private float ResolveWidth(float availableWidth)
+        => _workingTable.TableWidth is > 0f ? Math.Min(availableWidth, _workingTable.TableWidth.Value) : availableWidth;
 
-        private TableComponent? CreateRemainderComponent(int rowsConsumed)
-        {
-            var remainingRows = _workingTable.Rows.Skip(rowsConsumed).ToList();
-            if (remainingRows.Count == 0)
-                return null;
+    private static float ComputeCaptionHeight(TableElement table)
+        => string.IsNullOrWhiteSpace(table.CaptionText)
+            ? 0f
+            : Math.Max(table.DefaultFontSize, 11f) * Writer.PdfDefaults.LineHeightMultiplier + 4f;
 
-            var remainderTable = LayoutSplitUtils.CloneTableWithRows(_workingTable, remainingRows);
-            remainderTable.CaptionText = null;
-            // This table is still owned by the layout engine.  Rendered slice tables have
-            // pagination disabled in Draw, but a remainder must remain flowable so it can
-            // produce another partial measurement on the following column or page.
-            remainderTable.EnablePageBreaks = _workingTable.EnablePageBreaks;
-            remainderTable.RowBandOffset = _workingTable.RowBandOffset + rowsConsumed;
-            remainderTable.TableWidth = _workingTable.TableWidth;
+    private static float Sum(IEnumerable<float> values) => values.Sum();
 
-            return new TableComponent(remainderTable, _rootTable, isContinuation: true);
-        }
-
-        private readonly struct HeaderInfo
-        {
-            public HeaderInfo(TableElement table, float height)
-            {
-                Table = table;
-                Height = height;
-            }
-
-            public TableElement Table { get; }
-            public float Height { get; }
-
-            public TablePiece ToPiece() => new TablePiece(Table, Height);
-        }
-
-        private sealed class TableLayoutMetadata
-        {
-            public TableLayoutMetadata(List<TablePiece> pieces, float width)
-            {
-                Pieces = pieces;
-                Width = width;
-            }
-
-            public List<TablePiece> Pieces { get; }
-            public float Width { get; }
-        }
-
-        private readonly struct TablePiece
-        {
-            public TablePiece(TableElement element, float height)
-            {
-                Element = element;
-                Height = height;
-            }
-
-            public TableElement Element { get; }
-            public float Height { get; }
-        }
+    private sealed class TableLayoutMetadata
+    {
+        public TableLayoutMetadata(TableElement element, float width) { Element = element; Width = width; }
+        public TableElement Element { get; }
+        public float Width { get; }
     }
 }
