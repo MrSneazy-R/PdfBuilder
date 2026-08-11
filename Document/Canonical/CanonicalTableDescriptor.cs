@@ -51,6 +51,8 @@ public partial class PdfDocument
             _table.MinRowsAtPageEnd = minimumAtPageEnd;
         }
 
+        public void AllowRowSplitting(bool value = true) => _table.AllowRowSplitting = value;
+
         public void CellPadding(float value)
         {
             if (value < 0f || float.IsNaN(value) || float.IsInfinity(value)) throw new ArgumentOutOfRangeException(nameof(value));
@@ -205,6 +207,7 @@ public partial class PdfDocument
             _row.RowHeight = value;
             return this;
         }
+        public ITableRowDescriptor AllowSplit(bool value = true) { _row.AllowSplit = value; return this; }
         public ITableCellDescriptor Cell()
         {
             var cell = new TableCell();

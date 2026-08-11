@@ -15,6 +15,9 @@ policy is [Semantic Versioning](https://semver.org/).
   header/body/footer groups, explicit footer repetition modes, constrained column modes,
   continuous banding, collapsed and independent borders, row pagination controls, and
   stable continuation widths.
+- Opt-in controlled continuation for oversized canonical table rows, with structured
+  failure diagnostics for unsplittable content and unsupported spans, defined continuation
+  edges, repeated-group preservation, and bounded zero-progress termination.
 - Immutable final-pagination page context and canonical current-page/total-page text tokens
   with conservative measurement, bounded stabilization, and deterministic parallel generation.
 - A shared canonical typography surface for ordinary text, rich spans, theme styles,

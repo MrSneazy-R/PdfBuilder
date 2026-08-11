@@ -492,6 +492,7 @@ PdfBuilder.Document.ITableColumnsDescriptor.FixedColumn(float width, float? minW
 PdfBuilder.Document.ITableColumnsDescriptor.RelativeColumn(float weight = 1) -> void
 PdfBuilder.Document.ITableColumnsDescriptor.RelativeColumn(float weight, float? minWidth, float? maxWidth) -> void
 PdfBuilder.Document.ITableDescriptor
+PdfBuilder.Document.ITableDescriptor.AllowRowSplitting(bool value = true) -> void
 PdfBuilder.Document.ITableDescriptor.Border(float width = 1, string! color = "#000000") -> void
 PdfBuilder.Document.ITableDescriptor.BorderCollapse(PdfBuilder.Document.TableBorderCollapseMode mode) -> void
 PdfBuilder.Document.ITableDescriptor.CellPadding(float value) -> void
@@ -514,6 +515,7 @@ PdfBuilder.Document.ITableOfContentsDescriptor.IndentPerLevel(float value) -> vo
 PdfBuilder.Document.ITableOfContentsDescriptor.PageNumberFormat(string! format) -> void
 PdfBuilder.Document.ITableOfContentsDescriptor.PendingPageText(string! value) -> void
 PdfBuilder.Document.ITableRowDescriptor
+PdfBuilder.Document.ITableRowDescriptor.AllowSplit(bool value = true) -> PdfBuilder.Document.ITableRowDescriptor!
 PdfBuilder.Document.ITableRowDescriptor.Background(string! color) -> PdfBuilder.Document.ITableRowDescriptor!
 PdfBuilder.Document.ITableRowDescriptor.Cell() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableRowDescriptor.Height(float value) -> PdfBuilder.Document.ITableRowDescriptor!
@@ -867,6 +869,10 @@ PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassLimit.get -> 
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PdfPaginationStabilizationException(int passCount, int passLimit) -> void
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.set -> void
+PdfBuilder.Document.Layout.PdfTableRowSplitException
+PdfBuilder.Document.Layout.PdfTableRowSplitException.ColumnIndex.get -> int?
+PdfBuilder.Document.Layout.PdfTableRowSplitException.Reason.get -> string!
+PdfBuilder.Document.Layout.PdfTableRowSplitException.RowIndex.get -> int
 PdfBuilder.Document.ListBuilder
 PdfBuilder.Document.ListBuilder.Add() -> float
 PdfBuilder.Document.ListBuilder.BeginNest() -> PdfBuilder.Document.ListBuilder!

@@ -8,7 +8,7 @@ internal static class TableCellContainerLayout
 {
     internal static void AddContentGroups(TableElement table, PdfPage page, LayoutOptions options)
     {
-        if (!table.Rows.SelectMany(row => row.Cells).Any(cell => cell.ContentFactory != null))
+        if (!table.Rows.SelectMany(row => row.Cells).Any(cell => cell.HasContainerContent))
             return;
 
         float width = table.TableWidth ?? page.Width;
@@ -108,6 +108,7 @@ internal static class TableCellContainerLayout
         var column = new FlowColumn(0, contentLeft, contentWidth, contentTop, contentTop - contentHeight);
         var drawContext = new LayoutDrawContext(temporaryPage, column, contentLeft, contentTop, contentWidth, options);
         cell.MeasuredContent!.Draw(drawContext, measurement);
+        NormalizeTextBaselines(temporaryPage.Elements);
 
         if (temporaryPage.Elements.Count > 0)
         {
@@ -117,6 +118,27 @@ internal static class TableCellContainerLayout
                 cellWidth,
                 cellHeight,
                 temporaryPage.Elements.ToArray()));
+        }
+    }
+
+    private static void NormalizeTextBaselines(IEnumerable<PdfElement> elements)
+    {
+        foreach (PdfElement element in elements)
+        {
+            switch (element)
+            {
+                case TextElement text when text.ShapedLayout is { Lines.Count: > 0 } layout:
+                    int textLine = Math.Clamp(text.ShapedStartLine, 0, layout.Lines.Count - 1);
+                    text.Y -= layout.Lines[textLine].Ascent;
+                    break;
+                case RichTextElement richText when richText.ShapedLayout is { Lines.Count: > 0 } layout:
+                    int richTextLine = Math.Clamp(richText.ShapedStartLine, 0, layout.Lines.Count - 1);
+                    richText.Y -= layout.Lines[richTextLine].Ascent;
+                    break;
+                case ClipGroupElement clipGroup:
+                    NormalizeTextBaselines(clipGroup.Children);
+                    break;
+            }
         }
     }
 

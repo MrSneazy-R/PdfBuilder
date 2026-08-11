@@ -1,5 +1,6 @@
 using FluentAssertions;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Writer;
 using Xunit;
@@ -121,7 +122,8 @@ public sealed class TableLayoutCoreTests
             });
         }));
 
-        action.Should().Throw<InvalidOperationException>().WithMessage("*larger than the available page height*");
+        action.Should().Throw<PdfTableRowSplitException>()
+            .Which.Reason.Should().Be("row-splitting-disabled");
     }
 
     [Fact]

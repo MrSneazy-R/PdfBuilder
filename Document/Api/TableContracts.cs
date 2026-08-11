@@ -17,6 +17,8 @@ public interface ITableDescriptor
     void RepeatFooters(TableFooterRepeatMode mode);
     /// <summary>Sets the minimum body-row counts allowed at the beginning and end of a table segment.</summary>
     void WidowOrphanRows(int minimumAtPageStart, int minimumAtPageEnd);
+    /// <summary>Enables controlled continuation for oversized body rows. Rows remain atomic by default.</summary>
+    void AllowRowSplitting(bool value = true);
     /// <summary>Sets uniform cell padding in points.</summary>
     void CellPadding(float value);
     /// <summary>Sets the table border.</summary>
@@ -63,6 +65,8 @@ public interface ITableRowDescriptor
     ITableRowDescriptor Background(string color);
     /// <summary>Sets an exact row height in points.</summary>
     ITableRowDescriptor Height(float value);
+    /// <summary>Overrides the table-level row-splitting policy for this row.</summary>
+    ITableRowDescriptor AllowSplit(bool value = true);
     /// <summary>Adds a cell.</summary>
     ITableCellDescriptor Cell();
 }

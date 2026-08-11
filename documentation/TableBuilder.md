@@ -42,9 +42,30 @@ container.Table(table =>
 Cell padding, backgrounds, borders, corner radius, horizontal/vertical alignment, and
 clipping remain cell properties. Named colours and spacing tokens resolve against the
 current document theme, including inside reused components and repeated header cells.
-Rows remain atomic in this release: content that cannot complete within one usable row
-fails with an explicit error instead of silently clipping or looping. Controlled row
-continuation is introduced separately.
+Rows remain atomic by default. Opt in to controlled continuation for oversized body rows
+with `table.AllowRowSplitting()` or override one row with `row.AllowSplit()`. Continuation
+uses the ordinary component measurement/draw path, preserves cell backgrounds, removes
+the internal seam border and padding, and retains the outer padding and borders on the
+first and last segments. Repeated headers and configured repeated footers continue to
+reserve space normally.
+
+Only normal layout content that reports a measurable partial result can split. Exact-height
+rows, legacy/raw cell text, row spans, and unsplittable media fail with
+`PdfTableRowSplitException`; its row, optional column, and stable reason identify the
+unsupported combination. Column spans remain supported. A zero-progress component is
+bounded by `PdfRenderLimits.MaximumLayoutIterations` and fails instead of looping.
+
+```csharp
+table.Row(row =>
+{
+    row.AllowSplit();
+    row.Cell().ColumnSpan(2).RichText(paragraph =>
+    {
+        paragraph.Span("Detailed evidence: ").Bold();
+        paragraph.Span(longDescription);
+    });
+});
+```
 
 Placement, groups, and continuation
 -----------------------------------

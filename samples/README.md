@@ -3,7 +3,7 @@
 ## Runnable samples
 
 - `HelloPdf`: five-minute canonical API introduction.
-- `Invoice`: immutable model, reusable template function, multi-page table, totals, header, and footer.
+- `Invoice`: immutable typed template, reusable components, theme tokens, stable multi-page columns, nested rich cells, repeated table groups, spans, controlled row continuation, dates, tax, and totals.
 - `MultiPageReport`: flowing report content with repeating header/footer.
 - `MultiLanguage`: multilingual text smoke sample.
 - `AspNetCorePdfApi`: direct HTTP response streaming with cancellation.

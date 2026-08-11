@@ -11,10 +11,17 @@ public sealed record Company(string Name, string Email, Address Address);
 
 public sealed record Customer(string Name, Address Address);
 
-public sealed record InvoiceLine(string Description, decimal Quantity, decimal UnitPrice);
+public sealed record InvoiceLine(
+    string Description,
+    string Details,
+    decimal Quantity,
+    decimal UnitPrice,
+    bool IsContinuationExample);
 
 public sealed record Invoice(
     string Number,
+    DateOnly IssuedOn,
+    DateOnly DueOn,
     Company Seller,
     Customer Customer,
     IReadOnlyList<InvoiceLine> Lines,
@@ -26,8 +33,15 @@ public sealed record Invoice(
 
     public static Invoice CreateDemo()
     {
-        var lines = Enumerable.Range(1, 80)
-            .Select(index => new InvoiceLine($"Service line {index}", 1m, 12.5m))
+        var lines = Enumerable.Range(1, 28)
+            .Select(index => new InvoiceLine(
+                $"Service line {index}",
+                index == 10
+                    ? string.Join(" ", Enumerable.Repeat("This controlled continuation describes the delivered work, evidence, acceptance result, and follow-up action.", 36))
+                    : $"Professional services delivered for work package {index}.",
+                1m,
+                12.5m,
+                index == 10))
             .ToList()
             .AsReadOnly();
         var seller = new Company(
@@ -38,7 +52,14 @@ public sealed record Invoice(
             "Contoso Operations",
             new Address("42 Market Street", "Johannesburg", "2001", "South Africa"));
 
-        return new Invoice("INV-1001", seller, customer, lines, .15m);
+        return new Invoice(
+            "INV-1001",
+            new DateOnly(2026, 8, 11),
+            new DateOnly(2026, 9, 10),
+            seller,
+            customer,
+            lines,
+            .15m);
     }
 }
 
@@ -74,40 +95,61 @@ public sealed class InvoiceTemplate : PdfTemplate<Invoice>
         {
             page.Size(PageSizes.A4);
             page.Header().Component(_sellerHeader, model.Seller);
-            page.Footer().Text("Page {page} of {pages}");
+            page.Footer().PageText($"Page {PageTextTokens.CurrentPage} of {PageTextTokens.TotalPages}");
             var content = page.Content();
             content.Column(column =>
             {
                 column.Spacing("Section");
                 column.Item().Text($"Invoice {model.Number}").Style("Heading1");
+                column.Item().Text($"Issued {model.IssuedOn:dd MMM yyyy} - Due {model.DueOn:dd MMM yyyy}");
                 column.Item().Component(_customerAddress, model.Customer);
             });
             content.Table(table =>
             {
                 table.Columns(columns =>
                 {
-                    columns.RelativeColumn();
-                    columns.ConstantColumn(60);
-                    columns.ConstantColumn(80);
+                    columns.RelativeColumn(1, minWidth: 180, maxWidth: 360);
+                    columns.FixedColumn(60, minWidth: 55, maxWidth: 65);
+                    columns.FixedColumn(80, minWidth: 75, maxWidth: 85);
                 });
                 table.CellPadding(5);
                 table.Border(0.75f, "Border");
                 table.HeaderBackground("HeaderBackground");
+                table.RepeatHeaders();
+                table.RepeatFooters(TableFooterRepeatMode.EveryPage);
                 table.Header(header =>
                 {
-                    header.Cell().Text("Description").Style("TableHeader");
-                    header.Cell().AlignRight().Text("Qty").Style("TableHeader");
-                    header.Cell().AlignRight().Text("Amount").Style("TableHeader");
+                    header.Cell().Padding(5, 12, 5, 5).Text("Description").Style("TableHeader");
+                    header.Cell().Padding(5, 12, 5, 5).AlignRight().Text("Qty").Style("TableHeader");
+                    header.Cell().Padding(5, 12, 5, 5).AlignRight().Text("Amount").Style("TableHeader");
                 });
                 foreach (var line in model.Lines)
                 {
                     table.Row(row =>
                     {
-                        row.Cell().Text(line.Description);
-                        row.Cell().AlignRight().Text(line.Quantity, "N0");
-                        row.Cell().AlignRight().Text(line.Quantity * line.UnitPrice, "C2");
+                        row.AllowSplit(line.IsContinuationExample);
+                        row.Cell().Padding(5, 12, 5, 5).Column(description =>
+                        {
+                            description.Spacing("Compact");
+                            description.Item().RichText(paragraph =>
+                            {
+                                paragraph.Span(line.Description).Bold();
+                                paragraph.Span(" - ");
+                                paragraph.Span(line.Details);
+                            });
+                            if (!line.IsContinuationExample)
+                                description.Item().Text($"Unit price: {InvoiceFormatting.Currency(line.UnitPrice)}");
+                        });
+                        row.Cell().Padding(5, 12, 5, 5).AlignRight().Text(line.Quantity, "N0");
+                        row.Cell().Padding(5, 12, 5, 5).AlignRight().Text(InvoiceFormatting.Currency(line.Quantity * line.UnitPrice));
                     });
                 }
+                table.Footer(footer =>
+                {
+                    footer.Background("Surface");
+                    footer.Cell().Padding(5, 12, 5, 5).ColumnSpan(2).Text($"Invoice {model.Number} - {model.Lines.Count:N0} lines").Style("TableHeader");
+                    footer.Cell().Padding(5, 12, 5, 5).AlignRight().Text(InvoiceFormatting.Currency(model.Total)).Style("TableHeader");
+                });
             });
             content.Column(column =>
             {
@@ -154,11 +196,14 @@ public sealed class InvoiceTotalsComponent : IPdfComponent<Invoice>
         container.AlignRight().Padding("Compact").Border(0.75f, "Border").Column(column =>
         {
             column.Spacing("Compact");
-            column.Item().AlignRight().Text($"Subtotal: {FormatCurrency(model.Subtotal)}");
-            column.Item().AlignRight().Text($"Tax: {FormatCurrency(model.Tax)}");
-            column.Item().AlignRight().Text($"Total: {FormatCurrency(model.Total)}").Style("Total");
+            column.Item().AlignRight().Text($"Subtotal: {InvoiceFormatting.Currency(model.Subtotal)}");
+            column.Item().AlignRight().Text($"Tax: {InvoiceFormatting.Currency(model.Tax)}");
+            column.Item().AlignRight().Text($"Total: {InvoiceFormatting.Currency(model.Total)}").Style("Total");
         });
     }
+}
 
-    private static string FormatCurrency(decimal value) => value.ToString("C2", CultureInfo.InvariantCulture);
+public static class InvoiceFormatting
+{
+    public static string Currency(decimal value) => $"USD {value.ToString("N2", CultureInfo.InvariantCulture)}";
 }
