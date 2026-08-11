@@ -64,6 +64,23 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal LayoutComponentCollection Semantic(
+            PdfSemanticDescriptor? descriptor,
+            bool artifact,
+            Action<LayoutComponentCollection> configure)
+        {
+            foreach (IMeasurable component in BuildMany(configure, nameof(Semantic)))
+            {
+                // Flow controls must remain direct children of ColumnBuilder so they can be
+                // interpreted before measurement. Reusing one descriptor still produces one
+                // structure node for the drawable fragments around a page break.
+                _components.Add(component is PageBreakComponent
+                    ? component
+                    : new SemanticComponent(component, descriptor, artifact));
+            }
+            return this;
+        }
+
         internal LayoutComponentCollection PageVisibility(
             PageVisibilityRule rule,
             string diagnosticPath,

@@ -15,6 +15,9 @@ namespace PdfBuilder.Document
         /// </summary>
         public float Y { get; set; }
 
+        internal int? SemanticNodeId { get; set; }
+        internal bool IsSemanticArtifact { get; set; }
+
         protected PdfElement(float x, float y)
         {
             X = x;

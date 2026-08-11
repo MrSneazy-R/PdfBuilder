@@ -42,6 +42,11 @@ public partial class PdfDocument
             _document.LayoutOptions.Debug.ShowFlowGuides = options.ShowFlowGuides;
             _document.LayoutOptions.Profiler.Enabled = options.EnableProfiler;
         }
+        public void Tagged(Action<ITaggedPdfDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(new CanonicalTaggedPdfDescriptor(_document));
+        }
         public void RenderLimits(Action<Layout.PdfRenderLimits> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -66,6 +71,7 @@ public partial class PdfDocument
 
                 _document.PageList.Clear();
                 _document.LayoutTrace.Clear();
+                _document.SemanticRegistry.ResetContent();
                 _document.CompositionTotalPagesHint = totalPagesHint;
                 foreach (CanonicalPageDescriptor page in _pages)
                     page.Build();

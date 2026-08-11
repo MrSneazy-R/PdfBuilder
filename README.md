@@ -112,13 +112,22 @@ See [documentation/engineering/LAYOUT-DIAGNOSTICS.md](documentation/engineering/
 
 For an interactive, loopback-only development surface, run the [PreviewHost](tools/PdfBuilder.PreviewHost/README.md) with `dotnet watch`. It provides page thumbnails, selected-page previews, hierarchy, traces, timing, visual guides, structured failures, and PDF download without telemetry.
 
+## Tagged semantic structure
+
+Opt-in tagged output adds marked content, MCIDs, a structure tree, parent tree, role map,
+reading order, alternative text, decorative artefacts, and link-annotation association.
+Configure a BCP 47 document language with `document.Tagged(...)`, then use `Semantic`,
+`Heading`, `AlternativeText`, `Decorative`, and `ReadingOrder` on ordinary containers.
+Headers, footers, text, tables, figures, and links receive sensible canonical defaults.
+See [Tagged PDF semantics](documentation/Tagged_PDF.md).
+
 ## Cross-platform requirements
 
 Windows, Ubuntu, and macOS are exercised in CI. Native SkiaSharp and HarfBuzz assets restore from NuGet; no native binaries are committed. Ubuntu CI installs Noto fonts, Poppler, and qpdf for validation.
 
 ## Limitations
 
-This pre-release does not claim PDF/A or PDF/UA conformance. The core package does not edit existing PDFs and does not support encryption, signatures, forms, attachments, HTML rendering, remote images, or browser SVG; authorised existing-PDF operations, encryption, and attachments live in the optional `PdfBuilder.Operations` package.
+Tagged output is a semantic foundation, not a PDF/UA conformance claim. This pre-release does not claim PDF/A or PDF/UA conformance. The core package does not edit existing PDFs and does not support encryption, signatures, forms, attachments, HTML rendering, remote images, or browser SVG; authorised existing-PDF operations, encryption, and attachments live in the optional `PdfBuilder.Operations` package.
 
 ## Security considerations
 

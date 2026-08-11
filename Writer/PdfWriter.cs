@@ -13,6 +13,7 @@ using PdfBuilder.Elements;
 using PdfBuilder.Fonts;
 using PdfBuilder.Models;
 using PdfBuilder.Writer.Fonts;
+using PdfBuilder.Writer.Tagging;
 
 namespace PdfBuilder.Writer
 {
@@ -144,6 +145,8 @@ namespace PdfBuilder.Writer
             var metadata = laidOut.Metadata ?? new DocumentMetadata();
             generationOptions.Validate();
             metadata.Validate(doc.RenderLimits.MaximumMetadataCharacters, doc.RenderLimits.MaximumXmpBytes);
+            if (laidOut.Tagging.Enabled && string.IsNullOrWhiteSpace(metadata.Language))
+                throw new InvalidOperationException("Tagged PDF output requires an explicit BCP 47 document language. Configure document.Tagged(tag => tag.Language(...)).");
             var outputOptions = laidOut.OutputOptions ?? new PdfOutputOptions();
             outputOptions.Validate();
             DateTimeOffset creationDate = generationOptions.CreationTime
@@ -185,6 +188,9 @@ namespace PdfBuilder.Writer
             // Render solely to collect font glyphs plus navigation metadata. Content bytes are
             // deliberately discarded here; the write pass below produces one page at a time.
             var pageAnnotations = new List<List<AnnotationWriter.LinkAnnot>>(pageCount);
+            var pageTaggedContent = Enumerable.Range(0, pageCount)
+                .Select(_ => (IReadOnlyList<TaggedContentItem>)Array.Empty<TaggedContentItem>())
+                .ToList();
             var (anchorLookup, pageAnchors) = CollectNavigationAnchors(laidOut);
             laidOut.Pagination?.ApplyPageLookup(anchorLookup);
             laidOut.NavigationDiagnostics.Clear();
@@ -195,7 +201,7 @@ namespace PdfBuilder.Writer
                 var page = laidOut.Pages[i];
                 var pageImgMap = BuildPageImageMap(page, imageResourceMap);
 
-                var (contentBytes, annots, _) = BuildContentStream(
+                var (contentBytes, annots, _, _) = BuildContentStream(
                     laidOut,
                     page,
                     i + 1,
@@ -210,6 +216,19 @@ namespace PdfBuilder.Writer
             }
 
             RecordBrokenNavigationDiagnostics(laidOut, pageAnnotations, anchorLookup);
+            if (laidOut.Tagging.Enabled)
+            {
+                int nextStructParent = pageCount;
+                for (int pageIndex = 0; pageIndex < pageAnnotations.Count; pageIndex++)
+                {
+                    foreach (AnnotationWriter.LinkAnnot annotation in pageAnnotations[pageIndex])
+                    {
+                        annotation.PageIndex = pageIndex;
+                        if (annotation.SemanticNodeId.HasValue)
+                            annotation.StructParentKey = nextStructParent++;
+                    }
+                }
+            }
 
             var embeddedFontResources = FontResourceWriter.WriteEmbeddedFonts(writer, embeddedFonts);
             metrics.EmbeddedFontResources = embeddedFontResources.Count;
@@ -247,7 +266,7 @@ namespace PdfBuilder.Writer
 
                 // WRITE PASS: only the current page's stream is retained at any time.
                 var pageImgMap = BuildPageImageMap(page, imageResourceMap);
-                var (rawContent, _, _) = BuildContentStream(
+                var (rawContent, _, _, taggedContent) = BuildContentStream(
                     laidOut,
                     page,
                     i + 1,
@@ -257,6 +276,7 @@ namespace PdfBuilder.Writer
                     pageImgMap,
                     creationDate.UtcDateTime,
                     cancellationToken);
+                pageTaggedContent[i] = taggedContent;
                 metrics.PageContentStreamsWritten++;
                 metrics.MaximumRetainedPageContentStreams = Math.Max(metrics.MaximumRetainedPageContentStreams, 1);
 
@@ -301,6 +321,8 @@ namespace PdfBuilder.Writer
                 writer.WriteLine($" /Parent {pagesObjId} 0 R");
                 writer.WriteLine($" /MediaBox [0 0 {N(page.Width)} {N(page.Height)}]");
                 writer.WriteLine($" /Contents {contentId} 0 R");
+                if (laidOut.Tagging.Enabled)
+                    writer.WriteLine($" /StructParents {i}");
 
                 var resSb = new StringBuilder();
                 resSb.Append(" /Resources <<");
@@ -317,6 +339,10 @@ namespace PdfBuilder.Writer
                 writer.EndObject();
 
             }
+
+            TaggedPdfStructureResult? taggedStructure = laidOut.Tagging.Enabled
+                ? TaggedPdfStructureWriter.Write(writer, laidOut, pageObjectIds, pageTaggedContent, pageAnnotations)
+                : null;
 
             // Outlines (bookmarks) -------------------------------------------------------------------
             var outlineItems = new List<OutlineWriter.OutlineEntry>();
@@ -361,6 +387,12 @@ namespace PdfBuilder.Writer
                 writer.WriteLine($" /Lang {PdfStringEncoder.Encode(metadata.Language!)}");
             if (xmpMetadataId != 0)
                 writer.WriteLine($" /Metadata {xmpMetadataId} 0 R");
+            if (taggedStructure != null)
+            {
+                writer.WriteLine($" /StructTreeRoot {taggedStructure.StructureTreeRootId} 0 R");
+                writer.WriteLine(" /MarkInfo << /Marked true >>");
+                writer.WriteLine(" /ViewerPreferences << /DisplayDocTitle true >>");
+            }
             writer.WriteLine(">>");
             writer.EndObject();
 
@@ -483,7 +515,8 @@ namespace PdfBuilder.Writer
 
         private static (byte[] content,
                          List<AnnotationWriter.LinkAnnot> annotations,
-                         List<(AnchorElement anchor, float xPdf, float yPdf)> anchors) BuildContentStream(
+                         List<(AnchorElement anchor, float xPdf, float yPdf)> anchors,
+                         IReadOnlyList<TaggedContentItem> taggedContent) BuildContentStream(
             PdfDocument doc,
             PdfPage page,
             int pageIndex1,
@@ -497,6 +530,9 @@ namespace PdfBuilder.Writer
             var sb = new StringBuilder();
             var annotations = new List<AnnotationWriter.LinkAnnot>();
             var anchorsOnPage = new List<(AnchorElement anchor, float xPdf, float yPdf)>();
+            TaggedContentCollector? tagging = doc.Tagging.Enabled
+                ? new TaggedContentCollector(pageIndex1 - 1, doc.SemanticRegistry)
+                : null;
 
             var effectiveMaster = page.MasterOverride ?? doc.Master;
             var effectiveHeaderFooter = page.HeaderFooterOverride ?? doc.HeaderFooter;
@@ -504,25 +540,41 @@ namespace PdfBuilder.Writer
 
             if (effectiveMaster != null)
             {
-                MasterRenderer.AppendBackground(sb, page, effectiveMaster);
+                AppendArtifact(sb, () => MasterRenderer.AppendBackground(sb, page, effectiveMaster), doc.Tagging.Enabled);
                 if (effectiveMaster.Watermark != null && effectiveMaster.Watermark.Layer == WatermarkLayer.BehindContent)
-                    MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false);
+                    AppendArtifact(sb, () => MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: false), doc.Tagging.Enabled);
             }
 
-            RenderElements(page.HeaderElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
-            RenderElements(page.Elements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
-            RenderElements(page.FooterElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
+            RenderElements(page.HeaderElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken, tagging);
+            RenderElements(page.Elements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken, tagging);
+            RenderElements(page.FooterElements, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken, tagging);
 
             if (effectiveHeaderFooter != null)
-                HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc);
+                AppendArtifact(sb, () => HeaderFooterRenderer.Append(sb, doc, page, effectiveHeaderFooter, context, pageIndex1, pageCount, nowUtc), doc.Tagging.Enabled);
 
             if (effectiveMaster?.Watermark != null && effectiveMaster.Watermark.Layer == WatermarkLayer.AboveContent)
-                MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: true);
+                AppendArtifact(sb, () => MasterRenderer.AppendWatermark(sb, page, effectiveMaster.Watermark, context, aboveContent: true), doc.Tagging.Enabled);
 
-            return (Encoding.ASCII.GetBytes(sb.ToString()), annotations, anchorsOnPage);
+            IReadOnlyList<TaggedContentItem> taggedItems = tagging?.Items is { } items
+                ? items
+                : Array.Empty<TaggedContentItem>();
+            return (Encoding.ASCII.GetBytes(sb.ToString()), annotations, anchorsOnPage, taggedItems);
         }
 
-        private static IEnumerable<AnnotationWriter.LinkAnnot> ConvertLinkRects(IEnumerable<RichTextRenderer.LinkRect> rects)
+        private static void AppendArtifact(StringBuilder content, Action render, bool taggingEnabled)
+        {
+            int start = content.Length;
+            if (taggingEnabled) content.Append("/Artifact BMC\n");
+            render();
+            if (taggingEnabled && content.Length > start + "/Artifact BMC\n".Length)
+                content.Append("EMC\n");
+            else if (taggingEnabled)
+                content.Length = start;
+        }
+
+        private static IEnumerable<AnnotationWriter.LinkAnnot> ConvertLinkRects(
+            IEnumerable<RichTextRenderer.LinkRect> rects,
+            int? semanticNodeId)
         {
             foreach (var rect in rects)
             {
@@ -535,12 +587,13 @@ namespace PdfBuilder.Writer
                     X2 = rect.X2,
                     Y2 = y2,
                     Url = rect.Url == null ? null : NavigationUriPolicy.ValidateExternal(rect.Url),
-                    Anchor = rect.Anchor
+                    Anchor = rect.Anchor,
+                    SemanticNodeId = semanticNodeId
                 };
             }
         }
 
-        private static AnnotationWriter.LinkAnnot ConvertLinkRect(LinkRectElement linkRect)
+        private static AnnotationWriter.LinkAnnot ConvertLinkRect(LinkRectElement linkRect, int? semanticNodeId)
         {
             float x1 = linkRect.X;
             float x2 = linkRect.X + linkRect.Width;
@@ -555,7 +608,8 @@ namespace PdfBuilder.Writer
                 Y1 = bottom,
                 Y2 = top,
                 Url = linkRect.Url == null ? null : NavigationUriPolicy.ValidateExternal(linkRect.Url),
-                Anchor = linkRect.Anchor
+                Anchor = linkRect.Anchor,
+                SemanticNodeId = semanticNodeId
             };
         }
 
@@ -715,76 +769,101 @@ namespace PdfBuilder.Writer
             Dictionary<ImageElement, (int imageObjId, string? gsName)> pageImageMap,
             List<AnnotationWriter.LinkAnnot> annotations,
             List<(AnchorElement anchor, float xPdf, float yPdf)> anchorsOnPage,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            TaggedContentCollector? tagging,
+            bool taggingSuppressed = false,
+            int? inheritedSemanticNodeId = null)
         {
             foreach (var element in elements)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                switch (element)
+                int? effectiveSemanticNodeId = element.SemanticNodeId ?? inheritedSemanticNodeId;
+                bool tagStarted = tagging?.Begin(element, effectiveSemanticNodeId, sb, taggingSuppressed) == true;
+                try
                 {
-                    case TextElement text:
-                        TextRenderer.Append(sb, text, page.Height, context, pageContext);
-                        break;
-
-                    case TableElement table:
-                        TableRenderer.Append(sb, table, context);
-                        break;
-
-                    case ImageElement image:
-                        if (pageImageMap.TryGetValue(image, out var ids))
-                            ImageRenderer.Append(sb, image, page.Height, ids.imageObjId, ids.gsName);
-                        break;
-
-                    case CanvasElement canvas:
-                        CanvasRenderer.Append(sb, canvas, page.Height);
-                        break;
-
-                    case RichTextElement richText:
-                        {
-                            var linkRects = new List<RichTextRenderer.LinkRect>();
-                            _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
-                            annotations.AddRange(ConvertLinkRects(linkRects));
+                    switch (element)
+                    {
+                        case TextElement text:
+                            TextRenderer.Append(sb, text, page.Height, context, pageContext);
                             break;
-                        }
 
-                    case ListElement list:
-                        {
-                            var linkRects = new List<RichTextRenderer.LinkRect>();
-                            ListRenderer.Append(sb, list, page.Height, context, linkRects);
-                            annotations.AddRange(ConvertLinkRects(linkRects));
+                        case TableElement table:
+                            TableRenderer.Append(sb, table, context);
                             break;
-                        }
 
-                    case ChartElement chart:
-                        ChartRenderer.Append(sb, chart, context);
-                        break;
+                        case ImageElement image:
+                            if (pageImageMap.TryGetValue(image, out var ids))
+                                ImageRenderer.Append(sb, image, page.Height, ids.imageObjId, ids.gsName);
+                            break;
 
-                    case UnderlineElement underline:
-                        AppendUnderline(sb, underline);
-                        break;
+                        case CanvasElement canvas:
+                            CanvasRenderer.Append(sb, canvas, page.Height);
+                            break;
 
-                    case AnchorElement anchor:
-                        anchorsOnPage.Add((anchor, anchor.X, anchor.Y));
-                        break;
+                        case RichTextElement richText:
+                            {
+                                var linkRects = new List<RichTextRenderer.LinkRect>();
+                                _ = RichTextRenderer.Append(sb, richText, page.Height, context, linkRects);
+                                annotations.AddRange(ConvertLinkRects(linkRects, effectiveSemanticNodeId));
+                                break;
+                            }
 
-                    case LinkRectElement linkRect:
-                        annotations.Add(ConvertLinkRect(linkRect));
-                        break;
+                        case ListElement list:
+                            {
+                                var linkRects = new List<RichTextRenderer.LinkRect>();
+                                ListRenderer.Append(sb, list, page.Height, context, linkRects);
+                                annotations.AddRange(ConvertLinkRects(linkRects, effectiveSemanticNodeId));
+                                break;
+                            }
 
-                    case SolidRectElement solidRect:
-                        AppendSolidRect(sb, solidRect);
-                        break;
+                        case ChartElement chart:
+                            ChartRenderer.Append(sb, chart, context);
+                            break;
 
-                    case DebugRectangleElement debugRectangle:
-                        AppendDebugRectangle(sb, debugRectangle);
-                        break;
+                        case UnderlineElement underline:
+                            AppendUnderline(sb, underline);
+                            break;
 
-                    case ClipGroupElement clipGroup:
-                        sb.Append("q ");
-                        sb.Append($"{N(clipGroup.X)} {N(clipGroup.Y)} {N(clipGroup.Width)} {N(clipGroup.Height)} re W n\n");
-                        RenderElements(clipGroup.Children, sb, page, context, pageContext, pageImageMap, annotations, anchorsOnPage, cancellationToken);
-                        sb.Append("Q\n");
-                        break;
+                        case AnchorElement anchor:
+                            anchorsOnPage.Add((anchor, anchor.X, anchor.Y));
+                            break;
+
+                        case LinkRectElement linkRect:
+                            annotations.Add(ConvertLinkRect(linkRect, effectiveSemanticNodeId));
+                            break;
+
+                        case SolidRectElement solidRect:
+                            AppendSolidRect(sb, solidRect);
+                            break;
+
+                        case DebugRectangleElement debugRectangle:
+                            AppendDebugRectangle(sb, debugRectangle);
+                            break;
+
+                        case ClipGroupElement clipGroup:
+                            sb.Append("q ");
+                            sb.Append($"{N(clipGroup.X)} {N(clipGroup.Y)} {N(clipGroup.Width)} {N(clipGroup.Height)} re W n\n");
+                            RenderElements(
+                                clipGroup.Children,
+                                sb,
+                                page,
+                                context,
+                                pageContext,
+                                pageImageMap,
+                                annotations,
+                                anchorsOnPage,
+                                cancellationToken,
+                                tagging,
+                                taggingSuppressed || tagStarted,
+                                effectiveSemanticNodeId);
+                            sb.Append("Q\n");
+                            break;
+                    }
+                }
+                finally
+                {
+                    if (tagStarted)
+                        TaggedContentCollector.End(sb);
                 }
             }
         }

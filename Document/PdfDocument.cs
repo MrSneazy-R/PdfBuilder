@@ -47,10 +47,13 @@ namespace PdfBuilder.Document
 
         /// <summary>Gets document-scoped diagnostics for unresolved navigation targets.</summary>
         public PdfNavigationDiagnostics NavigationDiagnostics { get; } = new();
+        /// <summary>Gets document-scoped tagged-PDF configuration.</summary>
+        public PdfTaggingOptions Tagging { get; } = new();
         /// <summary>Gets diagnostics captured by the most recent successful generation.</summary>
         public PdfGenerationMetrics? LastGenerationMetrics { get; internal set; }
 
         internal FontCatalogSnapshot FontSnapshot { get; } = FontCatalog.CaptureSnapshot();
+        internal PdfSemanticRegistry SemanticRegistry { get; } = new();
         internal object GenerationSyncRoot { get; } = new();
         internal int CompositionTotalPagesHint { get; set; }
 

@@ -20,6 +20,8 @@ public partial class PdfDocument
         private float? _width, _height, _minWidth, _maxWidth, _minHeight, _maxHeight, _aspectRatio, _ensureSpace;
         private bool _extend, _shrink, _keepTogether, _keepWithNext, _visible = true;
         private string? _debugLabel;
+        private PdfSemanticDescriptor? _semantic;
+        private bool _semanticArtifact;
         private readonly List<Type> _componentPath;
         private readonly PaginationRegistry _pagination;
         private readonly CanonicalCompositionState? _compositionState;
@@ -94,6 +96,51 @@ public partial class PdfDocument
                 _compositionState?.RegisterPageAwareVisibility(label);
             return this;
         }
+        public IContainer Semantic(PdfSemanticRole role)
+        {
+            if (role == PdfSemanticRole.Document)
+                throw new ArgumentException("The document role is supplied by the structure-tree root.", nameof(role));
+            _semanticArtifact = false;
+            _semantic = new PdfSemanticDescriptor
+            {
+                Role = role,
+                AlternativeText = _semantic?.AlternativeText,
+                ReadingOrder = _semantic?.ReadingOrder
+            };
+            return this;
+        }
+        public IContainer Heading(int level)
+        {
+            PdfSemanticRole role = level switch
+            {
+                1 => PdfSemanticRole.Heading1,
+                2 => PdfSemanticRole.Heading2,
+                3 => PdfSemanticRole.Heading3,
+                4 => PdfSemanticRole.Heading4,
+                5 => PdfSemanticRole.Heading5,
+                6 => PdfSemanticRole.Heading6,
+                _ => throw new ArgumentOutOfRangeException(nameof(level), "Heading levels must be between 1 and 6.")
+            };
+            return Semantic(role);
+        }
+        public IContainer AlternativeText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) throw new ArgumentException("Alternative text is required.", nameof(text));
+            EnsureSemantic(PdfSemanticRole.Figure).AlternativeText = text;
+            return this;
+        }
+        public IContainer Decorative()
+        {
+            _semantic = null;
+            _semanticArtifact = true;
+            return this;
+        }
+        public IContainer ReadingOrder(int order)
+        {
+            if (order < 0) throw new ArgumentOutOfRangeException(nameof(order));
+            EnsureSemantic(PdfSemanticRole.Section).ReadingOrder = order;
+            return this;
+        }
         public IContainer Component(IPdfComponent component)
         {
             if (component == null) throw new ArgumentNullException(nameof(component));
@@ -109,12 +156,14 @@ public partial class PdfDocument
         public IContainer PageBreak() { _content.Add(composer => composer.PageBreak()); return this; }
         public ITextDescriptor Text(string text)
         {
+            EnsureSemantic(PdfSemanticRole.Paragraph);
             var descriptor = new CanonicalTextStyle();
             _content.Add(composer => composer.Text(text ?? string.Empty, descriptor.Apply));
             return descriptor;
         }
         public ITextDescriptor PageText(string template)
         {
+            EnsureSemantic(PdfSemanticRole.Paragraph);
             if (string.IsNullOrEmpty(template)) throw new ArgumentException("A page-text template is required.", nameof(template));
             if (!PageTextFormatter.ContainsToken(template))
                 throw new ArgumentException("Page text must contain PageTextTokens.CurrentPage or PageTextTokens.TotalPages.", nameof(template));
@@ -166,6 +215,7 @@ public partial class PdfDocument
                 options.IsNumbered);
             bool hasPriorContent = _content.Count > 0;
             var child = new CanonicalContainer(_theme, _componentPath, _pagination, _compositionState);
+            child.Semantic(PdfSemanticRole.Section);
             content(child);
 
             _content.Add(composer =>
@@ -196,6 +246,7 @@ public partial class PdfDocument
         }
         public void RichText(Action<IRichTextDescriptor> configure)
         {
+            EnsureSemantic(PdfSemanticRole.Paragraph);
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var descriptor = new CanonicalRichTextDescriptor(_theme);
             configure(descriptor);
@@ -208,6 +259,7 @@ public partial class PdfDocument
         }
         public IImageDescriptor Image(ImageSource source, float width, float height)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "Image dimensions must be positive.");
             var descriptor = new CanonicalImageDescriptor();
@@ -216,6 +268,7 @@ public partial class PdfDocument
         }
         public IImageDescriptor Image(ImageSource source)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (source == null) throw new ArgumentNullException(nameof(source));
             var descriptor = new CanonicalImageDescriptor();
             _content.Add(composer => composer.Image(source, descriptor.Apply));
@@ -223,18 +276,21 @@ public partial class PdfDocument
         }
         public void Svg(string markup, float width, float height)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (string.IsNullOrWhiteSpace(markup)) throw new ArgumentException("SVG markup is required.", nameof(markup));
             if (width <= 0f || height <= 0f) throw new ArgumentOutOfRangeException(nameof(width), "SVG dimensions must be positive.");
             _content.Add(composer => composer.DynamicSvg(width, height, _ => markup));
         }
         public void DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
             if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
             _content.Add(composer => composer.DynamicSvg(height, markupFactory));
         }
         public void Canvas(float width, float height, Action<ICanvasDescriptor> draw)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (!float.IsFinite(width) || width <= 0f) throw new ArgumentOutOfRangeException(nameof(width));
             if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
             if (draw == null) throw new ArgumentNullException(nameof(draw));
@@ -243,6 +299,7 @@ public partial class PdfDocument
         }
         public void Canvas(float height, Action<ICanvasDescriptor, CanvasSize> draw)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
             if (draw == null) throw new ArgumentNullException(nameof(draw));
             _content.Add(composer => composer.Canvas(height, (builder, size) =>
@@ -253,12 +310,14 @@ public partial class PdfDocument
         }
         public void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (kind is not BarcodeKind.QrCode and not BarcodeKind.Code128)
                 throw new NotSupportedException("The canonical barcode API supports QR Code and Code 128.");
             _content.Add(composer => composer.Barcode(value, kind, moduleSize, quietZone));
         }
         public void Chart(Action<IChartDescriptor> configure)
         {
+            EnsureSemantic(PdfSemanticRole.Figure);
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var descriptor = new CanonicalChartDescriptor(_theme);
             configure(descriptor);
@@ -266,6 +325,7 @@ public partial class PdfDocument
         }
         public void Table(Action<ITableDescriptor> configure)
         {
+            EnsureSemantic(PdfSemanticRole.Table);
             if (configure == null) throw new ArgumentNullException(nameof(configure));
             var descriptor = new CanonicalTableDescriptor(_theme, _componentPath, _pagination, _compositionState);
             configure(descriptor);
@@ -282,6 +342,7 @@ public partial class PdfDocument
 
         private ITextDescriptor LinkedText(string text, string? externalUri, string? internalAnchor)
         {
+            EnsureSemantic(PdfSemanticRole.Link);
             if (string.IsNullOrEmpty(text)) throw new ArgumentException("Link text is required.", nameof(text));
             var descriptor = new CanonicalTextStyle();
             _content.Add(composer => composer.RichText(element =>
@@ -344,6 +405,11 @@ public partial class PdfDocument
             if (!_visible) { composer.Component(new Layout.Components.EmptyComponent()); return; }
             ValidateConstraints();
             Action<Layout.ContentComposer> content = ComposeCore;
+            if (_semantic != null || _semanticArtifact)
+            {
+                var next = content;
+                content = inner => inner.Semantic(_semantic, _semanticArtifact, next);
+            }
             if (_paddingLeft.HasValue) { var next = content; content = inner => inner.Padding(_paddingLeft.Value, _paddingTop!.Value, _paddingRight!.Value, _paddingBottom!.Value, next); }
             if (_background != null || _border.HasAny) { var next = content; content = inner => inner.Decorate(decoration => ConfigureDecoration(decoration), next); }
             if (_marginLeft.HasValue) { var next = content; content = inner => inner.Padding(_marginLeft.Value, _marginTop!.Value, _marginRight!.Value, _marginBottom!.Value, next); }
@@ -384,6 +450,12 @@ public partial class PdfDocument
             configure();
             _compositionState?.RegisterPageAwareVisibility(_debugLabel);
             return this;
+        }
+        private PdfSemanticDescriptor EnsureSemantic(PdfSemanticRole defaultRole)
+        {
+            if (_semanticArtifact)
+                return new PdfSemanticDescriptor { Role = defaultRole };
+            return _semantic ??= new PdfSemanticDescriptor { Role = defaultRole };
         }
         private void ComposeCore(Layout.ContentComposer composer)
         {

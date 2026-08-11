@@ -3613,3 +3613,50 @@ TextSpan.Underline.get -> bool?
 TextSpan.Underline.set -> void
 TextSpan.WordSpacing.get -> float?
 TextSpan.WordSpacing.set -> void
+PdfBuilder.Document.IDocumentDescriptor.Tagged(System.Action<PdfBuilder.Document.ITaggedPdfDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.AlternativeText(string! text) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Decorative() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Heading(int level) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.ReadingOrder(int order) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Semantic(PdfBuilder.Document.PdfSemanticRole role) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ITaggedPdfDescriptor
+PdfBuilder.Document.ITaggedPdfDescriptor.Enabled(bool value = true) -> void
+PdfBuilder.Document.ITaggedPdfDescriptor.Language(string! language) -> void
+PdfBuilder.Document.ITaggedPdfDescriptor.RoleMap(string! customRole, string! standardRole) -> void
+PdfBuilder.Document.PdfDocument.Tagging.get -> PdfBuilder.Document.PdfTaggingOptions!
+PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Caption = 24 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Code = 29 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Document = 0 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Figure = 23 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Footer = 22 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Header = 21 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading = 2 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading1 = 3 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading2 = 4 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading3 = 5 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading4 = 6 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading5 = 7 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading6 = 8 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Label = 12 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Link = 25 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.List = 10 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.ListBody = 13 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.ListItem = 11 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Note = 28 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Paragraph = 9 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Quote = 27 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Section = 1 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Span = 26 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Table = 14 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableBody = 19 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableCell = 17 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableFoot = 20 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableHead = 18 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableHeaderCell = 16 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableRow = 15 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfTaggingOptions
+PdfBuilder.Document.PdfTaggingOptions.Enabled.get -> bool
+PdfBuilder.Document.PdfTaggingOptions.Enabled.set -> void
+PdfBuilder.Document.PdfTaggingOptions.PdfTaggingOptions() -> void
+PdfBuilder.Document.PdfTaggingOptions.RoleMap.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!

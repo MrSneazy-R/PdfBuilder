@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added opt-in tagged-PDF semantics with canonical document/section/heading/paragraph/list/table/header/footer/figure/caption/link roles, alternative text, decorative artefacts, explicit reading order, marked content and MCIDs, structure and parent trees, role mapping, and link-annotation association. This is not a PDF/UA conformance claim.
 - Added the isolated `PdfBuilder.Operations` package for bounded, cancellation-aware qpdf inspection, selection, extraction, merge, split, overlay, underlay, attachments, encryption/permissions, authorised decryption, and linearisation without shell invocation.
 - Added a separate loopback-only preview and diagnostics host with `dotnet watch`, thumbnails, selected-page previews, PDF download, hierarchy/trace/timing panels, structured errors, debug labels, margins, flow guides, and clean/diagnostic render switching without telemetry.
 - Prepared blocked internal pre-release artifacts with canonical maintained samples, packaged third-party notices, CycloneDX SBOM generation, SHA-256 manifests, strict preview-version/tag validation, and an exact-commit evidence checklist; public or 1.0 RC publication remains blocked by retained CI and licence approval.
