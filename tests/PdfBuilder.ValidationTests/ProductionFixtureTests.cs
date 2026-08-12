@@ -14,6 +14,7 @@ public sealed class ProductionFixtureTests
             .Where(entry => entry.Name.StartsWith("production-", StringComparison.Ordinal))
             .ToArray();
         var counts = new List<string>();
+        var pageCountFailures = new List<string>();
 
         foreach (FixtureManifestEntry fixture in productionFixtures)
         {
@@ -38,12 +39,14 @@ public sealed class ProductionFixtureTests
             }
             int pages = CountPages(first);
             counts.Add($"{fixture.Name}={pages}");
-            if (fixture.ExpectedPageCount > 0)
-                pages.Should().Be(fixture.ExpectedPageCount, $"{fixture.Name} has a retained platform page-count contract");
+            if (fixture.ExpectedPageCount > 0 && pages != fixture.ExpectedPageCount)
+                pageCountFailures.Add($"{fixture.Name}: expected {fixture.ExpectedPageCount}, actual {pages}");
         }
 
         if (productionFixtures.Any(fixture => fixture.PageCount <= 0))
             throw new Xunit.Sdk.XunitException("Record generated page counts in FixtureManifest.json: " + string.Join(", ", counts));
+        if (pageCountFailures.Count > 0)
+            throw new Xunit.Sdk.XunitException("Production fixture page-count validation failed: " + string.Join(", ", pageCountFailures));
     }
 
     [Fact]

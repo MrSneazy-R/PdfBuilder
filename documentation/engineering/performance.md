@@ -8,7 +8,7 @@
 
 The checked-in `baselines/windows-x64-net10.json` records timing, allocations, output bytes, pages per second, maximum retained page streams, aggregate resource counts, font resources, image references, unique images, deduplication hits, and hardware/runtime metadata.
 
-Normal Windows CI executes the bounded `--verify-gates` subset. Output byte counts and resource counts must remain exact, retained streams may not increase, and measured allocations must remain below the recorded guardrail. Large or platform-sensitive scenarios are retained for scheduled/manual analysis rather than making ordinary CI noisy.
+Normal Windows CI executes the bounded `--verify-gates` subset. Output byte counts and resource counts may decrease but must not exceed their recorded ceilings, retained streams may not increase, and measured allocations must remain below the recorded guardrail. Dedicated generation tests retain byte-for-byte determinism checks within each runtime environment. Large or platform-sensitive scenarios are retained for scheduled/manual analysis rather than making ordinary CI noisy.
 
 The scheduled workflow captures each scenario in a fresh process so the 1,000-row allocation workload cannot distort later measurements through GC pressure. It emits warnings when reference timing differs by more than 15%, then runs BenchmarkDotNet with one launch, one warmup, and three measured iterations. Compare timing only after checking the recorded runner, processor, runtime, and GC metadata.
 

@@ -10,9 +10,11 @@ public sealed record FixtureManifestEntry(
     bool Visual,
     bool Deterministic = true,
     int[]? VisualPages = null,
-    int? LinuxPageCount = null)
+    int? LinuxPageCount = null,
+    int[]? LinuxVisualPages = null)
 {
     public int ExpectedPageCount => OperatingSystem.IsLinux() ? LinuxPageCount ?? PageCount : PageCount;
+    public IReadOnlyList<int>? ExpectedVisualPages => OperatingSystem.IsLinux() ? LinuxVisualPages ?? VisualPages : VisualPages;
 }
 
 public static class FixtureManifest

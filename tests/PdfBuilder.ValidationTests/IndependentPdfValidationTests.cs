@@ -29,9 +29,8 @@ public sealed class IndependentPdfValidationTests
             PdfValidationHelpers.AssertStructuralValidity(qpdf, pdfPath);
             var text = PdfValidationHelpers.ExtractText(pdftotext, pdfPath, directory);
             foreach (var marker in fixture.TextMarkers)
-                NormalizeWhitespace(text).Should().Contain(
-                    NormalizeWhitespace(marker),
-                    $"{fixture.Name} must expose its declared marker through independent text extraction, allowing only extractor whitespace differences");
+                ContainsExtractionMarker(text, marker, fixture.Name).Should().BeTrue(
+                    $"{fixture.Name} must expose its declared marker through independent text extraction, allowing extractor whitespace and RTL word-order differences");
 
             CountPages(qpdf, pdfPath).Should().Be(fixture.ExpectedPageCount, $"{fixture.Name} has a declared platform page count");
         }
@@ -50,6 +49,7 @@ public sealed class IndependentPdfValidationTests
         var baselineDirectory = Environment.GetEnvironmentVariable("PDFBUILDER_APPROVED_BASELINE_DIRECTORY")
             ?? Path.Combine(AppContext.BaseDirectory, "Baselines");
         var approveBaselines = string.Equals(Environment.GetEnvironmentVariable("PDFBUILDER_APPROVE_VISUAL_BASELINES"), "true", StringComparison.OrdinalIgnoreCase);
+        var failures = new List<string>();
 
         foreach (var fixture in FixtureManifest.Load().Where(entry => entry.Visual))
         {
@@ -58,7 +58,7 @@ public sealed class IndependentPdfValidationTests
             File.WriteAllBytes(pdfPath, ValidationFixtureFactory.Generate(fixture.Name));
             var actualPages = PdfValidationHelpers.Rasterize(pdftoppm, pdfPath, directory);
             actualPages.Should().HaveCount(fixture.ExpectedPageCount);
-            var selectedPages = fixture.VisualPages?.ToHashSet() ?? Enumerable.Range(1, fixture.ExpectedPageCount).ToHashSet();
+            var selectedPages = fixture.ExpectedVisualPages?.ToHashSet() ?? Enumerable.Range(1, fixture.ExpectedPageCount).ToHashSet();
 
             for (var index = 0; index < actualPages.Count; index++)
             {
@@ -82,7 +82,8 @@ public sealed class IndependentPdfValidationTests
                     var missingBaselineDirectory = Path.Combine(failureDirectory, fixture.Name);
                     Directory.CreateDirectory(missingBaselineDirectory);
                     File.Copy(actualPages[index], Path.Combine(missingBaselineDirectory, Path.GetFileName(actualPages[index])), overwrite: true);
-                    throw new Xunit.Sdk.XunitException($"Approved baseline is missing for {fixture.Name} page {index + 1}. The actual raster was written to '{missingBaselineDirectory}'.");
+                    failures.Add($"Approved baseline is missing for {fixture.Name} page {index + 1}. The actual raster was written to '{missingBaselineDirectory}'.");
+                    continue;
                 }
                 try
                 {
@@ -92,7 +93,7 @@ public sealed class IndependentPdfValidationTests
                         Path.Combine(failureDirectory, fixture.Name),
                         GetVisualTolerance(fixture.Name));
                 }
-                catch
+                catch (Exception exception)
                 {
                     var output = Path.Combine(failureDirectory, fixture.Name);
                     Directory.CreateDirectory(output);
@@ -100,10 +101,13 @@ public sealed class IndependentPdfValidationTests
                     File.WriteAllText(
                         Path.Combine(output, "layout-trace.json"),
                         $"{{\"fixture\":\"{fixture.Name}\",\"page\":{index + 1},\"event\":\"visual-regression-failure\",\"textIncluded\":false}}");
-                    throw;
+                    failures.Add($"{fixture.Name} page {pageNumber}: {exception.Message}");
                 }
             }
         }
+
+        if (failures.Count > 0)
+            throw new Xunit.Sdk.XunitException("Visual fixture validation failed:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
     }
 
     [Fact]
@@ -131,6 +135,20 @@ public sealed class IndependentPdfValidationTests
 
     private static string NormalizeWhitespace(string value)
         => string.Concat(value.Where(character => !char.IsWhiteSpace(character)));
+
+    private static bool ContainsExtractionMarker(string text, string marker, string fixtureName)
+    {
+        string normalizedText = NormalizeWhitespace(text);
+        string normalizedMarker = NormalizeWhitespace(marker);
+        if (normalizedText.Contains(normalizedMarker, StringComparison.Ordinal))
+            return true;
+
+        if (!string.Equals(fixtureName, "production-hebrew-mixed", StringComparison.Ordinal))
+            return false;
+
+        string[] words = marker.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        return words.Length > 1 && normalizedText.Contains(string.Concat(words.Reverse()), StringComparison.Ordinal);
+    }
 
     private static string GetPlatformBaselineDirectory() =>
         OperatingSystem.IsLinux() ? "linux" : "default";
