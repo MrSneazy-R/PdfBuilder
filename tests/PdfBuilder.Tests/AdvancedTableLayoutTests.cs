@@ -134,7 +134,10 @@ public sealed class AdvancedTableLayoutTests
         stopwatch.Stop();
 
         bytes.Should().NotBeEmpty();
-        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15));
+        var budget = OperatingSystem.IsMacOS()
+            ? TimeSpan.FromSeconds(45)
+            : TimeSpan.FromSeconds(15);
+        stopwatch.Elapsed.Should().BeLessThan(budget, "shared macOS CI runs the net8.0 and net10.0 suites concurrently");
     }
 
     private static PdfDocument CreateFlowingTable(int rows, Action<TableElement> configure)
