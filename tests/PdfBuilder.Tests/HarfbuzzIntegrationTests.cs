@@ -8,6 +8,7 @@ using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
+using PdfBuilder.TextShaping;
 using Xunit;
 using TableModels = PdfBuilder.Elements.Table;
 
@@ -18,6 +19,23 @@ namespace PdfBuilder.Tests
         static HarfbuzzIntegrationTests()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        }
+
+        [Fact]
+        public void SharedShaper_ConcurrentSpacedText_PreservesGlyphAdvances()
+        {
+            const string text = "Synthetic organisation - no real customer or operational data.";
+            var request = new TextShapingRequest(
+                text, "Helvetica", 10, 1.2f, 500, false, false, false, false, null);
+            float expectedWidth = TextShaper.Shared.ShapeParagraph(request).Lines.Single().Width;
+
+            float[] widths = Enumerable.Range(0, 128)
+                .AsParallel()
+                .WithDegreeOfParallelism(Math.Min(16, Environment.ProcessorCount))
+                .Select(_ => TextShaper.Shared.ShapeParagraph(request).Lines.Single().Width)
+                .ToArray();
+
+            widths.Should().OnlyContain(width => Math.Abs(width - expectedWidth) < 0.001f);
         }
 
         [Fact]

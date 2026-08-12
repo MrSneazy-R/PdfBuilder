@@ -358,9 +358,9 @@ namespace PdfBuilder.TextShaping
                 yield return new TextSegment(sb.ToString(), current, req.FontFamily, req.FontSize, req.Bold, req.Italic);
         }
 
-        private readonly ConcurrentDictionary<SKTypeface, SKShaper> _shaperCache = new();
-        private SKShaper GetShaper(SKTypeface tf) =>
-            _shaperCache.GetOrAdd(tf, t => new SKShaper(t));
+        private readonly ConcurrentDictionary<SKTypeface, CachedShaper> _shaperCache = new();
+        private CachedShaper GetShaper(SKTypeface tf) =>
+            _shaperCache.GetOrAdd(tf, t => new CachedShaper(t));
         private ShapedRun ShapeRun(TextSegment segment, TextShapingRequest request)
         {
             using var paint = new SKPaint
@@ -374,59 +374,60 @@ namespace PdfBuilder.TextShaping
                 TextEncoding = SKTextEncoding.Utf16
             };
 
-            var shaper = GetShaper(segment.Typeface);
-            var result = shaper.Shape(segment.Text, 0, 0, paint);
-
-            var glyphs = new List<ShapedGlyph>(result?.Codepoints?.Length ?? 0);
-            if (result?.Codepoints != null && result.Points != null && result.Clusters != null)
+            var cachedShaper = GetShaper(segment.Typeface);
+            List<ShapedGlyph> glyphs;
+            lock (cachedShaper.SyncRoot)
             {
-                var clusterRanges = BuildClusterRanges(result.Clusters, segment.Text);
-                var emittedClusters = new HashSet<int>();
-                using var font = new SKFont(segment.Typeface, segment.FontSize);
-                var glyphCodes = result.Codepoints;
-                var glyphWidths = glyphCodes.Length > 0 ? new float[glyphCodes.Length] : Array.Empty<float>();
-                if (glyphCodes.Length > 0)
+                var result = cachedShaper.Shaper.Shape(segment.Text, 0, 0, paint);
+                glyphs = new List<ShapedGlyph>(result?.Codepoints?.Length ?? 0);
+                if (result?.Codepoints != null && result.Points != null && result.Clusters != null)
                 {
-                    var glyphIndices = new ushort[glyphCodes.Length];
-                    for (int i = 0; i < glyphCodes.Length; i++)
-                        glyphIndices[i] = (ushort)glyphCodes[i];
-                    font.GetGlyphWidths(glyphIndices, glyphWidths, Span<SKRect>.Empty);
+                    var clusterRanges = BuildClusterRanges(result.Clusters, segment.Text);
+                    var emittedClusters = new HashSet<int>();
+                    using var font = new SKFont(segment.Typeface, segment.FontSize);
+                    var glyphCodes = result.Codepoints;
+                    var glyphWidths = glyphCodes.Length > 0 ? new float[glyphCodes.Length] : Array.Empty<float>();
+                    if (glyphCodes.Length > 0)
+                    {
+                        var glyphIndices = new ushort[glyphCodes.Length];
+                        for (int i = 0; i < glyphCodes.Length; i++)
+                            glyphIndices[i] = (ushort)glyphCodes[i];
+                        font.GetGlyphWidths(glyphIndices, glyphWidths, Span<SKRect>.Empty);
+                    }
+
+                    for (int i = 0; i < result.Codepoints.Length; i++)
+                    {
+                        uint glyphId = result.Codepoints[i];
+                        var pt = result.Points[i];
+                        int cluster = (int)result.Clusters[i];
+                        string unicode = clusterRanges.TryGetValue(cluster, out var range)
+                            ? segment.Text.Substring(range.start, Math.Max(0, range.end - range.start))
+                            : segment.Text;
+
+                        // Multiple glyphs can belong to one source cluster (for example,
+                        // a Hebrew base character plus combining marks). Only one CID may
+                        // carry the cluster's Unicode text in /ToUnicode; otherwise text
+                        // extraction repeats the source characters for every glyph.
+                        if (!emittedClusters.Add(cluster))
+                            unicode = string.Empty;
+
+                        float designAdvance = glyphWidths.Length > i ? glyphWidths[i] : 0f;
+                        float nextX = i + 1 < result.Points.Length ? result.Points[i + 1].X : result.Width;
+                        float actualAdvance = nextX - pt.X;
+
+                        glyphs.Add(new ShapedGlyph(
+                            glyphId,
+                            pt.X,
+                            pt.Y,
+                            actualAdvance,
+                            0f,
+                            0f,
+                            0f,
+                            designAdvance,
+                            cluster,
+                            unicode));
+                    }
                 }
-
-                for (int i = 0; i < result.Codepoints.Length; i++)
-                {
-                    uint glyphId = result.Codepoints[i];
-                    var pt = result.Points[i];
-                    int cluster = (int)result.Clusters[i];
-                    string unicode = clusterRanges.TryGetValue(cluster, out var range)
-                        ? segment.Text.Substring(range.start, Math.Max(0, range.end - range.start))
-                        : segment.Text;
-
-                    // Multiple glyphs can belong to one source cluster (for example,
-                    // a Hebrew base character plus combining marks). Only one CID may
-                    // carry the cluster's Unicode text in /ToUnicode; otherwise text
-                    // extraction repeats the source characters for every glyph.
-                    if (!emittedClusters.Add(cluster))
-                        unicode = string.Empty;
-
-                    float designAdvance = glyphWidths.Length > i ? glyphWidths[i] : 0f;
-                    float nextX = i + 1 < result.Points.Length ? result.Points[i + 1].X : result.Width;
-                    float actualAdvance = nextX - pt.X;
-
-                    glyphs.Add(new ShapedGlyph(
-                        glyphId,
-                        pt.X,
-                        pt.Y,
-                        actualAdvance,
-                        0f,
-                        0f,
-                        0f,
-                        designAdvance,
-                        cluster,
-                        unicode));
-                }
-
-                // HarfBuzz width is in result.Width
             }
 
             var adjustedGlyphs = ApplySpacing(glyphs, request);
@@ -438,6 +439,14 @@ namespace PdfBuilder.TextShaping
             float descent = Math.Abs(metrics.Descent);
 
             return new ShapedRun(segment.Text, segment.FontFamily, segment.FontSize, segment.Bold, segment.Italic, segment.Typeface, glyphs, runWidth, ascent, descent);
+        }
+
+        private sealed class CachedShaper
+        {
+            public CachedShaper(SKTypeface typeface) => Shaper = new SKShaper(typeface);
+
+            public SKShaper Shaper { get; }
+            public object SyncRoot { get; } = new();
         }
 
         private static Dictionary<int, (int start, int end)> BuildClusterRanges(IReadOnlyList<uint> clusters, string text)
