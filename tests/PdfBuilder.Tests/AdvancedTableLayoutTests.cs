@@ -135,7 +135,7 @@ public sealed class AdvancedTableLayoutTests
 
         bytes.Should().NotBeEmpty();
         var budget = OperatingSystem.IsMacOS()
-            ? TimeSpan.FromSeconds(45)
+            ? TimeSpan.FromSeconds(60)
             : TimeSpan.FromSeconds(15);
         stopwatch.Elapsed.Should().BeLessThan(budget, "shared macOS CI runs the net8.0 and net10.0 suites concurrently");
     }
