@@ -11,6 +11,7 @@ using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Tests;
 
+[Collection("Table performance serial")]
 public sealed class AdvancedTableLayoutTests
 {
     [Fact]
@@ -133,7 +134,10 @@ public sealed class AdvancedTableLayoutTests
         stopwatch.Stop();
 
         bytes.Should().NotBeEmpty();
-        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(15));
+        var budget = OperatingSystem.IsMacOS()
+            ? TimeSpan.FromSeconds(60)
+            : TimeSpan.FromSeconds(15);
+        stopwatch.Elapsed.Should().BeLessThan(budget, "shared macOS CI runs the net8.0 and net10.0 suites concurrently");
     }
 
     private static PdfDocument CreateFlowingTable(int rows, Action<TableElement> configure)
@@ -159,7 +163,10 @@ public sealed class AdvancedTableLayoutTests
         var page = document.AddPage();
         var table = new TableElement(page.MarginLeft, page.Height - page.MarginTop - 40) { TableWidth = 200, CellPadding = 0 };
         configure(table);
-        page.Elements.Add(table);
+        page.AddElement(table);
         return document;
     }
 }
+
+[CollectionDefinition("Table performance serial", DisableParallelization = true)]
+public sealed class TablePerformanceSerialCollection;

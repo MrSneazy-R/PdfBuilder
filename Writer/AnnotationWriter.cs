@@ -12,6 +12,10 @@ namespace PdfBuilder.Writer
             public float X1, Y1, X2, Y2;
             public string? Url;
             public string? Anchor; // resolve later to page/dest
+            public int? SemanticNodeId;
+            public int? StructParentKey;
+            public int ObjectId;
+            public int PageIndex;
         }
 
         internal readonly struct Dest
@@ -45,11 +49,14 @@ namespace PdfBuilder.Writer
                 }
 
                 int id = w.BeginObject();
+                a.ObjectId = id;
                 var sb = new StringBuilder();
                 sb.Append("<< /Type /Annot /Subtype /Link ");
                 sb.AppendFormat(CultureInfo.InvariantCulture,
                     "/Rect [{0} {1} {2} {3}] /Border [0 0 0] ",
                     a.X1, a.Y1, a.X2, a.Y2);
+                if (a.StructParentKey.HasValue)
+                    sb.Append($"/StructParent {a.StructParentKey.Value} ");
 
                 if (!string.IsNullOrEmpty(a.Url))
                 {

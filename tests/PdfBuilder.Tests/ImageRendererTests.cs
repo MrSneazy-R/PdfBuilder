@@ -35,7 +35,7 @@ namespace PdfBuilder.Tests
                 })
                 .Build();
 
-            doc.Pages.Add(page);
+            doc = new PdfDocument(new List<PdfPage> { page });
 
             var writer = new PdfWriter();
             return writer.GenerateBytes(doc);

@@ -3,7 +3,7 @@ PdfDocument & PdfPage
 
 PdfDocument
 -----------
-- `Pages`: list of `PdfPage` instances; use `AddPage(width?, height?)` to append new pages. Defaults to US Letter (612x792 pt).
+- `Pages`: read-only view of `PdfPage` instances; use `AddPage(width?, height?)` to append new pages. Defaults to US Letter (612x792 pt).
 - `LayoutOptions`: shared `LayoutOptions` cloned into each new page.
 - `OutputOptions`: default `PdfOutputOptions`.
 - `Metadata`: global `DocumentMetadata`.
@@ -35,7 +35,7 @@ PdfPage
 - Layout: `LayoutOptions` (inherited but customizable per page), `TextDefaults`.
 - Overrides: `HeaderFooterOverride`, `MasterOverride`.
 - `Columns`: optional `ColumnLayoutSpec` for multi-column layouts.
-- Content: `Elements` (rendered body elements). Header/footer elements are stored internally once composed.
+- Content: read-only `Elements` view (rendered body elements). Use `AddElement` for intentional low-level insertion; canonical containers are preferred.
 
 Manual element insertion:
 ```csharp
@@ -56,3 +56,4 @@ Expected Outcome
 - Document-level settings (metadata, output options, defaults) propagate to pages automatically.
 - Manually added pages inherit the current defaults, but you can override margins, layout options, or masters on a per-page basis.
 - Directly added elements (outside the column builder) render at the specified coordinates, enabling low-level control when needed.
+- Legacy direct list mutation remains temporarily available through obsolete `MutablePages` (`PDFB008`) and `MutableElements` (`PDFB009`) compatibility shims.

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
@@ -7,6 +8,8 @@ namespace PdfBuilder.Models
 {
     public class PdfPage
     {
+        private readonly List<PdfElement> _elements = new();
+        private readonly ReadOnlyCollection<PdfElement> _readOnlyElements;
         public const float DefaultWidth = 612f;
         public const float DefaultHeight = 792f;
 
@@ -15,7 +18,12 @@ namespace PdfBuilder.Models
         public float Height { get; private set; }
 
         // Content
-        public List<PdfElement> Elements { get; } = new();
+        /// <summary>Gets page elements as a read-only view.</summary>
+        public IReadOnlyList<PdfElement> Elements => _readOnlyElements;
+        /// <summary>Compatibility shim for legacy direct element-list mutation. Prefer AddElement or document builders.</summary>
+        [Obsolete("Direct element-list mutation is deprecated. Use AddElement or canonical container builders.", false, DiagnosticId = "PDFB009")]
+        public IList<PdfElement> MutableElements => _elements;
+        internal List<PdfElement> ElementList => _elements;
         internal List<PdfElement> HeaderElements { get; } = new();
         internal List<PdfElement> FooterElements { get; } = new();
 
@@ -42,12 +50,14 @@ namespace PdfBuilder.Models
         {
             Width = width;
             Height = height;
+            _readOnlyElements = _elements.AsReadOnly();
         }
 
         // Element Add
         public void AddElement(PdfElement element)
         {
-            Elements.Add(element);
+            if (element == null) throw new ArgumentNullException(nameof(element));
+            _elements.Add(element);
         }
 
         // Preset Sizes (in points)

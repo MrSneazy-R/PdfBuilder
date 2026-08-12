@@ -1,4 +1,4 @@
-name: Release candidate
+name: Internal pre-release draft
 
 on:
   workflow_dispatch:
@@ -22,7 +22,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 10.0.x
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Validate pre-release version and tag
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content PdfBuilder.csproj -Raw
+          $projectVersion = [string]$project.Project.PropertyGroup.Version
+          if ('${{ inputs.version }}' -ne $projectVersion) { throw "Version must match PdfBuilder.csproj ($projectVersion)." }
+          if ('${{ inputs.tag }}' -ne "v$projectVersion") { throw "Tag must be v$projectVersion." }
+          if ($projectVersion -notmatch '-') { throw 'Stable release labels remain blocked.' }
+          if ($projectVersion -match '^1\.0\.0-rc(?:\.|$)') { throw '1.0.0 RC labels remain blocked by unresolved mandatory gates.' }
       - name: Install independent PDF validators
         run: |
           sudo apt-get update
@@ -37,13 +48,17 @@ jobs:
           dotnet build PdfBuilder.sln -c Release --no-restore -warnaserror
           dotnet test tests/PdfBuilder.Tests/PdfBuilder.Tests.csproj -c Release --no-restore
           dotnet test tests/PdfBuilder.ValidationTests/PdfBuilder.ValidationTests.csproj -c Release --no-restore
-      - name: Pack and checksum
-        run: |
-          dotnet pack PdfBuilder.csproj -c Release --no-restore -p:Version=${{ inputs.version }} -o artifacts
-          sha256sum artifacts/*.nupkg artifacts/*.snupkg > artifacts/checksums.sha256
+      - name: Pack
+        run: dotnet pack PdfBuilder.csproj -c Release --no-restore -p:Version=${{ inputs.version }} -o artifacts
       - name: Package consumer smoke test
         shell: pwsh
         run: ./eng/Invoke-PackageSmokeTest.ps1 -PackageDirectory ./artifacts
+      - name: Verify package contents, docs, symbols, and repository metadata
+        shell: pwsh
+        run: ./eng/Test-PackageContents.ps1 -PackageDirectory ./artifacts
+      - name: Generate SBOM and checksums
+        shell: pwsh
+        run: ./eng/New-ReleaseArtifacts.ps1 -PackageDirectory ./artifacts -Version '${{ inputs.version }}'
       - name: Create draft release without NuGet publication
         uses: softprops/action-gh-release@v2
         with:
@@ -52,6 +67,8 @@ jobs:
           tag_name: ${{ inputs.tag }}
           name: PdfBuilder ${{ inputs.version }}
           body: |
-            Private release-candidate artefacts only. Public NuGet publication requires
-            explicit owner approval and an approved licence.
+            Draft pre-release artefacts for controlled internal evaluation only.
+            This is not a stable release or a 1.0 release candidate. Public NuGet
+            publication requires exact-commit evidence, explicit owner approval,
+            and an approved PdfBuilder licence.
           files: artifacts/*

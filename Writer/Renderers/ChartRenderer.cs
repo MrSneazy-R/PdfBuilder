@@ -13,7 +13,7 @@ using static PdfBuilder.Elements.ChartElement;
 
 namespace PdfBuilder.Writer
 {
-    internal static class ChartRenderer
+    internal static class LegacyChartRenderer
     {
         private static readonly IFormatProvider Inv = System.Globalization.CultureInfo.InvariantCulture;
         private static string N(double v) => v.ToString("0.###", Inv);

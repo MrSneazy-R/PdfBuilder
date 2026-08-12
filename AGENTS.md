@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - `Document/`, `Builders/`, `Elements/`, `Writer/`, `Imaging/`, `Encoder/`, `Models/` (e.g., `Writer/Renderers/TextRenderer.cs`, `Writer/PdfStreamWriter.cs`, `Writer/PdfResourceManager.cs`, `Document/PdfDocument.cs`)
-- Entry project: `PdfBuilder.csproj` (targets `net10.0`). Solution: `PdfBuilder.sln`.
+- Entry project: `PdfBuilder.csproj` (targets `net8.0` and `net10.0`). Solution: `PdfBuilder.sln`.
 - Assets/samples are git-ignored; add temporary fixtures under `samples/` when needed.
 
 ## Build, Test, and Development Commands
@@ -20,7 +20,7 @@
 - Public API changes require rationale and examples in PR description.
 
 ## Testing Guidelines
-- Tests live under `tests/` with `*.Tests.csproj` targeting `net10.0`.
+- Tests live under `tests/`; the primary unit suite targets `net8.0` and `net10.0`.
 - Use `xUnit` with `FluentAssertions`. Name tests `ClassName_Scenario_ExpectedBehavior`.
 - Aim for coverage of renderers, **layout utilities**, pagination, and PDF dictionary assembly.
 

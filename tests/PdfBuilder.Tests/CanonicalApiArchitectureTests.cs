@@ -23,7 +23,26 @@ public sealed class CanonicalApiArchitectureTests
         typeof(ISectionDescriptor),
         typeof(ITableOfContentsDescriptor),
         typeof(IImageDescriptor),
+        typeof(ImageSource),
+        typeof(ImageSourceInfo),
+        typeof(ImageQuality),
+        typeof(ImageCropAlignment),
+        typeof(ICanvasDescriptor),
+        typeof(CanvasSize),
+        typeof(CanvasLayer),
+        typeof(CanvasLinePattern),
         typeof(IChartDescriptor),
+        typeof(IChartAxisDescriptor),
+        typeof(IChartSeriesDescriptor),
+        typeof(ILineChartSeriesDescriptor),
+        typeof(IAreaChartSeriesDescriptor),
+        typeof(IBarChartSeriesDescriptor),
+        typeof(IPieChartSeriesDescriptor),
+        typeof(IScatterChartSeriesDescriptor),
+        typeof(ChartPoint),
+        typeof(ChartValue),
+        typeof(ChartLegendPosition),
+        typeof(ChartMarkerShape),
         typeof(ITableDescriptor),
         typeof(ITableColumnsDescriptor),
         typeof(ITableRowDescriptor),
@@ -77,6 +96,7 @@ public sealed class CanonicalApiArchitectureTests
             "CanonicalPageDescriptor",
             "CanonicalContainer",
             "CanonicalImageDescriptor",
+            "CanonicalCanvasDescriptor",
             "CanonicalChartDescriptor",
             "CanonicalTableDescriptor",
             "CanonicalTableColumnsDescriptor",
@@ -118,6 +138,8 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Api/TableContracts.cs",
             "Document/Api/ChartContracts.cs",
             "Document/Api/MediaContracts.cs",
+            "Document/Api/ImageSource.cs",
+            "Document/Api/GraphicsContracts.cs",
             "Document/Api/NavigationContracts.cs"
         ];
         string[] adapterFiles =
@@ -130,6 +152,7 @@ public sealed class CanonicalApiArchitectureTests
             "Document/Canonical/CanonicalTableDescriptor.cs",
             "Document/Canonical/CanonicalChartDescriptor.cs",
             "Document/Canonical/CanonicalMediaDescriptor.cs",
+            "Document/Canonical/CanonicalGraphicsDescriptor.cs",
             "Document/Canonical/CanonicalNavigationDescriptor.cs"
         ];
 
@@ -147,6 +170,31 @@ public sealed class CanonicalApiArchitectureTests
         {
             string source = File.ReadAllText(FindRepositoryPath(relativePath));
             source.Should().NotContain("public interface");
+        }
+    }
+
+    [Fact]
+    public void CanonicalChartRenderer_IsSplitIntoFocusedPdfColorOnlyModules()
+    {
+        string[] modules =
+        [
+            "Writer/Renderers/Charts/ChartLayout.cs",
+            "Writer/Renderers/Charts/ChartScales.cs",
+            "Writer/Renderers/Charts/ChartTicks.cs",
+            "Writer/Renderers/Charts/ChartAxesRenderer.cs",
+            "Writer/Renderers/Charts/ChartLegendRenderer.cs",
+            "Writer/Renderers/Charts/ChartLabelRenderer.cs",
+            "Writer/Renderers/Charts/ChartDrawing.cs",
+            "Writer/Renderers/Charts/LineChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/BarChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/PieChartSeriesRenderer.cs",
+            "Writer/Renderers/Charts/ScatterChartSeriesRenderer.cs"
+        ];
+
+        foreach (string module in modules)
+        {
+            string source = File.ReadAllText(FindRepositoryPath(module));
+            source.Should().NotContain("System.Drawing");
         }
     }
 

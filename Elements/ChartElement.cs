@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using PdfBuilder.Document;
 using PdfBuilder.Elements;
+using PdfBuilder.Elements.CanonicalCharts;
 using static PdfBuilder.Elements.ChartElement;
 
 namespace PdfBuilder.Elements
@@ -49,6 +50,8 @@ namespace PdfBuilder.Elements
 
         // Series
         public List<IChartSeries> Series { get; } = new();
+
+        internal CanonicalChartModel? CanonicalModel { get; set; }
 
         // Fonts for axes labels
         public string Font { get; set; } = "Helvetica";

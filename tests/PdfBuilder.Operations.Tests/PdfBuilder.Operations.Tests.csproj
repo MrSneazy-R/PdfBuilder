@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\PdfBuilder.csproj" />
+    <ProjectReference Include="..\..\src\PdfBuilder.Operations\PdfBuilder.Operations.csproj" />
+  </ItemGroup>
+</Project>

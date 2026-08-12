@@ -10,6 +10,7 @@ namespace PdfBuilder.Document
     {
         private readonly Dictionary<string, string> _colors = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, TextStyleDefaults> _textStyles = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<string> _chartPalette = [];
 
         public TextStyleDefaults DefaultTextStyle { get; } = new();
         public PageTheme Page { get; } = new();
@@ -17,9 +18,11 @@ namespace PdfBuilder.Document
 
         public IReadOnlyDictionary<string, string> Colors => _colors;
         public IReadOnlyDictionary<string, TextStyleDefaults> TextStyles => _textStyles;
+        public IReadOnlyList<string> ChartPalette => _chartPalette;
 
         internal void SetColor(string name, string value) => _colors[name] = value;
         internal void SetTextStyle(string name, TextStyleDefaults value) => _textStyles[name] = value.Clone();
+        internal void SetChartPalette(IEnumerable<string> values) { _chartPalette.Clear(); _chartPalette.AddRange(values); }
 
         internal string ResolveColor(string value)
             => _colors.TryGetValue(value, out var resolved) ? resolved : value;
@@ -46,6 +49,7 @@ namespace PdfBuilder.Document
                 clone._colors.Add(color.Key, color.Value);
             foreach (var style in _textStyles)
                 clone._textStyles.Add(style.Key, style.Value.Clone());
+            clone._chartPalette.AddRange(_chartPalette);
             return clone;
         }
     }
@@ -127,6 +131,15 @@ namespace PdfBuilder.Document
             ValidateName(name, nameof(name));
             if (!float.IsFinite(value) || value < 0f) throw new ArgumentOutOfRangeException(nameof(value));
             _theme.Spacing.Set(name, value);
+            return this;
+        }
+
+        public DocumentThemeBuilder ChartPalette(params string[] colors)
+        {
+            if (colors == null) throw new ArgumentNullException(nameof(colors));
+            if (colors.Length == 0 || colors.Any(string.IsNullOrWhiteSpace))
+                throw new ArgumentException("A chart palette requires one or more colour values or theme tokens.", nameof(colors));
+            _theme.SetChartPalette(colors.Select(value => value.Trim()));
             return this;
         }
 

@@ -1,33 +1,43 @@
-using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
-using PdfBuilder.Document;
 
-BenchmarkRunner.Run<PdfGenerationBenchmarks>();
-
-[MemoryDiagnoser]
-public class PdfGenerationBenchmarks
+if (args.Length > 0 && string.Equals(args[0], "--capture-baseline", StringComparison.OrdinalIgnoreCase))
 {
-    [Benchmark] public byte[] OnePagePlainText() => Create(1, 1).GenerateBytes();
-    [Benchmark] public byte[] TwentyLineInvoice() => Create(1, 20).GenerateBytes();
-    [Benchmark] public byte[] TwoHundredLineInvoice() => Create(1, 200).GenerateBytes();
-    [Benchmark] public byte[] ThousandRowTable() => Create(1, 1_000).GenerateBytes();
-    [Benchmark] public byte[] HundredPageReport() => Create(100, 1).GenerateBytes();
-    [Benchmark] public byte[] FiveHundredPageReport() => Create(500, 1).GenerateBytes();
-    [Benchmark] public byte[] ByteArrayOutput() => Create(1, 20).GenerateBytes();
-    [Benchmark] public void StreamOutput() { using var stream = new MemoryStream(); Create(1, 20).Generate(stream); }
-    [Benchmark] public void PreviewGeneration() => Create(1, 20).GeneratePreviewImages(72);
-    [Benchmark] public byte[] MixedScriptText() => PdfDocument.Create(d => d.Page(p => p.Content().Text("English Arabic Hebrew Devanagari Chinese Japanese Korean"))).GenerateBytes();
-    [Benchmark] public byte[] RepeatedLogoOnEveryPage() => Create(100, 2).GenerateBytes();
-    [Benchmark] public byte[] UniqueImageOnEveryPage() => Create(100, 3).GenerateBytes();
-    [Benchmark] public byte[] EmbeddedLatinFont() => Create(1, 50).GenerateBytes();
-    [Benchmark] public byte[] Charts() => Create(1, 20).GenerateBytes();
-    [Benchmark] public void ConcurrentInvoices() => Parallel.For(0, Environment.ProcessorCount, _ => Create(1, 20).GenerateBytes());
-
-    private static PdfDocument Create(int pages, int lines) => PdfDocument.Create(document =>
-    {
-        for (var pageNumber = 0; pageNumber < pages; pageNumber++) document.Page(page => page.Content().Column(column =>
-        {
-            for (var line = 0; line < lines; line++) column.Item().Text($"Benchmark page {pageNumber} line {line}");
-        }));
-    });
+    string output = args.Length > 1 ? args[1] : throw new ArgumentException("--capture-baseline requires an output path.");
+    int iterations = args.Length > 2 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 1;
+    BenchmarkBaselineRunner.Capture(output, iterations);
+    return;
 }
+
+if (args.Length > 0 && string.Equals(args[0], "--verify-gates", StringComparison.OrdinalIgnoreCase))
+{
+    string baseline = args.Length > 1 ? args[1] : throw new ArgumentException("--verify-gates requires a baseline path.");
+    BenchmarkBaselineRunner.VerifyDeterministicGates(baseline);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "--capture-scenario", StringComparison.OrdinalIgnoreCase))
+{
+    string name = args.Length > 1 ? args[1] : throw new ArgumentException("--capture-scenario requires a scenario name.");
+    string output = args.Length > 2 ? args[2] : throw new ArgumentException("--capture-scenario requires an output path.");
+    int iterations = args.Length > 3 ? int.Parse(args[3], System.Globalization.CultureInfo.InvariantCulture) : 1;
+    BenchmarkBaselineRunner.CaptureScenario(name, output, iterations);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "--compare-baseline", StringComparison.OrdinalIgnoreCase))
+{
+    string baseline = args.Length > 1 ? args[1] : throw new ArgumentException("--compare-baseline requires a baseline path.");
+    string output = args.Length > 2 ? args[2] : Path.Combine("BenchmarkDotNet.Artifacts", "current-baseline.json");
+    BenchmarkBaselineRunner.CompareTiming(baseline, output);
+    return;
+}
+
+if (args.Length > 0 && string.Equals(args[0], "--compare-files", StringComparison.OrdinalIgnoreCase))
+{
+    string baseline = args.Length > 1 ? args[1] : throw new ArgumentException("--compare-files requires a baseline path.");
+    string current = args.Length > 2 ? args[2] : throw new ArgumentException("--compare-files requires a current-results path.");
+    BenchmarkBaselineRunner.CompareFiles(baseline, current);
+    return;
+}
+
+BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

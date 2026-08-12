@@ -30,6 +30,12 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        internal ContentComposer Semantic(PdfSemanticDescriptor? descriptor, bool artifact, Action<ContentComposer> configure)
+        {
+            _collection.Semantic(descriptor, artifact, inner => configure(new ContentComposer(inner)));
+            return this;
+        }
+
         internal ContentComposer PageVisibility(PageVisibilityRule rule, string diagnosticPath, Action<ContentComposer> configure)
         {
             _collection.PageVisibility(rule, diagnosticPath, inner => configure(new ContentComposer(inner)));
@@ -362,9 +368,27 @@ namespace PdfBuilder.Document.Layout
             return this;
         }
 
+        public ContentComposer Image(ImageSource source, float width, float height, Action<ImageElement>? configure = null)
+        {
+            _collection.Image(source, width, height, configure);
+            return this;
+        }
+
+        public ContentComposer Image(ImageSource source, Action<ImageElement>? configure = null)
+        {
+            _collection.Image(source, configure);
+            return this;
+        }
+
         public ContentComposer Canvas(float width, float height, Action<CanvasBuilder> draw, Action<CanvasElement>? configure = null)
         {
             _collection.Canvas(width, height, draw, configure);
+            return this;
+        }
+
+        public ContentComposer Canvas(float height, Action<CanvasBuilder, CanvasSize> draw)
+        {
+            _collection.Canvas(height, draw);
             return this;
         }
 
@@ -377,6 +401,18 @@ namespace PdfBuilder.Document.Layout
         public ContentComposer Svg(float width, float height, Action<SvgElement> configure)
         {
             _collection.Svg(width, height, configure);
+            return this;
+        }
+
+        public ContentComposer DynamicSvg(float width, float height, Func<CanvasSize, string> markupFactory)
+        {
+            _collection.DynamicSvg(width, height, markupFactory);
+            return this;
+        }
+
+        public ContentComposer DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
+        {
+            _collection.DynamicSvg(height, markupFactory);
             return this;
         }
     }

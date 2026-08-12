@@ -38,6 +38,13 @@ public partial class PdfDocument
             _firstPageFooter = NewContainer();
             _continuationFooter = NewContainer();
             _background = NewContainer();
+            _header.Semantic(PdfSemanticRole.Header);
+            _firstPageHeader.Semantic(PdfSemanticRole.Header);
+            _continuationHeader.Semantic(PdfSemanticRole.Header);
+            _footer.Semantic(PdfSemanticRole.Footer);
+            _firstPageFooter.Semantic(PdfSemanticRole.Footer);
+            _continuationFooter.Semantic(PdfSemanticRole.Footer);
+            _background.Decorative();
 
             if (document.Theme.Page.Margin.HasValue)
                 _left = _top = _right = _bottom = document.Theme.Page.Margin.Value;

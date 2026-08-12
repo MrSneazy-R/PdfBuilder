@@ -23,7 +23,9 @@ Layout Primitives
 - `Border(Action<BorderOptions>?, Action<ContentComposer>)`: draw a border rectangle around content.
 - `Background(string color, Action<ContentComposer>, float opacity)`: paint a solid background before rendering children.
 - `Size(...)`, `MinHeight`, `MaxHeight`, `Height`, `MinWidth`, `MaxWidth`, `Width`, `AspectRatio`, `Extend`, `ExtendHeight`, `ExtendWidth`, `Shrink`, `ShrinkHeight`, `ShrinkWidth`: impose sizing constraints or stretching rules.
-- `Image(byte[] data, float width, float height, Action<ImageElement>?)`: place raster imagery that participates in flow and pagination.
+- `Image(ImageSource source, float width, float height, Action<ImageElement>?)`: place reusable raster imagery in an explicit box.
+- `Image(ImageSource source, Action<ImageElement>?)`: place raster imagery at its DPI-aware intrinsic size.
+- `Image(byte[] data, float width, float height, Action<ImageElement>?)`: compatibility convenience that snapshots the bytes into an `ImageSource`.
 - `Canvas(float width, float height, Action<CanvasBuilder>, Action<CanvasElement>?)`: custom drawing using PDF path commands.
 - `Barcode(...)`: insert QR, Code128, and other barcode types.
 - `Svg(float width, float height, Action<SvgElement>)`: embed parsed SVG content.

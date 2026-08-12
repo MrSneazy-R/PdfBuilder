@@ -51,6 +51,9 @@ namespace PdfBuilder.Document.Layout
             clone.Profiler.OnCompleted = Profiler.OnCompleted;
             clone.Diagnostics.EnableLayoutTrace = Diagnostics.EnableLayoutTrace;
             clone.Diagnostics.IncludeTextContent = Diagnostics.IncludeTextContent;
+            clone.Diagnostics.DrawBoundingBoxes = Diagnostics.DrawBoundingBoxes;
+            clone.Diagnostics.ShowFlowGuides = Diagnostics.ShowFlowGuides;
+            clone.Diagnostics.EnableProfiler = Diagnostics.EnableProfiler;
             clone.Diagnostics.LayoutIterationLimit = Diagnostics.LayoutIterationLimit;
             return clone;
         }

@@ -49,7 +49,7 @@ namespace PdfBuilder.Document
 
             // If auto-paginating, make sure the base page is already in the doc
             if (_autoDoc != null && !_autoDoc.Pages.Contains(_page))
-                _autoDoc.Pages.Add(_page);
+                _autoDoc.PageList.Add(_page);
 
             Func<PdfPage>? newPageFactory = null;
             if (_autoDoc != null)
@@ -76,7 +76,7 @@ namespace PdfBuilder.Document
                             Widths = _page.Columns.Widths == null ? null : (float[])_page.Columns.Widths.Clone()
                         }
                     };
-                    autoDoc!.Pages.Add(p);
+                    autoDoc!.PageList.Add(p);
                     p.Owner = autoDoc;
                     p.Pagination = autoDoc.Pagination;
                     p.ProfilerSession = autoDoc.ProfilerSession;

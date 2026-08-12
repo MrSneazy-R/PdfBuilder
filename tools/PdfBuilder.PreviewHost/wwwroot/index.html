@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PdfBuilder Preview</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">LOCAL DEVELOPMENT TOOL</span><h1>PdfBuilder Preview</h1></div>
+    <nav><button id="reload">Regenerate</button><a class="button" href="/api/document.pdf">Download PDF</a></nav>
+  </header>
+  <main>
+    <aside>
+      <section><h2>Pages</h2><div id="thumbnails" class="thumbnails"></div></section>
+      <section><h2>Overlays</h2><label><input id="margins" type="checkbox" checked> Margins</label><label><input id="guides" type="checkbox" checked> Flow guides and bounds</label></section>
+      <section><h2>Generation</h2><dl id="metrics"></dl></section>
+    </aside>
+    <section class="workspace">
+      <div id="error" class="error" hidden></div>
+      <div class="page-stage"><div id="page-shell" class="page-shell"><img id="page" alt="Selected PDF page"><div id="margin-overlay" class="margin-overlay"></div></div></div>
+      <div class="diagnostics">
+        <section><h2>Layout hierarchy</h2><div id="hierarchy"></div></section>
+        <section><h2>Timing</h2><div id="timing"></div></section>
+        <section class="trace-panel"><h2>Trace events and debug labels</h2><div id="trace"></div></section>
+      </div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

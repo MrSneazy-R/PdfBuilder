@@ -1,13 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
-using PdfBuilder.Writer.Imaging;
 using Xunit;
 
 namespace PdfBuilder.Tests
@@ -16,8 +14,6 @@ namespace PdfBuilder.Tests
     {
         private static byte[] BuildPdfBytes(Action<ColumnBuilder> draw, bool readableContentStreams = false)
         {
-            var doc = new PdfDocument();
-            doc.OutputOptions.ReadableContentStreams = readableContentStreams;
             var page = PdfPage.Letter();
 
             // Use page builder to layout into a single column with 40pt margin
@@ -26,7 +22,8 @@ namespace PdfBuilder.Tests
                 .Content(col => draw(col))
                 .Build();
 
-            doc.Pages.Add(page);
+            var doc = new PdfDocument(new List<PdfPage> { page });
+            doc.OutputOptions.ReadableContentStreams = readableContentStreams;
 
             var writer = new PdfWriter();
             return writer.GenerateBytes(doc);
@@ -67,26 +64,12 @@ namespace PdfBuilder.Tests
             var jpg = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "fish.jpeg"));
             var webp = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "logo.webp"));
 
-            bool webpEmbedded;
-            try
-            {
-                WebpWicDecoder.Decode(webp);
-                webpEmbedded = true;
-            }
-            catch (Exception ex) when (ex is PlatformNotSupportedException || ex is InvalidDataException || ex is COMException)
-            {
-                webpEmbedded = false;
-            }
-
             var bytes = BuildPdfBytes(col =>
             {
                 // Place three images stacked with fixed sizes
                 col.Image(png, 40, col.GetCurrentY(), 128, 64).Border("#00AAFF", 1).Add();
                 col.Image(jpg, 40, col.GetCurrentY(), 128, 96).Opacity(0.85f).Add();
-                if (webpEmbedded)
-                {
-                    col.Image(webp, 40, col.GetCurrentY(), 128, 64).CornerRadius(8).Add();
-                }
+                col.Image(webp, 40, col.GetCurrentY(), 128, 64).CornerRadius(8).Add();
             }, readableContentStreams: true);
 
             var ascii = Encoding.ASCII.GetString(bytes);
@@ -97,7 +80,7 @@ namespace PdfBuilder.Tests
 
             // Content stream should invoke image draw operator for at least the successfully embedded images
             var doCount = ascii.Split(" Do ", StringSplitOptions.None).Length - 1;
-            doCount.Should().BeGreaterThanOrEqualTo(webpEmbedded ? 3 : 2);
+            doCount.Should().BeGreaterThanOrEqualTo(3);
         }
 
         [Fact]

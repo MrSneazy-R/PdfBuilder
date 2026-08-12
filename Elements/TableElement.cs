@@ -141,6 +141,7 @@ namespace PdfBuilder.Elements
         internal int? ExplicitRowIndex { get; set; }
         internal int? BandIndex { get; set; }
         internal bool? AllowSplit { get; set; }
+        internal PdfBuilder.Document.PdfSemanticDescriptor? SemanticDescriptor { get; set; }
 
         // Pagination hints
         public bool KeepWithNext { get; set; } = false;

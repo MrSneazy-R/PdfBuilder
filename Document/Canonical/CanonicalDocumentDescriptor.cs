@@ -16,6 +16,17 @@ public partial class PdfDocument
             configure(_document.Metadata);
             _document.Title = _document.Metadata.Title;
         }
+        public void OutputPreset(PdfOutputPreset preset) => _document.ApplyOutputPreset(preset);
+        public void Output(Action<PdfOutputOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.OutputOptions);
+        }
+        public void Generation(Action<PdfGenerationOptions> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(_document.GenerationOptions);
+        }
         public void Theme(Action<DocumentThemeBuilder> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
@@ -25,7 +36,27 @@ public partial class PdfDocument
         public void Diagnostics(Action<Layout.PdfDiagnosticsOptions> configure)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            configure(_document.LayoutOptions.Diagnostics);
+            Layout.PdfDiagnosticsOptions options = _document.LayoutOptions.Diagnostics;
+            configure(options);
+            _document.LayoutOptions.Debug.DrawBoundingBoxes = options.DrawBoundingBoxes;
+            _document.LayoutOptions.Debug.ShowFlowGuides = options.ShowFlowGuides;
+            _document.LayoutOptions.Profiler.Enabled = options.EnableProfiler;
+        }
+        public void Tagged(Action<ITaggedPdfDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            configure(new CanonicalTaggedPdfDescriptor(_document));
+        }
+        public void OutputIntent(Action<IPdfOutputIntentDescriptor> configure)
+        {
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            var intent = new PdfOutputIntent();
+            configure(new CanonicalOutputIntentDescriptor(intent));
+            if (intent.Profile.IsEmpty)
+                throw new InvalidOperationException("An ICC profile is required for an output intent.");
+            if (string.IsNullOrWhiteSpace(intent.Identifier))
+                throw new InvalidOperationException("An output-condition identifier is required for an output intent.");
+            _document.OutputIntent = intent;
         }
         public void RenderLimits(Action<Layout.PdfRenderLimits> configure)
         {
@@ -49,8 +80,9 @@ public partial class PdfDocument
                 if (_compositionState.UsesPageAwareVisibility)
                     _document.RenderLimits.ValidatePaginationPass(++pass, _compositionState.DiagnosticPaths);
 
-                _document.Pages.Clear();
+                _document.PageList.Clear();
                 _document.LayoutTrace.Clear();
+                _document.SemanticRegistry.ResetContent();
                 _document.CompositionTotalPagesHint = totalPagesHint;
                 foreach (CanonicalPageDescriptor page in _pages)
                     page.Build();

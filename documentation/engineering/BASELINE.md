@@ -41,7 +41,7 @@ The test project contains 74 `[Fact]` tests across 18 test files. It is not incl
 
 ## Platform status
 
-Windows is the required CI job. WebP decoding is implemented through Windows Imaging Component and explicitly throws `PlatformNotSupportedException` on non-Windows platforms. Font subsetting imports `libHarfBuzzSharp`; a missing native library or subset entry point falls back to embedding the full font. The `ubuntu-native-runtime-diagnostics` CI job attempts build and test, then only classifies failures with explicit native-runtime signatures as diagnostics; ordinary failures remain failures.
+Windows, Ubuntu, and macOS are required CI jobs. Still WebP decoding uses the same SkiaSharp path on every platform and must retain green evidence on all three before release. Font subsetting never falls back silently to full-font embedding.
 
 ## Rendering and architecture status
 
@@ -56,7 +56,7 @@ The primary public construction and output types are `PdfDocument`, `PdfDocument
 ### HarfBuzz, images, and tables
 
 - **HarfBuzz:** `TextShaper` uses `SkiaSharp.HarfBuzz` for shaped runs. Glyph runs are encoded through `GlyphRunEncoder`; embedded-font resources try native HarfBuzz subsetting and otherwise embed complete fonts. This fallback is a known PDF-size risk and has not been changed in this PR.
-- **Images:** JPEG, PNG, WebP inspection/decoding, SVG, barcodes, clipping, and transparency paths exist. WebP remains Windows-only because it uses WIC.
+- **Images:** JPEG, PNG, and still WebP share cross-platform inspection, orientation, optimisation, deduplication, SVG, barcode, clipping, and transparency paths. Animated WebP and remote image URLs remain outside the supported core surface.
 - **Tables:** `TableBuilder`, `TableElement`, `TableRenderer`, `TableColumnWidthCalculator`, and `TablePaginator` support table layout, pagination, rich text styling, borders, and banding. Existing tests cover table columns and rendering; no behavior was changed here.
 
 ## Known risks and deferred work

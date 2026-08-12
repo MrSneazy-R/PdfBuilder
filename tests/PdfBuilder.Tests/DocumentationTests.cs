@@ -109,6 +109,8 @@ public sealed class DocumentationTests
     [InlineData("samples/AspNetCorePdfApi/AspNetCorePdfApi.csproj")]
     [InlineData("samples/LayoutDiagnostics/LayoutDiagnostics.csproj")]
     [InlineData("samples/CanonicalReport/CanonicalReport.csproj")]
+    [InlineData("samples/TaggedReport/TaggedReport.csproj")]
+    [InlineData("samples/ComplianceCandidates/ComplianceCandidates.csproj")]
     public void PublishedSample_ProjectExists(string relativePath)
         => File.Exists(FindRepositoryFile(relativePath)).Should().BeTrue();
 

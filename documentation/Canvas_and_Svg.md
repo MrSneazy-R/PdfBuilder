@@ -1,82 +1,90 @@
-Images, Canvas & Svg
-====================
+# Images, canvas, and SVG
 
-Images
-------
-`ContentComposer.Image(byte[] data, float width, float height, Action<ImageElement>?)` or `ColumnBuilder.Image` adds raster artwork (PNG, JPEG, etc.) that participates in flow layout.
+## Images
 
-API Highlights:
-- Set `width`/`height` to control the rendered size.
-- Use the optional `configure` callback to adjust margins, padding, borders, corner radius, rotation, opacity, hyperlinks, or clipping (`Clip(ImageClipShape)`).
-- All image positioning is handled by the flow; no manual coordinates required unless you use `ColumnBuilder.Image` directly.
+The canonical `IContainer.Image` API accepts an `ImageSource`. Sources can snapshot bytes,
+read-only memory, streams, local files, embedded resources, shared preloaded content, or a
+caller-owned lazy byte factory. `Image(source)` uses the image's DPI-aware intrinsic size;
+the explicit-box overload supports contain, cover, stretch, crop alignment, downsampling,
+JPEG quality, and alpha-aware encoding. Remote URLs are intentionally outside the core API.
 
-Example:
 ```csharp
-var signature = File.ReadAllBytes("assets/signature.png");
+var logo = ImageSource.FromFile("assets/logo.png").Preload();
+page.Content().Image(logo).MaximumEffectiveDpi(180);
+```
 
-page.Compose(flow =>
+## Canonical canvas
+
+Use a fixed canvas when both dimensions are known:
+
+```csharp
+page.Content().Canvas(240, 90, canvas =>
 {
-    flow.Image(signature, width: 140, height: 48, img =>
-    {
-        img.MarginTop(12);
-        img.Hyperlink("https://contoso.example");
-        img.CornerRadius(8);
-    });
+    canvas.LinearGradient(0, 0, 240, 90, "BrandStart", "BrandEnd", angleDegrees: 20);
+    canvas.StrokeColor("Ink").LineWidth(1.5f)
+        .LinePattern(CanvasLinePattern.Dashed, dashLength: 5, gapLength: 3)
+        .Line(12, 18, 228, 18);
 });
 ```
 
-Expected Outcome:
-The signature graphic appears inline with the surrounding content, respecting margins set by the callback. Pagination/columns handle the image just like text or tables.
-
-CanvasBuilder
--------------
-Use `ContentComposer.Canvas(width, height, drawAction, configure?)` or `ColumnBuilder.Canvas` to issue raw PDF drawing commands via `CanvasBuilder`. Typical usage:
+Use the available-size overload when drawing must adapt to the final layout width:
 
 ```csharp
-page.Compose(flow =>
+page.Content().Canvas(96, (canvas, available) =>
 {
-    flow.Canvas(120, 80, canvas =>
-    {
-        canvas.Margin(4)
-              .StrokeColor("#1F2933")
-              .Line(0, 0, 120, 80, width: 1.5f)
-              .Rect(10, 10, 100, 60, stroke: true, fill: false);
-    });
+    canvas.RectangleShadow(12, 12, available.Width - 24, 56, "Shadow");
+    canvas.FillColor("Surface").Rectangle(12, 12, available.Width - 24, 56, stroke: false, fill: true);
 });
 ```
 
-API Highlights:
-- `Margin(float all)` / `Margin(left, top, right, bottom)`: padding inside the canvas bounds.
-- `AvoidBreakInside(bool)`: prevent pagination from splitting the canvas.
-- `Raw(string command)`: append literal PDF operators (useful for complex sequences).
-- Path helpers: `MoveTo`, `LineTo`, `ClosePath`, `Stroke`, `Fill`, `Rect`.
-- Color helpers: `StrokeColor(string hex)`, `FillColor(string hex)`.
-- Convenience drawing: `Line(x1, y1, x2, y2, width, color?)`.
+Canvas coordinates use PDF points with a bottom-left origin. `CanvasSize` contains the final
+width and requested height after container and page constraints have been applied.
 
-Expected Outcome:
-A 120x80pt canvas containing a diagonal line and rectangle is rendered inline within the flow, honoring any margins you set.
+### Transforms and graphics state
 
-SvgElement
-----------
-`ContentComposer.Svg(width, height, Action<SvgElement>)` inserts vector graphics using SkiaSharp SVG parsing.
+`Transform`, `Translate`, `Rotate`, `Scale`, `FlipHorizontal`, and `FlipVertical` emit PDF
+matrix concatenations in the same order as the API calls. For example,
+`Translate(...).Rotate(...).Scale(...)` records translation, then rotation, then scaling.
+Use `State(...)` to isolate a transform or clipping operation. Direct `Save()` and `Restore()`
+are also available, but must balance; an unmatched operation throws `PdfDrawingException`.
+Every canvas is additionally wrapped in an outer writer-owned save/restore pair, so canvas
+state cannot leak into later document content. All matrix and geometry values must be finite;
+scale factors must also be non-zero.
 
-Key properties on `SvgElement`:
-- `Source`: provide raw SVG markup (string).
-- `SourcePath`: load from file.
-- `FillColor`, `StrokeColor`, `StrokeWidth`, `Opacity`.
-- `BackgroundColor`: optional solid fill.
-- `ScaleToFit` and `PreserveAspectRatio`: maintain proportions.
-- `FallbackText`: message when the SVG fails to load.
+### Paths, clipping, effects, and layers
 
-Example:
+- Paths: `MoveTo`, `LineTo`, `CurveTo`, `ClosePath`, `Stroke`, `Fill`, and `FillAndStroke`.
+- Shapes: `Line`, `Rectangle`, and `Circle`.
+- Stroke patterns: solid, dashed, and dotted through `LinePattern`.
+- Clipping: `ClipRectangle` applies until the current graphics state is restored.
+- Effects: linear gradients, radial gradients, and rectangle shadows use bounded vector
+  approximations. They do not introduce raster images or silently allocate unbounded paths.
+- Layers: commands assigned to `Background`, `Content`, and `Foreground` are always painted
+  in that order, regardless of the order in which the layer callbacks were registered.
+
+`PdfRenderLimits.MaximumCanvasCommands`, `MaximumCanvasCommandBytes`, and
+`MaximumCanvasEffectSteps` bound canvas work. Exceeding a limit throws a
+`PdfRenderLimitException` naming the relevant limit.
+
+The older `ContentComposer.Canvas` and `CanvasBuilder.Raw` APIs remain compatibility surfaces.
+New reusable components should use `IContainer.Canvas`, which does not expose raw PDF commands
+or writer types.
+
+## SVG
+
+`IContainer.Svg(markup, width, height)` adds sanitised inline SVG at a fixed size.
+`DynamicSvg(height, factory)` supplies the final available `CanvasSize` to a deterministic
+markup factory:
+
 ```csharp
-flow.Svg(200, 120, svg =>
-{
-    svg.Source = File.ReadAllText("assets/logo.svg");
-    svg.ScaleToFit = true;
-    svg.BackgroundColor = "#FFFFFF";
-});
+page.Content().DynamicSvg(48, size =>
+    $"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size.Width} {size.Height}'>" +
+    $"<rect width='{size.Width}' height='{size.Height}' fill='#336699'/></svg>");
 ```
 
-Expected Outcome:
-The SVG is rendered within a 200x120pt viewport, scaled to fit while preserving aspect ratio. If the source cannot be parsed, `FallbackText` is displayed instead.
+Dynamic SVG participates in normal measurement and pagination. The factory is cached for a
+stable final size. Empty markup fails clearly, and source bytes are checked against
+`MaximumSvgBytes` before rasterisation. The shared SVG sanitiser rejects scripts, event
+handlers, DTDs, imported styles, active embedded content, network/file references, and sources
+that exceed node, path, character, or byte limits. Safe local fragment paint references such as
+`url(#gradient)` remain supported.

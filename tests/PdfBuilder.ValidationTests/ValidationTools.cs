@@ -3,8 +3,17 @@ namespace PdfBuilder.ValidationTests;
 
 internal static class ValidationTools
 {
-    public static bool TryRequire(string executable, out string executablePath, out string reason)
+    public static bool TryRequire(string executable, out string executablePath, out string reason, bool allowConfiguredPath = true)
     {
+        string overrideVariable = "PDFBUILDER_" + executable.Replace("-", "_", StringComparison.Ordinal).ToUpperInvariant() + "_PATH";
+        string? configuredPath = Environment.GetEnvironmentVariable(overrideVariable);
+        if (allowConfiguredPath && !string.IsNullOrWhiteSpace(configuredPath) && File.Exists(configuredPath) && CanRun(configuredPath, executable))
+        {
+            executablePath = configuredPath;
+            reason = string.Empty;
+            return true;
+        }
+
         var candidates = OperatingSystem.IsWindows()
             ? new[] { executable, executable + ".exe", executable + ".cmd", executable + ".bat" }
             : new[] { executable };

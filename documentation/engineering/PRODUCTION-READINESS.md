@@ -1,35 +1,33 @@
 # Production readiness
 
-Status is reconciled for project version `0.1.0-preview.2` at current master commit `d10b5cc`. This is a pre-release evidence register, not a claim of stable production readiness or a 1.0 release candidate.
+Status is reconciled for project version `0.1.0-preview.2` on `codex/pr37-internal-rc`, descended from the checked-in production corpus and benchmark baseline through `0d3abf4`. This is an evidence register for a pre-release package. It is not a claim of stable production readiness or a 1.0 release candidate.
 
-The retained cross-platform evidence is [CI run 30921263250](https://github.com/MrSneazy-R/PdfBuilder/actions/runs/30921263250) for `5f626a3`, which is in the ancestry of current master. [PR #16](https://github.com/MrSneazy-R/PdfBuilder/pull/16) records that all five matrix jobs passed and that Debug/Release builds completed with zero warnings. Later master commits added the canonical component/theme and serializer foundation; their PR 20 changes still require a new retained CI run before their additional assertions can be promoted from pending.
+The latest retained external matrix evidence remains [CI run 30921263250](https://github.com/MrSneazy-R/PdfBuilder/actions/runs/30921263250) for ancestor `5f626a3`. It proves the historical Windows, Ubuntu, macOS, qpdf/Poppler, and package-consumer jobs listed below, but it does not prove the exact PR 37 commit. Local Windows verification for the roadmap line is recorded in [INTERNAL-RC-EVIDENCE.md](INTERNAL-RC-EVIDENCE.md). A new retained run is mandatory before any release decision.
 
 | Gate | Status | Retained evidence or unresolved reason |
 | --- | --- | --- |
-| Windows build and test | PASS | Run 30921263250: `Windows build and test` passed. |
-| Ubuntu build and test | PASS | Run 30921263250: `Ubuntu build and test` passed. |
-| macOS build and test | PASS | Run 30921263250: `macOS build and test` passed. |
-| qpdf and Poppler validation | PASS | Run 30921263250: the Ubuntu build-and-test job installed qpdf/Poppler and passed independent structural, text-extraction, and visual validation. |
-| Windows package consumer | PASS | Run 30921263250: `Windows package consumer smoke test` passed. |
-| Ubuntu package consumer | PASS | Run 30921263250: `Ubuntu package consumer smoke test` passed. |
-| Zero-warning maintained build | PASS | PR #16 retains the zero-warning Debug/Release result associated with run 30921263250. |
-| Formatting | PASS | Formatting ran as a step inside every build-and-test matrix job in run 30921263250. |
-| Public API baseline and XML documentation | PASS | Public API analyzers, shipped/unshipped baselines, and XML documentation generation remain enabled on current master. |
-| Typography, tables, media, visual regression, concurrency, cancellation, and native lifetime tests | PASS | The maintained suites present at `5f626a3` passed across the retained matrix; Ubuntu retained independent PDF validation. |
-| Components, typed templates, theme tokens, deterministic resource-rich generation, and expanded serializer edges | PENDING | Current master contains the foundation; Roadmap PR 20 adds reconciliation coverage. A retained PR 20 matrix run is required before this gate is complete. |
-| Complete production business fixture suite | FAIL | The complete invoice, credit-note, statement, management-report, multilingual, image-heavy, table, section, and navigation fixture corpus is not implemented. |
-| Checked-in benchmark baseline | PENDING | Scheduled/manual BenchmarkDotNet reporting exists, but no approved numerical baseline is checked in. |
-| Approved public licence | FAIL | Owner approval has not been recorded; public NuGet publication remains blocked. |
-| Public stable-release label | FAIL | `0.1.0-preview.2` is a preview. It must not be labelled stable or a 1.0 release candidate. |
+| Windows build and test | HISTORICAL PASS / EXACT COMMIT PENDING | Run 30921263250 passed `Windows build and test`; the PR 37 commit still needs its own retained run. |
+| Ubuntu build and test | HISTORICAL PASS / EXACT COMMIT PENDING | Run 30921263250 passed `Ubuntu build and test`; the expanded fixture and benchmark gates need a retained current run. |
+| macOS build and test | HISTORICAL PASS / EXACT COMMIT PENDING | Run 30921263250 passed `macOS build and test`; the PR 37 commit still needs its own retained run. |
+| qpdf, Poppler, and visual validation | LOCAL PASS / RETAINED PENDING | All six validation tests passed locally against the 17-fixture corpus, including qpdf, UTF-8 extraction, page counts, and selected visual baselines. CI retention for the exact commit is pending. |
+| Windows package consumer | LOCAL PASS / RETAINED PENDING | Clean local .NET 8 and .NET 10 consumers restored the generated package and produced PDFs; exact-commit workflow evidence must be retained. |
+| Ubuntu package consumer | HISTORICAL PASS / EXACT COMMIT PENDING | Historical job passed; current .NET 8/.NET 10 package consumer evidence must be retained. |
+| Zero-warning maintained build | LOCAL PASS / RETAINED PENDING | Release solution build completed locally with zero warnings; the exact-commit matrix result is pending. |
+| Production business fixture corpus | IMPLEMENTED / RETAINED PENDING | Seventeen sanitised deterministic fixtures, declared page counts, extraction markers, visual baselines, and concurrent generation checks are checked in. Ubuntu artifact retention is pending. |
+| Checked-in benchmark baseline | PASS | `benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10.json` records all 15 required scenarios and deterministic CI gates. |
+| Concurrency, cancellation, deterministic output, and native lifetime | LOCAL PASS / RETAINED PENDING | Unit, validation, fixture-concurrency, cancellation, and deterministic checks pass locally; cross-platform exact-commit evidence remains pending. |
+| Canonical maintained samples | PASS | Maintained samples build without direct `PdfWriter`, `PdfElement`, raw table/chart types, `AddElement`, or `System.Drawing` usage. |
+| Migration documentation | PASS | The canonical migration guide covers document creation, builder mutation, and compatibility diagnostics `PDFB001` through `PDFB009`. |
+| Dependency and third-party notices | PASS | `THIRD-PARTY-NOTICES.md` is packaged, and release preparation generates a CycloneDX dependency SBOM. |
+| Approved PdfBuilder licence | FAIL | Owner approval has not been recorded and the package declares no project licence. Public distribution remains blocked. |
+| Public stable or 1.0 RC label | FAIL | `0.1.0-preview.2` remains a preview. The release workflow rejects stable and `1.0.0-rc.*` labels. |
+
+## Known performance evidence
+
+The checked-in Windows baseline records a compact 107,497-byte, 48-page result for the 1,000-row table, but approximately 58.4 GB of cumulative managed allocation during that measurement. This does not indicate PDF byte bloat or retained page-stream growth (`MaximumRetainedStreams` remains 1), but it is a material optimization target and must remain visible in baseline reviews.
 
 ## Release decision
 
-Only generate a private or local `0.1.0-preview.2` package. Do not publish it to NuGet.org, mark it stable, or promote it to a 1.0 release candidate. The four unresolved gates above remain release blockers; PR 20 additionally requires a retained green CI/package-consumer run for its new coverage.
+**BLOCKED.** Local `.nupkg`, `.snupkg`, CycloneDX SBOM, and SHA-256 files may be generated for controlled evaluation. The manual workflow may create an unpublished draft for version `0.1.0-preview.2`; it does not publish to NuGet.org and must not use a stable or `1.0.0-rc.*` label.
 
-## Evidence required for any future stable or 1.0 RC label
-
-1. A retained green run for the exact release commit, including the three build-and-test jobs and two package-consumer jobs.
-2. Green independent structural, extraction, and visual validation through qpdf and Poppler.
-3. The complete sanitised production fixture suite.
-4. A reviewed, checked-in numerical benchmark baseline.
-5. An owner-approved licence and explicit publication approval.
+Do not promote this package to controlled production use until a retained green run exists for the exact release commit and the repository owner records an approved PdfBuilder licence and explicit release decision.

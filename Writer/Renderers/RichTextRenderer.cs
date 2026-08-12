@@ -8,6 +8,7 @@ using PdfBuilder.Document.TextShaping;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.TextShaping;
+using PdfBuilder.Writer.Rendering;
 
 namespace PdfBuilder.Writer
 {
@@ -60,7 +61,7 @@ namespace PdfBuilder.Writer
                     var encoded = GlyphRunEncoder.Encode(segment.ShapedRun, context);
                     bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(segment.ShapedRun.Text);
                     if (preserveLogicalOrder)
-                        sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(segment.ShapedRun.Text)} >> BDC\n");
+                        sb.Append($"/Span << /ActualText {PdfActualTextEncoder.EncodeRightToLeftRun(segment.ShapedRun)} >> BDC\n");
 
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(segment.ShapedRun.FontSize)} Tf {ColorRgb(segment.Color)} rg ");

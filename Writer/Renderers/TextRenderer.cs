@@ -107,7 +107,7 @@ namespace PdfBuilder.Writer
                     var encoded = GlyphRunEncoder.Encode(run, context);
                     bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(run.Text);
                     if (preserveLogicalOrder)
-                        sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(run.Text)} >> BDC\n");
+                        sb.Append($"/Span << /ActualText {PdfActualTextEncoder.EncodeRightToLeftRun(run)} >> BDC\n");
                     sb.Append("BT ");
                     sb.Append($"{encoded.FontResourceName} {N(run.FontSize)} Tf {textRgb} rg ");
                     if (justification.HasWordSpacing)

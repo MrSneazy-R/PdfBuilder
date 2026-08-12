@@ -3,11 +3,15 @@ Document Models
 
 This reference covers supporting models frequently configured when building documents.
 
+The distributed package supports .NET 8 and .NET 10; both target assemblies expose the same declared public API.
+
 DocumentMetadata (`Models/DocumentMetadata.cs`)
 -----------------------------------------------
 - `Author`, `Subject`, `Keywords`, `Creator`, `Producer`: strings written to the PDF info dictionary.
+- `Language`: BCP 47 language tag written to the catalog.
+- `CustomXmp`: complete, well-formed XMP XML packet; DTDs and external resources are rejected.
 - `CreatedUtc`, `ModifiedUtc`: UTC timestamps.
-- Methods: `CopyFrom`, `Clone`.
+- Methods: `Validate`, `CopyFrom`, `Clone`.
 
 Usage:
 ```csharp
@@ -26,6 +30,9 @@ PdfOutputOptions (`Models/PdfOutputOptions.cs`)
 - `ReadableContentStreams` (bool): explicitly disable content-stream compression for debugging.
 - `ContentCompressionLevel`, `ImageCompressionLevel`: choose `CompressionLevel`.
 - `UsePngPredictor`: toggles PNG predictor filters for better ratios.
+- `PdfVersion`: selects PDF 1.4, 1.5, 1.6, 1.7, or 2.0 syntax headers.
+- `DownsampleImages`, `MaximumImageDpi`, `JpegQuality`: document-wide image defaults used by size and print presets.
+- `ApplyPreset`: applies `Debug`, `Balanced`, `SmallFile`, `PrintQuality`, or `Deterministic` settings. The document-level deterministic preset also enables deterministic generation.
 - Methods: `CopyFrom`, `Clone`.
 
 Usage:
@@ -95,9 +102,9 @@ Expected: all subsequent text inherits Inter 11pt styling with emoji support unl
 
 PdfDocument & PdfPage (`Models/PdfPage.cs`, `Document/PdfDocument.cs`)
 ----------------------------------------------------------------------
-- `PdfDocument.Pages`: list managed by the builder/composer.
+- `PdfDocument.Pages`: read-only page view managed by the builder/composer.
 - `PdfDocument.LayoutOptions`, `OutputOptions`, `Metadata`, `TextDefaults`, `Pagination`, `ProfilerSession`.
-- `PdfPage`: holds margin settings, header/footer overrides, background, column specifications (`ColumnLayoutSpec`), and element collections.
+- `PdfPage`: holds margin settings, header/footer overrides, background, column specifications (`ColumnLayoutSpec`), and a read-only element view.
 
 Manual Page Usage:
 ```csharp

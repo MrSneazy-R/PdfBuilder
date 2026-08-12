@@ -91,6 +91,16 @@ public interface IContainer
     IContainer ContinuationPagesOnly();
     /// <summary>Associates a source label with this container for layout diagnostics.</summary>
     IContainer DebugLabel(string label);
+    /// <summary>Assigns a standard semantic role to this container for tagged output.</summary>
+    IContainer Semantic(PdfSemanticRole role);
+    /// <summary>Assigns heading semantics at level 1 through 6.</summary>
+    IContainer Heading(int level);
+    /// <summary>Sets alternative text on this container's semantic structure element.</summary>
+    IContainer AlternativeText(string text);
+    /// <summary>Marks this container as a decorative artefact excluded from the structure tree.</summary>
+    IContainer Decorative();
+    /// <summary>Sets the sibling reading-order key used by the structure tree.</summary>
+    IContainer ReadingOrder(int order);
     /// <summary>Forces subsequent content onto a new page.</summary>
     IContainer PageBreak();
     /// <summary>Adds text and returns its style descriptor.</summary>
@@ -115,8 +125,18 @@ public interface IContainer
     void RichText(Action<IRichTextDescriptor> configure);
     /// <summary>Adds a raster image without exposing PDF coordinates or image elements.</summary>
     IImageDescriptor Image(byte[] data, float width, float height);
+    /// <summary>Adds an image from a reusable source with an explicit layout box.</summary>
+    IImageDescriptor Image(ImageSource source, float width, float height);
+    /// <summary>Adds an image at its DPI-aware intrinsic size.</summary>
+    IImageDescriptor Image(ImageSource source);
     /// <summary>Adds sanitised inline SVG markup without exposing image elements.</summary>
     void Svg(string markup, float width, float height);
+    /// <summary>Adds SVG generated from the final available size during bounded layout.</summary>
+    void DynamicSvg(float height, Func<CanvasSize, string> markupFactory);
+    /// <summary>Adds a fixed-size canonical vector canvas.</summary>
+    void Canvas(float width, float height, Action<ICanvasDescriptor> draw);
+    /// <summary>Adds a canonical vector canvas whose width and callback context use final available size.</summary>
+    void Canvas(float height, Action<ICanvasDescriptor, CanvasSize> draw);
     /// <summary>Adds a vector QR Code or Code 128 barcode.</summary>
     void Barcode(string value, BarcodeKind kind = BarcodeKind.QrCode, float moduleSize = 2f, int quietZone = 4);
     /// <summary>Adds a vector chart using PdfColor rather than System.Drawing types.</summary>

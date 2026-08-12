@@ -9,6 +9,7 @@ using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using PdfBuilder.TextShaping;
+using PdfBuilder.Writer.Rendering;
 using TableModels = PdfBuilder.Elements.Table;
 
 namespace PdfBuilder.Writer
@@ -1341,7 +1342,7 @@ namespace PdfBuilder.Writer
                             var encoded = GlyphRunEncoder.Encode(shapedRun, context);
                             bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(shapedRun.Text);
                             if (preserveLogicalOrder)
-                                sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(shapedRun.Text)} >> BDC\n");
+                                sb.Append($"/Span << /ActualText {PdfActualTextEncoder.EncodeRightToLeftRun(shapedRun)} >> BDC\n");
                             sb.Append("q ");
                             sb.Append($"{N(1)} {N(0)} {N(0)} {N(1)} {N(runCursor)} {N(ty)} cm ");
                             sb.Append($"{N(cos)} {N(sin)} {N(-sin)} {N(cos)} 0 0 cm ");
@@ -1369,7 +1370,7 @@ namespace PdfBuilder.Writer
                             var encoded = GlyphRunEncoder.Encode(shapedRun, context);
                             bool preserveLogicalOrder = TypographyDirectionResolver.ContainsRightToLeft(shapedRun.Text);
                             if (preserveLogicalOrder)
-                                sb.Append($"/Span << /ActualText {PdfStringEncoder.Encode(shapedRun.Text)} >> BDC\n");
+                                sb.Append($"/Span << /ActualText {PdfActualTextEncoder.EncodeRightToLeftRun(shapedRun)} >> BDC\n");
                             sb.Append("BT ");
                             sb.Append($"{encoded.FontResourceName} {N(shapedRun.FontSize)} Tf ");
                             sb.Append(fill);

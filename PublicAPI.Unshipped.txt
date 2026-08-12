@@ -83,6 +83,41 @@ PdfBuilder.Document.AnchorBuilder.Add() -> PdfBuilder.Document.ColumnBuilder!
 PdfBuilder.Document.AnchorBuilder.AnchorBuilder(PdfBuilder.Document.ColumnBuilder! col, string! id, float x, float y) -> void
 PdfBuilder.Document.AnchorBuilder.Level(int lvl) -> PdfBuilder.Document.AnchorBuilder!
 PdfBuilder.Document.AnchorBuilder.Title(string! t) -> PdfBuilder.Document.AnchorBuilder!
+PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Background = 0 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Content = 1 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLayer.Foreground = 2 -> PdfBuilder.Document.CanvasLayer
+PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Dashed = 1 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Dotted = 2 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasLinePattern.Solid = 0 -> PdfBuilder.Document.CanvasLinePattern
+PdfBuilder.Document.CanvasSize
+PdfBuilder.Document.CanvasSize.CanvasSize() -> void
+PdfBuilder.Document.CanvasSize.CanvasSize(float Width, float Height) -> void
+PdfBuilder.Document.CanvasSize.Height.get -> float
+PdfBuilder.Document.CanvasSize.Height.init -> void
+PdfBuilder.Document.CanvasSize.Width.get -> float
+PdfBuilder.Document.CanvasSize.Width.init -> void
+PdfBuilder.Document.ChartBoxGroup
+PdfBuilder.Document.ChartBoxGroup.CategoryIndex.get -> int
+PdfBuilder.Document.ChartBoxGroup.CategoryIndex.init -> void
+PdfBuilder.Document.ChartBoxGroup.ChartBoxGroup() -> void
+PdfBuilder.Document.ChartBoxGroup.ChartBoxGroup(int CategoryIndex, System.Collections.Generic.IReadOnlyList<float>! Values) -> void
+PdfBuilder.Document.ChartBoxGroup.Values.get -> System.Collections.Generic.IReadOnlyList<float>!
+PdfBuilder.Document.ChartBoxGroup.Values.init -> void
+PdfBuilder.Document.ChartBubblePoint
+PdfBuilder.Document.ChartBubblePoint.ChartBubblePoint() -> void
+PdfBuilder.Document.ChartBubblePoint.ChartBubblePoint(float X, float Y, float Size, string? Label = null, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartBubblePoint.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartBubblePoint.Fill.init -> void
+PdfBuilder.Document.ChartBubblePoint.Label.get -> string?
+PdfBuilder.Document.ChartBubblePoint.Label.init -> void
+PdfBuilder.Document.ChartBubblePoint.Size.get -> float
+PdfBuilder.Document.ChartBubblePoint.Size.init -> void
+PdfBuilder.Document.ChartBubblePoint.X.get -> float
+PdfBuilder.Document.ChartBubblePoint.X.init -> void
+PdfBuilder.Document.ChartBubblePoint.Y.get -> float
+PdfBuilder.Document.ChartBubblePoint.Y.init -> void
 PdfBuilder.Document.ChartBuilder
 PdfBuilder.Document.ChartBuilder.Add() -> float
 PdfBuilder.Document.ChartBuilder.AddBars(string! name, System.Drawing.Color fill, System.Drawing.Color stroke, float strokeW, params float[]! values) -> PdfBuilder.Document.ChartBuilder!
@@ -179,6 +214,104 @@ PdfBuilder.Document.ChartBuilder.Width(float w) -> PdfBuilder.Document.ChartBuil
 PdfBuilder.Document.ChartBuilder.X(float x) -> PdfBuilder.Document.ChartBuilder!
 PdfBuilder.Document.ChartBuilder.XLabelRotation(float deg) -> PdfBuilder.Document.ChartBuilder!
 PdfBuilder.Document.ChartBuilder.Y(float y) -> PdfBuilder.Document.ChartBuilder!
+PdfBuilder.Document.ChartBulletRange
+PdfBuilder.Document.ChartBulletRange.ChartBulletRange() -> void
+PdfBuilder.Document.ChartBulletRange.ChartBulletRange(float Start, float End, PdfBuilder.Models.PdfColor Fill) -> void
+PdfBuilder.Document.ChartBulletRange.End.get -> float
+PdfBuilder.Document.ChartBulletRange.End.init -> void
+PdfBuilder.Document.ChartBulletRange.Fill.get -> PdfBuilder.Models.PdfColor
+PdfBuilder.Document.ChartBulletRange.Fill.init -> void
+PdfBuilder.Document.ChartBulletRange.Start.get -> float
+PdfBuilder.Document.ChartBulletRange.Start.init -> void
+PdfBuilder.Document.ChartCandlestickValue
+PdfBuilder.Document.ChartCandlestickValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartCandlestickValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartCandlestickValue.ChartCandlestickValue() -> void
+PdfBuilder.Document.ChartCandlestickValue.ChartCandlestickValue(int CategoryIndex, float Open, float High, float Low, float Close) -> void
+PdfBuilder.Document.ChartCandlestickValue.Close.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Close.init -> void
+PdfBuilder.Document.ChartCandlestickValue.High.get -> float
+PdfBuilder.Document.ChartCandlestickValue.High.init -> void
+PdfBuilder.Document.ChartCandlestickValue.Low.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Low.init -> void
+PdfBuilder.Document.ChartCandlestickValue.Open.get -> float
+PdfBuilder.Document.ChartCandlestickValue.Open.init -> void
+PdfBuilder.Document.ChartErrorValue
+PdfBuilder.Document.ChartErrorValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartErrorValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartErrorValue.ChartErrorValue() -> void
+PdfBuilder.Document.ChartErrorValue.ChartErrorValue(int CategoryIndex, float Value, float ErrorMinus, float ErrorPlus) -> void
+PdfBuilder.Document.ChartErrorValue.ErrorMinus.get -> float
+PdfBuilder.Document.ChartErrorValue.ErrorMinus.init -> void
+PdfBuilder.Document.ChartErrorValue.ErrorPlus.get -> float
+PdfBuilder.Document.ChartErrorValue.ErrorPlus.init -> void
+PdfBuilder.Document.ChartErrorValue.Value.get -> float
+PdfBuilder.Document.ChartErrorValue.Value.init -> void
+PdfBuilder.Document.ChartFunnelValue
+PdfBuilder.Document.ChartFunnelValue.ChartFunnelValue() -> void
+PdfBuilder.Document.ChartFunnelValue.ChartFunnelValue(string! Stage, float Value, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartFunnelValue.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartFunnelValue.Fill.init -> void
+PdfBuilder.Document.ChartFunnelValue.Stage.get -> string!
+PdfBuilder.Document.ChartFunnelValue.Stage.init -> void
+PdfBuilder.Document.ChartFunnelValue.Value.get -> float
+PdfBuilder.Document.ChartFunnelValue.Value.init -> void
+PdfBuilder.Document.ChartGanttTask
+PdfBuilder.Document.ChartGanttTask.CategoryIndex.get -> int
+PdfBuilder.Document.ChartGanttTask.CategoryIndex.init -> void
+PdfBuilder.Document.ChartGanttTask.ChartGanttTask() -> void
+PdfBuilder.Document.ChartGanttTask.ChartGanttTask(int CategoryIndex, float Start, float End, string! Label, PdfBuilder.Models.PdfColor? Fill = null) -> void
+PdfBuilder.Document.ChartGanttTask.End.get -> float
+PdfBuilder.Document.ChartGanttTask.End.init -> void
+PdfBuilder.Document.ChartGanttTask.Fill.get -> PdfBuilder.Models.PdfColor?
+PdfBuilder.Document.ChartGanttTask.Fill.init -> void
+PdfBuilder.Document.ChartGanttTask.Label.get -> string!
+PdfBuilder.Document.ChartGanttTask.Label.init -> void
+PdfBuilder.Document.ChartGanttTask.Start.get -> float
+PdfBuilder.Document.ChartGanttTask.Start.init -> void
+PdfBuilder.Document.ChartLegendPosition
+PdfBuilder.Document.ChartLegendPosition.Below = 3 -> PdfBuilder.Document.ChartLegendPosition
+PdfBuilder.Document.ChartLegendPosition.Hidden = 0 -> PdfBuilder.Document.ChartLegendPosition
+PdfBuilder.Document.ChartLegendPosition.TopLeft = 1 -> PdfBuilder.Document.ChartLegendPosition
+PdfBuilder.Document.ChartLegendPosition.TopRight = 2 -> PdfBuilder.Document.ChartLegendPosition
+PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Circle = 1 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Cross = 5 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Diamond = 4 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.None = 0 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Plus = 6 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Square = 2 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartMarkerShape.Triangle = 3 -> PdfBuilder.Document.ChartMarkerShape
+PdfBuilder.Document.ChartPoint
+PdfBuilder.Document.ChartPoint.ChartPoint() -> void
+PdfBuilder.Document.ChartPoint.ChartPoint(float X, float Y) -> void
+PdfBuilder.Document.ChartPoint.X.get -> float
+PdfBuilder.Document.ChartPoint.X.init -> void
+PdfBuilder.Document.ChartPoint.Y.get -> float
+PdfBuilder.Document.ChartPoint.Y.init -> void
+PdfBuilder.Document.ChartRangeValue
+PdfBuilder.Document.ChartRangeValue.CategoryIndex.get -> int
+PdfBuilder.Document.ChartRangeValue.CategoryIndex.init -> void
+PdfBuilder.Document.ChartRangeValue.ChartRangeValue() -> void
+PdfBuilder.Document.ChartRangeValue.ChartRangeValue(int CategoryIndex, float Low, float High) -> void
+PdfBuilder.Document.ChartRangeValue.High.get -> float
+PdfBuilder.Document.ChartRangeValue.High.init -> void
+PdfBuilder.Document.ChartRangeValue.Low.get -> float
+PdfBuilder.Document.ChartRangeValue.Low.init -> void
+PdfBuilder.Document.ChartValue
+PdfBuilder.Document.ChartValue.Category.get -> string!
+PdfBuilder.Document.ChartValue.Category.init -> void
+PdfBuilder.Document.ChartValue.ChartValue() -> void
+PdfBuilder.Document.ChartValue.ChartValue(string! Category, float Value) -> void
+PdfBuilder.Document.ChartValue.Value.get -> float
+PdfBuilder.Document.ChartValue.Value.init -> void
+PdfBuilder.Document.ChartWaterfallValue
+PdfBuilder.Document.ChartWaterfallValue.ChartWaterfallValue() -> void
+PdfBuilder.Document.ChartWaterfallValue.ChartWaterfallValue(float Delta, bool IsTotal = false) -> void
+PdfBuilder.Document.ChartWaterfallValue.Delta.get -> float
+PdfBuilder.Document.ChartWaterfallValue.Delta.init -> void
+PdfBuilder.Document.ChartWaterfallValue.IsTotal.get -> bool
+PdfBuilder.Document.ChartWaterfallValue.IsTotal.init -> void
 PdfBuilder.Document.ColumnBuilder
 PdfBuilder.Document.ColumnBuilder.ActivateColumn(int index, bool reset = false) -> PdfBuilder.Document.FlowColumn!
 PdfBuilder.Document.ColumnBuilder.Anchor(string! id) -> PdfBuilder.Document.AnchorBuilder!
@@ -213,6 +346,7 @@ PdfBuilder.Document.DocumentComposer
 PdfBuilder.Document.DocumentComposer.Page(float width, float height, System.Action<PdfBuilder.Document.PageComposer!>! configure) -> PdfBuilder.Document.DocumentComposer!
 PdfBuilder.Document.DocumentComposer.Page(System.Action<PdfBuilder.Document.PageComposer!>! configure) -> PdfBuilder.Document.DocumentComposer!
 PdfBuilder.Document.DocumentTheme
+PdfBuilder.Document.DocumentTheme.ChartPalette.get -> System.Collections.Generic.IReadOnlyList<string!>!
 PdfBuilder.Document.DocumentTheme.Colors.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 PdfBuilder.Document.DocumentTheme.DefaultTextStyle.get -> PdfBuilder.Models.TextStyleDefaults!
 PdfBuilder.Document.DocumentTheme.DocumentTheme() -> void
@@ -220,6 +354,7 @@ PdfBuilder.Document.DocumentTheme.Page.get -> PdfBuilder.Document.PageTheme!
 PdfBuilder.Document.DocumentTheme.Spacing.get -> PdfBuilder.Document.SpacingTheme!
 PdfBuilder.Document.DocumentTheme.TextStyles.get -> System.Collections.Generic.IReadOnlyDictionary<string!, PdfBuilder.Models.TextStyleDefaults!>!
 PdfBuilder.Document.DocumentThemeBuilder
+PdfBuilder.Document.DocumentThemeBuilder.ChartPalette(params string![]! colors) -> PdfBuilder.Document.DocumentThemeBuilder!
 PdfBuilder.Document.DocumentThemeBuilder.Color(string! name, string! value) -> PdfBuilder.Document.DocumentThemeBuilder!
 PdfBuilder.Document.DocumentThemeBuilder.DefaultTextStyle(System.Action<PdfBuilder.Document.ThemeTextStyleBuilder!>! configure) -> PdfBuilder.Document.DocumentThemeBuilder!
 PdfBuilder.Document.DocumentThemeBuilder.Page(System.Action<PdfBuilder.Document.PageTheme!>! configure) -> PdfBuilder.Document.DocumentThemeBuilder!
@@ -264,7 +399,93 @@ PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Center = 1 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Left = 0 -> PdfBuilder.Document.HorizontalAlign
 PdfBuilder.Document.HorizontalAlign.Right = 2 -> PdfBuilder.Document.HorizontalAlign
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor.SecondaryAxis(bool enabled = true) -> void
+PdfBuilder.Document.IAdvancedChartSeriesDescriptor.Stroke(PdfBuilder.Models.PdfColor color, float width = 0.5) -> void
+PdfBuilder.Document.IAreaChartSeriesDescriptor
+PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IAreaChartSeriesDescriptor.Fill(string! themeColor) -> void
+PdfBuilder.Document.IBarChartSeriesDescriptor
+PdfBuilder.Document.IBarChartSeriesDescriptor.Gap(float ratio) -> void
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor.BoxWidth(float ratio) -> void
+PdfBuilder.Document.IBoxPlotChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IBubbleChartSeriesDescriptor
+PdfBuilder.Document.IBubbleChartSeriesDescriptor.Radius(float minimum, float maximum) -> void
+PdfBuilder.Document.IBulletChartSeriesDescriptor
+PdfBuilder.Document.IBulletChartSeriesDescriptor.TargetStyle(PdfBuilder.Models.PdfColor color, float width = 1) -> void
+PdfBuilder.Document.IBulletChartSeriesDescriptor.ValueColor(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.ICandlestickChartSeriesDescriptor
+PdfBuilder.Document.ICandlestickChartSeriesDescriptor.Colors(PdfBuilder.Models.PdfColor up, PdfBuilder.Models.PdfColor down, PdfBuilder.Models.PdfColor wick) -> void
+PdfBuilder.Document.ICanvasDescriptor
+PdfBuilder.Document.ICanvasDescriptor.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.ClipRectangle(float x, float y, float width, float height) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.ClosePath() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.CurveTo(float control1X, float control1Y, float control2X, float control2Y, float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Fill() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FillAndStroke() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FillColor(string! color) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FlipHorizontal() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.FlipVertical() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Layer(PdfBuilder.Document.CanvasLayer layer, System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Line(float x1, float y1, float x2, float y2) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LinearGradient(float x, float y, float width, float height, string! startColor, string! endColor, float angleDegrees = 0, int steps = 32) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LinePattern(PdfBuilder.Document.CanvasLinePattern pattern, float dashLength = 4, float gapLength = 2, float phase = 0) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LineTo(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.LineWidth(float width) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.MoveTo(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.RadialGradient(float centerX, float centerY, float radius, string! centerColor, string! edgeColor, int steps = 32) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rectangle(float x, float y, float width, float height, bool stroke = true, bool fill = false) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.RectangleShadow(float x, float y, float width, float height, string! color, float offsetX = 2, float offsetY = -2, float blurRadius = 4, int steps = 8) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Restore() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rotate(float degrees) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Rotate(float degrees, float centerX, float centerY) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Save() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Scale(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Size.get -> PdfBuilder.Document.CanvasSize
+PdfBuilder.Document.ICanvasDescriptor.State(System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Stroke() -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.StrokeColor(string! color) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Transform(float a, float b, float c, float d, float e, float f) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.ICanvasDescriptor.Translate(float x, float y) -> PdfBuilder.Document.ICanvasDescriptor!
+PdfBuilder.Document.IChartAxisDescriptor
+PdfBuilder.Document.IChartAxisDescriptor.Format(System.Func<float, string!>! formatter) -> void
+PdfBuilder.Document.IChartAxisDescriptor.Range(float? minimum = null, float? maximum = null) -> void
+PdfBuilder.Document.IChartAxisDescriptor.Ticks(int desiredCount) -> void
+PdfBuilder.Document.IChartDescriptor.Area(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IAreaChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.BoxPlot(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBoxGroup>! groups) -> PdfBuilder.Document.IBoxPlotChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Bubble(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBubblePoint>! points) -> PdfBuilder.Document.IBubbleChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Bullet(string! name, float value, float target, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartBulletRange>! ranges) -> PdfBuilder.Document.IBulletChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Candlestick(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartCandlestickValue>! values) -> PdfBuilder.Document.ICandlestickChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Categories(params string![]! values) -> void
+PdfBuilder.Document.IChartDescriptor.Donut(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartValue>! values, float innerRatio = 0.6) -> PdfBuilder.Document.IPieChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.ErrorBars(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartErrorValue>! values) -> PdfBuilder.Document.IErrorBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Funnel(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartFunnelValue>! stages) -> PdfBuilder.Document.IFunnelChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Gantt(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartGanttTask>! tasks) -> PdfBuilder.Document.IGanttChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.GroupedBars(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Heatmap(string! name, float[,]! values) -> PdfBuilder.Document.IHeatmapChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Histogram(string! name, System.Collections.Generic.IEnumerable<float>! samples) -> PdfBuilder.Document.IHistogramChartSeriesDescriptor!
 PdfBuilder.Document.IChartDescriptor.LabelStyle(System.Action<PdfBuilder.Document.ITextStyleDescriptor!>! configure) -> void
+PdfBuilder.Document.IChartDescriptor.Legend(PdfBuilder.Document.ChartLegendPosition position = PdfBuilder.Document.ChartLegendPosition.TopRight) -> void
+PdfBuilder.Document.IChartDescriptor.Line(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.ILineChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Palette(params PdfBuilder.Models.PdfColor[]! colors) -> void
+PdfBuilder.Document.IChartDescriptor.Palette(params string![]! themeColors) -> void
+PdfBuilder.Document.IChartDescriptor.Pareto(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IParetoChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Pie(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartValue>! values) -> PdfBuilder.Document.IPieChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Radar(string! name, System.Collections.Generic.IEnumerable<float>! values) -> PdfBuilder.Document.IRadarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.RangeArea(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartRangeValue>! values) -> PdfBuilder.Document.IRangeAreaChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Scatter(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartPoint>! points) -> PdfBuilder.Document.IScatterChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.SecondaryYAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
+PdfBuilder.Document.IChartDescriptor.Stacked100Bars(string! name, System.Collections.Generic.IEnumerable<float>! values, string! stack = "default") -> PdfBuilder.Document.IBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.StackedBars(string! name, System.Collections.Generic.IEnumerable<float>! values, string! stack = "default") -> PdfBuilder.Document.IBarChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.Waterfall(string! name, System.Collections.Generic.IEnumerable<PdfBuilder.Document.ChartWaterfallValue>! values) -> PdfBuilder.Document.IWaterfallChartSeriesDescriptor!
+PdfBuilder.Document.IChartDescriptor.XAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
+PdfBuilder.Document.IChartDescriptor.YAxis(System.Action<PdfBuilder.Document.IChartAxisDescriptor!>! configure) -> void
+PdfBuilder.Document.IChartSeriesDescriptor
+PdfBuilder.Document.IChartSeriesDescriptor.Color(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IChartSeriesDescriptor.Color(string! themeColor) -> void
+PdfBuilder.Document.IChartSeriesDescriptor.Labels(System.Func<float, string!>? formatter = null) -> void
+PdfBuilder.Document.IChartSeriesDescriptor.SecondaryAxis(bool enabled = true) -> void
 PdfBuilder.Document.IColumnDescriptor
 PdfBuilder.Document.IColumnDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IColumnDescriptor.Spacing(float value) -> void
@@ -286,11 +507,14 @@ PdfBuilder.Document.IContainer.BorderBottom(float width = 1, string! color = "#0
 PdfBuilder.Document.IContainer.BorderLeft(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderRight(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.BorderTop(float width = 1, string! color = "#000000") -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Canvas(float height, System.Action<PdfBuilder.Document.ICanvasDescriptor!, PdfBuilder.Document.CanvasSize>! draw) -> void
+PdfBuilder.Document.IContainer.Canvas(float width, float height, System.Action<PdfBuilder.Document.ICanvasDescriptor!>! draw) -> void
 PdfBuilder.Document.IContainer.Column(System.Action<PdfBuilder.Document.IColumnDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Component(PdfBuilder.Document.IPdfComponent! component) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Component<TModel>(PdfBuilder.Document.IPdfComponent<TModel>! component, TModel model) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.ContinuationPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.CornerRadius(float value) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> void
 PdfBuilder.Document.IContainer.EnsureSpace(float minimumHeight) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.EvenPagesOnly() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Extend() -> PdfBuilder.Document.IContainer!
@@ -299,6 +523,8 @@ PdfBuilder.Document.IContainer.FirstPageOnly() -> PdfBuilder.Document.IContainer
 PdfBuilder.Document.IContainer.Grid(System.Action<PdfBuilder.Document.IGridDescriptor!>! configure) -> void
 PdfBuilder.Document.IContainer.Height(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.Image(byte[]! data, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IContainer.Image(PdfBuilder.Document.ImageSource! source) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IContainer.Image(PdfBuilder.Document.ImageSource! source, float width, float height) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IContainer.InternalLink(string! text, string! anchorId) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.KeepTogether() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IContainer.KeepWithNext() -> PdfBuilder.Document.IContainer!
@@ -336,7 +562,11 @@ PdfBuilder.Document.IContainer.Text(string! text) -> PdfBuilder.Document.ITextDe
 PdfBuilder.Document.IContainer.Text(System.Func<string!>! text) -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IContainer.Width(float value) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IDocumentDescriptor
+PdfBuilder.Document.IDocumentDescriptor.Generation(System.Action<PdfBuilder.Models.PdfGenerationOptions!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.Output(System.Action<PdfBuilder.Models.PdfOutputOptions!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.OutputIntent(System.Action<PdfBuilder.Document.IPdfOutputIntentDescriptor!>! configure) -> void
+PdfBuilder.Document.IDocumentDescriptor.OutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> void
 PdfBuilder.Document.IDocumentDescriptor.Page(System.Action<PdfBuilder.Document.IPageDescriptor!>! configure) -> void
 PdfBuilder.Document.IChartDescriptor
 PdfBuilder.Document.IChartDescriptor.Bars(string! name, System.Collections.Generic.IEnumerable<float>! values, PdfBuilder.Models.PdfColor color) -> void
@@ -345,6 +575,13 @@ PdfBuilder.Document.IChartDescriptor.Size(float width, float height) -> void
 PdfBuilder.Document.IChartDescriptor.Title(string! value) -> void
 PdfBuilder.Document.IDocumentDescriptor.RenderLimits(System.Action<PdfBuilder.Document.Layout.PdfRenderLimits!>! configure) -> void
 PdfBuilder.Document.IDocumentDescriptor.Theme(System.Action<PdfBuilder.Document.DocumentThemeBuilder!>! configure) -> void
+PdfBuilder.Document.IErrorBarChartSeriesDescriptor
+PdfBuilder.Document.IErrorBarChartSeriesDescriptor.CapWidth(float points) -> void
+PdfBuilder.Document.IFunnelChartSeriesDescriptor
+PdfBuilder.Document.IFunnelChartSeriesDescriptor.Gap(float points) -> void
+PdfBuilder.Document.IFunnelChartSeriesDescriptor.Tapered(bool enabled = true) -> void
+PdfBuilder.Document.IGanttChartSeriesDescriptor
+PdfBuilder.Document.IGanttChartSeriesDescriptor.Geometry(float rowGap, float barHeightRatio) -> void
 PdfBuilder.Document.IGridDescriptor
 PdfBuilder.Document.IGridDescriptor.Columns(int value) -> void
 PdfBuilder.Document.IGridDescriptor.ColumnSpacing(float value) -> void
@@ -352,6 +589,19 @@ PdfBuilder.Document.IGridDescriptor.ColumnSpacing(string! spacingToken) -> void
 PdfBuilder.Document.IGridDescriptor.Item() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IGridDescriptor.RowSpacing(float value) -> void
 PdfBuilder.Document.IGridDescriptor.RowSpacing(string! spacingToken) -> void
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor.ColorScale(System.Func<float, PdfBuilder.Models.PdfColor>! scale) -> void
+PdfBuilder.Document.IHeatmapChartSeriesDescriptor.Range(float? minimum = null, float? maximum = null) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Bins(int count) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IHistogramChartSeriesDescriptor.Gap(float ratio) -> void
+PdfBuilder.Document.IImageDescriptor.AlphaAwareEncoding(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.CropAlignment(PdfBuilder.Document.ImageCropAlignment alignment) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Downsample(bool enabled = true) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.JpegQuality(int quality) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.MaximumEffectiveDpi(float dpi) -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.IImageDescriptor.Quality(PdfBuilder.Document.ImageQuality quality) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.ILayerDescriptor
 PdfBuilder.Document.ILayerDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.ILayerDescriptor.Content() -> PdfBuilder.Document.IContainer!
@@ -366,6 +616,10 @@ PdfBuilder.Document.IImageDescriptor.Cover() -> PdfBuilder.Document.IImageDescri
 PdfBuilder.Document.IImageDescriptor.Opacity(float value) -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IImageDescriptor.OriginalSize() -> PdfBuilder.Document.IImageDescriptor!
 PdfBuilder.Document.IImageDescriptor.Stretch() -> PdfBuilder.Document.IImageDescriptor!
+PdfBuilder.Document.ILineChartSeriesDescriptor
+PdfBuilder.Document.ILineChartSeriesDescriptor.Markers(PdfBuilder.Document.ChartMarkerShape shape = PdfBuilder.Document.ChartMarkerShape.Circle, float size = 4, PdfBuilder.Models.PdfColor? fill = null) -> void
+PdfBuilder.Document.ILineChartSeriesDescriptor.Smooth(bool enabled = true, float tension = 0.5) -> void
+PdfBuilder.Document.ILineChartSeriesDescriptor.StrokeWidth(float width) -> void
 PdfBuilder.Document.ImageBuilder
 PdfBuilder.Document.ImageBuilder.Add() -> float
 PdfBuilder.Document.ImageBuilder.Border(string! color, float width) -> PdfBuilder.Document.ImageBuilder!
@@ -405,6 +659,36 @@ PdfBuilder.Document.ImageBuilder.ShadowOffsetY(float v) -> PdfBuilder.Document.I
 PdfBuilder.Document.ImageBuilder.Width(float width) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.X(float x) -> PdfBuilder.Document.ImageBuilder!
 PdfBuilder.Document.ImageBuilder.Y(float y) -> PdfBuilder.Document.ImageBuilder!
+PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Bottom = 7 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.BottomLeft = 6 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.BottomRight = 8 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Center = 4 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Left = 3 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Right = 5 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.Top = 1 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.TopLeft = 0 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageCropAlignment.TopRight = 2 -> PdfBuilder.Document.ImageCropAlignment
+PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.High = 2 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.Low = 0 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageQuality.Medium = 1 -> PdfBuilder.Document.ImageQuality
+PdfBuilder.Document.ImageSource
+PdfBuilder.Document.ImageSource.Inspect() -> PdfBuilder.Document.ImageSourceInfo
+PdfBuilder.Document.ImageSource.Preload() -> PdfBuilder.Document.ImageSource!
+PdfBuilder.Document.ImageSourceInfo
+PdfBuilder.Document.ImageSourceInfo.DpiX.get -> float
+PdfBuilder.Document.ImageSourceInfo.DpiX.init -> void
+PdfBuilder.Document.ImageSourceInfo.DpiY.get -> float
+PdfBuilder.Document.ImageSourceInfo.DpiY.init -> void
+PdfBuilder.Document.ImageSourceInfo.ImageSourceInfo() -> void
+PdfBuilder.Document.ImageSourceInfo.ImageSourceInfo(int PixelWidth, int PixelHeight, float DpiX, float DpiY) -> void
+PdfBuilder.Document.ImageSourceInfo.OriginalHeightPoints.get -> float
+PdfBuilder.Document.ImageSourceInfo.OriginalWidthPoints.get -> float
+PdfBuilder.Document.ImageSourceInfo.PixelHeight.get -> int
+PdfBuilder.Document.ImageSourceInfo.PixelHeight.init -> void
+PdfBuilder.Document.ImageSourceInfo.PixelWidth.get -> int
+PdfBuilder.Document.ImageSourceInfo.PixelWidth.init -> void
 PdfBuilder.Document.IPageDescriptor
 PdfBuilder.Document.IPageDescriptor.Background() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IPageDescriptor.ContinuationFooter() -> PdfBuilder.Document.IContainer!
@@ -422,10 +706,29 @@ PdfBuilder.Document.IPageDescriptor.Margin(float left, float top, float right, f
 PdfBuilder.Document.IPageDescriptor.Margin(float value) -> void
 PdfBuilder.Document.IPageDescriptor.Orientation(PdfBuilder.Document.PageOrientation orientation) -> void
 PdfBuilder.Document.IPageDescriptor.Size(PdfBuilder.Document.PageSize size) -> void
+PdfBuilder.Document.IParetoChartSeriesDescriptor
+PdfBuilder.Document.IParetoChartSeriesDescriptor.BarColor(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IParetoChartSeriesDescriptor.CumulativeStyle(PdfBuilder.Models.PdfColor color, float width = 1) -> void
 PdfBuilder.Document.IPdfComponent
 PdfBuilder.Document.IPdfComponent.Compose(PdfBuilder.Document.IContainer! container) -> void
 PdfBuilder.Document.IPdfComponent<TModel>
 PdfBuilder.Document.IPdfComponent<TModel>.Compose(PdfBuilder.Document.IContainer! container, TModel model) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Identifier(string! identifier) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Info(string! info) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.Profile(System.ReadOnlyMemory<byte> profile) -> void
+PdfBuilder.Document.IPdfOutputIntentDescriptor.RegistryName(string! registryName) -> void
+PdfBuilder.Document.IPieChartSeriesDescriptor
+PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params PdfBuilder.Models.PdfColor[]! colors) -> void
+PdfBuilder.Document.IPieChartSeriesDescriptor.Colors(params string![]! themeColors) -> void
+PdfBuilder.Document.IPieChartSeriesDescriptor.Labels(System.Func<PdfBuilder.Document.ChartValue, string!>? formatter = null, bool outside = true) -> void
+PdfBuilder.Document.IPieChartSeriesDescriptor.StartAngle(float degrees) -> void
+PdfBuilder.Document.IRadarChartSeriesDescriptor
+PdfBuilder.Document.IRadarChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IRadarChartSeriesDescriptor.Range(float? minimum = null, float? maximum = null) -> void
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor.Fill(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IRangeAreaChartSeriesDescriptor.Smooth(bool enabled = true, float tension = 0.45) -> void
 PdfBuilder.Document.IRichTextDescriptor
 PdfBuilder.Document.IRichTextDescriptor.DefaultStyle() -> PdfBuilder.Document.ITextDescriptor!
 PdfBuilder.Document.IRichTextDescriptor.ExternalLink(string! text, string! uri) -> PdfBuilder.Document.ITextDescriptor!
@@ -435,6 +738,12 @@ PdfBuilder.Document.IRowDescriptor
 PdfBuilder.Document.IRowDescriptor.AutoItem() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.ConstantItem(float width) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.RelativeItem(float weight = 1) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IScatterChartSeriesDescriptor
+PdfBuilder.Document.IScatterChartSeriesDescriptor.Color(PdfBuilder.Models.PdfColor color) -> void
+PdfBuilder.Document.IScatterChartSeriesDescriptor.Color(string! themeColor) -> void
+PdfBuilder.Document.IScatterChartSeriesDescriptor.Labels(System.Func<PdfBuilder.Document.ChartPoint, string!>? formatter = null) -> void
+PdfBuilder.Document.IScatterChartSeriesDescriptor.Markers(PdfBuilder.Document.ChartMarkerShape shape = PdfBuilder.Document.ChartMarkerShape.Circle, float size = 5, PdfBuilder.Models.PdfColor? fill = null) -> void
+PdfBuilder.Document.IScatterChartSeriesDescriptor.SecondaryAxis(bool enabled = true) -> void
 PdfBuilder.Document.ISectionDescriptor
 PdfBuilder.Document.ISectionDescriptor.IncludeInOutline(bool enabled = true) -> void
 PdfBuilder.Document.ISectionDescriptor.IncludeInTableOfContents(bool enabled = true) -> void
@@ -550,20 +859,45 @@ PdfBuilder.Document.ITextStyleDescriptor.Superscript() -> PdfBuilder.Document.IT
 PdfBuilder.Document.ITextStyleDescriptor.Underline() -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.WordSpacing(float value) -> PdfBuilder.Document.ITextStyleDescriptor!
 PdfBuilder.Document.ITextStyleDescriptor.Wrap() -> PdfBuilder.Document.ITextStyleDescriptor!
+PdfBuilder.Document.IWaterfallChartSeriesDescriptor
+PdfBuilder.Document.IWaterfallChartSeriesDescriptor.Colors(PdfBuilder.Models.PdfColor positive, PdfBuilder.Models.PdfColor negative, PdfBuilder.Models.PdfColor total) -> void
 PdfBuilder.Document.Layout.CanvasBuilder
 PdfBuilder.Document.Layout.CanvasBuilder.AvoidBreakInside(bool value = true) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Circle(float centerX, float centerY, float radius, bool stroke = true, bool fill = false) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.ClipRectangle(float x, float y, float width, float height) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.ClosePath() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.CurveTo(float control1X, float control1Y, float control2X, float control2Y, float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Dash(float dashLength, float gapLength, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Dotted(float gapLength = 2, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Fill() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FillAndStroke() -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.FillColor(string! hex) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FlipHorizontal() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.FlipVertical() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Layer(PdfBuilder.Document.CanvasLayer layer, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Line(float x1, float y1, float x2, float y2) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Line(float x1, float y1, float x2, float y2, float width, string? color = null) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LinearGradient(float x, float y, float width, float height, string! startColor, string! endColor, float angleDegrees = 0, int steps = 32) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LinePattern(PdfBuilder.Document.CanvasLinePattern pattern, float dashLength = 4, float gapLength = 2, float phase = 0) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.LineTo(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.LineWidth(float width) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Margin(float all) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Margin(float left, float top, float right, float bottom) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.MoveTo(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RadialGradient(float centerX, float centerY, float radius, string! centerColor, string! edgeColor, int steps = 32) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Raw(string! command) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Rect(float x, float y, float width, float height, bool stroke = true, bool fill = false) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RectangleShadow(float x, float y, float width, float height, string! color, float offsetX = 2, float offsetY = -2, float blurRadius = 4, int steps = 8) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.RestoreState() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Rotate(float degrees) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Rotate(float degrees, float centerX, float centerY) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.SaveState() -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Scale(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.State(System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.Stroke() -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.CanvasBuilder.StrokeColor(string! hex) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Transform(float a, float b, float c, float d, float e, float f) -> PdfBuilder.Document.Layout.CanvasBuilder!
+PdfBuilder.Document.Layout.CanvasBuilder.Translate(float x, float y) -> PdfBuilder.Document.Layout.CanvasBuilder!
 PdfBuilder.Document.Layout.Components.ColumnComponent
 PdfBuilder.Document.Layout.Components.ColumnComponent.Add(PdfBuilder.Document.Layout.IMeasurable! child) -> PdfBuilder.Document.Layout.Components.ColumnComponent!
 PdfBuilder.Document.Layout.Components.ColumnComponent.ColumnComponent() -> void
@@ -613,6 +947,7 @@ PdfBuilder.Document.Layout.ContentComposer.AspectRatio(float ratio, System.Actio
 PdfBuilder.Document.Layout.ContentComposer.Background(string! color, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content, float opacity = 1) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Barcode(string! value, PdfBuilder.Elements.BarcodeKind kind = PdfBuilder.Elements.BarcodeKind.QrCode, float moduleSize = 2, int quietZone = 4, System.Action<PdfBuilder.Elements.BarcodeElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Border(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions!>? configure, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Canvas(float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!, PdfBuilder.Document.CanvasSize>! draw) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Canvas(float width, float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw, System.Action<CanvasElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float spacing = 8) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.ColumnComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -620,6 +955,8 @@ PdfBuilder.Document.Layout.ContentComposer.Component(PdfBuilder.Document.Layout.
 PdfBuilder.Document.Layout.ContentComposer.Component(System.Func<PdfBuilder.Document.Layout.LayoutMeasureContext!, PdfBuilder.Document.Layout.LayoutMeasurement!>! measure, System.Action<PdfBuilder.Document.Layout.LayoutDrawContext!, PdfBuilder.Document.Layout.LayoutMeasurement!>! draw) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Decorate(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder!>! configure, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! content) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.DefaultTextStyle(System.Action<PdfBuilder.Models.TextStyleDefaults!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.DynamicSvg(float width, float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Extend(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.ExtendHeight(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.ExtendWidth(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -627,6 +964,8 @@ PdfBuilder.Document.Layout.ContentComposer.Grid(int columns, System.Action<PdfBu
 PdfBuilder.Document.Layout.ContentComposer.Grid(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.GridComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Height(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Image(byte[]! data, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Image(PdfBuilder.Document.ImageSource! source, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
+PdfBuilder.Document.Layout.ContentComposer.Image(PdfBuilder.Document.ImageSource! source, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.Layer(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.List(System.Action<ListElement!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
 PdfBuilder.Document.Layout.ContentComposer.MaxHeight(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.ContentComposer!
@@ -681,6 +1020,7 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeColor.g
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeColor.set -> void
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeWidth.get -> float
 PdfBuilder.Document.Layout.LayoutComponentCollection.BorderOptions.StrokeWidth.set -> void
+PdfBuilder.Document.Layout.LayoutComponentCollection.Canvas(float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!, PdfBuilder.Document.CanvasSize>! draw) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Canvas(float width, float height, System.Action<PdfBuilder.Document.Layout.CanvasBuilder!>! draw, System.Action<CanvasElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure, float spacing = 8) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Column(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.ColumnComponentBuilder!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
@@ -696,6 +1036,8 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder.Decoratio
 PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder.Foreground(System.Action<PdfBuilder.Document.Layout.DecorationDrawContext>! action) -> PdfBuilder.Document.Layout.LayoutComponentCollection.DecorationBuilder!
 PdfBuilder.Document.Layout.LayoutComponentCollection.DefaultTextStyle(System.Action<PdfBuilder.Models.TextStyleDefaults!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Dynamic<T>(System.Collections.Generic.IEnumerable<T>! source, System.Action<T, PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.DynamicSvg(float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.DynamicSvg(float width, float height, System.Func<PdfBuilder.Document.CanvasSize, string!>! markupFactory) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Extend(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.ExtendHeight(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.ExtendWidth(System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
@@ -719,6 +1061,8 @@ PdfBuilder.Document.Layout.LayoutComponentCollection.GridComponentBuilder.RowGap
 PdfBuilder.Document.Layout.LayoutComponentCollection.Height(float value, System.Action<PdfBuilder.Document.Layout.ContentComposer!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Hyperlink(string! text, string! url, System.Action<PdfBuilder.Models.RichRun!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Image(byte[]! data, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.Image(PdfBuilder.Document.ImageSource! source, float width, float height, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
+PdfBuilder.Document.Layout.LayoutComponentCollection.Image(PdfBuilder.Document.ImageSource! source, System.Action<PdfBuilder.Elements.ImageElement!>? configure = null) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.Layer(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection!
 PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder
 PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder.Background(System.Action<PdfBuilder.Document.Layout.LayoutComponentCollection!>! configure) -> PdfBuilder.Document.Layout.LayoutComponentCollection.LayerBuilder!
@@ -867,8 +1211,18 @@ PdfBuilder.Document.Layout.PdfPaginationStabilizationException
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassCount.get -> int
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PassLimit.get -> int
 PdfBuilder.Document.Layout.PdfPaginationStabilizationException.PdfPaginationStabilizationException(int passCount, int passLimit) -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommandBytes.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommandBytes.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasCommands.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumCanvasEffectSteps.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumMetadataCharacters.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumMetadataCharacters.set -> void
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.get -> int
 PdfBuilder.Document.Layout.PdfRenderLimits.MaximumPaginationPasses.set -> void
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumXmpBytes.get -> int
+PdfBuilder.Document.Layout.PdfRenderLimits.MaximumXmpBytes.set -> void
 PdfBuilder.Document.Layout.PdfTableRowSplitException
 PdfBuilder.Document.Layout.PdfTableRowSplitException.ColumnIndex.get -> int?
 PdfBuilder.Document.Layout.PdfTableRowSplitException.Reason.get -> string!
@@ -944,18 +1298,22 @@ PdfBuilder.Document.PdfComponentCompositionException
 PdfBuilder.Document.PdfComponentCompositionException.ComponentPath.get -> string!
 PdfBuilder.Document.PdfDocument
 PdfBuilder.Document.PdfDocument.AddPage(float width = 612, float height = 792) -> PdfBuilder.Models.PdfPage!
+PdfBuilder.Document.PdfDocument.ApplyOutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> void
 PdfBuilder.Document.PdfDocument.Generate(System.IO.Stream! destination) -> void
 PdfBuilder.Document.PdfDocument.GenerateBytes() -> byte[]!
 PdfBuilder.Document.PdfDocument.GenerationOptions.get -> PdfBuilder.Models.PdfGenerationOptions!
 PdfBuilder.Document.PdfDocument.HeaderFooter.get -> PdfBuilder.Models.HeaderFooterSpec!
 PdfBuilder.Document.PdfDocument.HeaderFooter.set -> void
+PdfBuilder.Document.PdfDocument.LastGenerationMetrics.get -> PdfBuilder.Models.PdfGenerationMetrics?
 PdfBuilder.Document.PdfDocument.LayoutOptions.get -> PdfBuilder.Document.Layout.LayoutOptions!
 PdfBuilder.Document.PdfDocument.Master.get -> PdfBuilder.Models.MasterPageSpec!
 PdfBuilder.Document.PdfDocument.Master.set -> void
 PdfBuilder.Document.PdfDocument.Metadata.get -> PdfBuilder.Models.DocumentMetadata!
+PdfBuilder.Document.PdfDocument.MutablePages.get -> System.Collections.Generic.IList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.NavigationDiagnostics.get -> PdfBuilder.Document.PdfNavigationDiagnostics!
+PdfBuilder.Document.PdfDocument.OutputIntent.get -> PdfBuilder.Models.PdfOutputIntent?
 PdfBuilder.Document.PdfDocument.OutputOptions.get -> PdfBuilder.Models.PdfOutputOptions!
-PdfBuilder.Document.PdfDocument.Pages.get -> System.Collections.Generic.List<PdfBuilder.Models.PdfPage!>!
+PdfBuilder.Document.PdfDocument.Pages.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Models.PdfPage!>!
 PdfBuilder.Document.PdfDocument.Pagination.get -> PdfBuilder.Document.PaginationRegistry!
 PdfBuilder.Document.PdfDocument.PdfDocument() -> void
 PdfBuilder.Document.PdfDocument.PdfDocument(System.Collections.Generic.List<PdfBuilder.Models.PdfPage!>! pages) -> void
@@ -982,6 +1340,7 @@ PdfBuilder.Document.PdfDocumentBuilder.LayoutDebug(System.Action<PdfBuilder.Docu
 PdfBuilder.Document.PdfDocumentBuilder.Master(System.Action<PdfBuilder.Models.MasterPageSpec!>! cfg) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.Metadata(System.Action<PdfBuilder.Models.DocumentMetadata!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.OutputOptions(System.Action<PdfBuilder.Models.PdfOutputOptions!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
+PdfBuilder.Document.PdfDocumentBuilder.OutputPreset(PdfBuilder.Models.PdfOutputPreset preset) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.PdfDocumentBuilder(PdfBuilder.Document.PdfDocument! doc) -> void
 PdfBuilder.Document.PdfDocumentBuilder.Profiler(System.Action<PdfBuilder.Document.Layout.LayoutProfilerConfig!>! configure) -> PdfBuilder.Document.PdfDocumentBuilder!
 PdfBuilder.Document.PdfDocumentBuilder.SetFooter(string! text) -> PdfBuilder.Document.PdfDocumentBuilder!
@@ -2461,9 +2820,13 @@ PdfBuilder.Models.DocumentMetadata.CreatedUtc.get -> System.DateTimeOffset?
 PdfBuilder.Models.DocumentMetadata.CreatedUtc.set -> void
 PdfBuilder.Models.DocumentMetadata.Creator.get -> string?
 PdfBuilder.Models.DocumentMetadata.Creator.set -> void
+PdfBuilder.Models.DocumentMetadata.CustomXmp.get -> string?
+PdfBuilder.Models.DocumentMetadata.CustomXmp.set -> void
 PdfBuilder.Models.DocumentMetadata.DocumentMetadata() -> void
 PdfBuilder.Models.DocumentMetadata.Keywords.get -> string?
 PdfBuilder.Models.DocumentMetadata.Keywords.set -> void
+PdfBuilder.Models.DocumentMetadata.Language.get -> string?
+PdfBuilder.Models.DocumentMetadata.Language.set -> void
 PdfBuilder.Models.DocumentMetadata.ModifiedUtc.get -> System.DateTimeOffset?
 PdfBuilder.Models.DocumentMetadata.ModifiedUtc.set -> void
 PdfBuilder.Models.DocumentMetadata.Producer.get -> string?
@@ -2472,6 +2835,7 @@ PdfBuilder.Models.DocumentMetadata.Subject.get -> string?
 PdfBuilder.Models.DocumentMetadata.Subject.set -> void
 PdfBuilder.Models.DocumentMetadata.Title.get -> string?
 PdfBuilder.Models.DocumentMetadata.Title.set -> void
+PdfBuilder.Models.DocumentMetadata.Validate() -> void
 PdfBuilder.Models.FlowDirection
 PdfBuilder.Models.FlowDirection.LeftToRight = 0 -> PdfBuilder.Models.FlowDirection
 PdfBuilder.Models.FlowDirection.RightToLeft = 1 -> PdfBuilder.Models.FlowDirection
@@ -2543,37 +2907,73 @@ PdfBuilder.Models.PdfColor.Blue.init -> void
 PdfBuilder.Models.PdfColor.Green.init -> void
 PdfBuilder.Models.PdfColor.PdfColor() -> void
 PdfBuilder.Models.PdfColor.Red.init -> void
+PdfBuilder.Models.PdfGenerationMetrics
+PdfBuilder.Models.PdfGenerationMetrics.BaseFontResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.Elapsed.get -> System.TimeSpan
+PdfBuilder.Models.PdfGenerationMetrics.EmbeddedFontResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ExtGStateResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ImageReferences.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.MaximumRetainedPageContentStreams.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ObjectsWritten.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.OutputBytes.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.PageContentStreamsWritten.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.PagesPlanned.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.UniqueImageResources.get -> int
 PdfBuilder.Models.PdfGenerationOptions
 PdfBuilder.Models.PdfGenerationOptions.CreationTime.get -> System.DateTimeOffset?
 PdfBuilder.Models.PdfGenerationOptions.CreationTime.set -> void
 PdfBuilder.Models.PdfGenerationOptions.Deterministic.get -> bool
 PdfBuilder.Models.PdfGenerationOptions.Deterministic.set -> void
+PdfBuilder.Models.PdfGenerationOptions.DocumentIdentifier.get -> string?
+PdfBuilder.Models.PdfGenerationOptions.DocumentIdentifier.set -> void
 PdfBuilder.Models.PdfGenerationOptions.DocumentIdSeed.get -> string?
 PdfBuilder.Models.PdfGenerationOptions.DocumentIdSeed.set -> void
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.get -> System.DateTimeOffset?
 PdfBuilder.Models.PdfGenerationOptions.ModificationTime.set -> void
 PdfBuilder.Models.PdfGenerationOptions.PdfGenerationOptions() -> void
+PdfBuilder.Models.PdfOutputIntent
+PdfBuilder.Models.PdfOutputIntent.Components.get -> int
+PdfBuilder.Models.PdfOutputIntent.Identifier.get -> string!
+PdfBuilder.Models.PdfOutputIntent.Info.get -> string?
+PdfBuilder.Models.PdfOutputIntent.PdfOutputIntent() -> void
+PdfBuilder.Models.PdfOutputIntent.Profile.get -> System.ReadOnlyMemory<byte>
+PdfBuilder.Models.PdfOutputIntent.RegistryName.get -> string!
 PdfBuilder.Models.PdfOutputOptions
+PdfBuilder.Models.PdfOutputOptions.ApplyPreset(PdfBuilder.Models.PdfOutputPreset preset) -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.Clone() -> PdfBuilder.Models.PdfOutputOptions!
 PdfBuilder.Models.PdfOutputOptions.CompressContentStreams.get -> bool
 PdfBuilder.Models.PdfOutputOptions.CompressContentStreams.set -> void
 PdfBuilder.Models.PdfOutputOptions.ContentCompressionLevel.get -> System.IO.Compression.CompressionLevel
 PdfBuilder.Models.PdfOutputOptions.ContentCompressionLevel.set -> void
 PdfBuilder.Models.PdfOutputOptions.CopyFrom(PdfBuilder.Models.PdfOutputOptions! other) -> void
+PdfBuilder.Models.PdfOutputOptions.DownsampleImages.get -> bool
+PdfBuilder.Models.PdfOutputOptions.DownsampleImages.set -> void
 PdfBuilder.Models.PdfOutputOptions.ImageCompressionLevel.get -> System.IO.Compression.CompressionLevel
 PdfBuilder.Models.PdfOutputOptions.ImageCompressionLevel.set -> void
+PdfBuilder.Models.PdfOutputOptions.JpegQuality.get -> int
+PdfBuilder.Models.PdfOutputOptions.JpegQuality.set -> void
+PdfBuilder.Models.PdfOutputOptions.MaximumImageDpi.get -> float
+PdfBuilder.Models.PdfOutputOptions.MaximumImageDpi.set -> void
 PdfBuilder.Models.PdfOutputOptions.PdfOutputOptions() -> void
+PdfBuilder.Models.PdfOutputOptions.PdfVersion.get -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfOutputOptions.PdfVersion.set -> void
 PdfBuilder.Models.PdfOutputOptions.ReadableContentStreams.get -> bool
 PdfBuilder.Models.PdfOutputOptions.ReadableContentStreams.set -> void
 PdfBuilder.Models.PdfOutputOptions.UsePngPredictor.get -> bool
 PdfBuilder.Models.PdfOutputOptions.UsePngPredictor.set -> void
+PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Balanced = 1 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Debug = 0 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.Deterministic = 4 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.PrintQuality = 3 -> PdfBuilder.Models.PdfOutputPreset
+PdfBuilder.Models.PdfOutputPreset.SmallFile = 2 -> PdfBuilder.Models.PdfOutputPreset
 PdfBuilder.Models.PdfPage
 PdfBuilder.Models.PdfPage.AddElement(PdfBuilder.Document.PdfElement! element) -> void
 PdfBuilder.Models.PdfPage.BackgroundColor.get -> string?
 PdfBuilder.Models.PdfPage.BackgroundColor.set -> void
 PdfBuilder.Models.PdfPage.Columns.get -> PdfBuilder.Models.ColumnLayoutSpec?
 PdfBuilder.Models.PdfPage.Columns.set -> void
-PdfBuilder.Models.PdfPage.Elements.get -> System.Collections.Generic.List<PdfBuilder.Document.PdfElement!>!
+PdfBuilder.Models.PdfPage.Elements.get -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Document.PdfElement!>!
 PdfBuilder.Models.PdfPage.HeaderFooterOverride.get -> PdfBuilder.Models.HeaderFooterSpec?
 PdfBuilder.Models.PdfPage.HeaderFooterOverride.set -> void
 PdfBuilder.Models.PdfPage.Height.get -> float
@@ -2588,11 +2988,18 @@ PdfBuilder.Models.PdfPage.MarginTop.get -> float
 PdfBuilder.Models.PdfPage.MarginTop.set -> void
 PdfBuilder.Models.PdfPage.MasterOverride.get -> PdfBuilder.Models.MasterPageSpec?
 PdfBuilder.Models.PdfPage.MasterOverride.set -> void
+PdfBuilder.Models.PdfPage.MutableElements.get -> System.Collections.Generic.IList<PdfBuilder.Document.PdfElement!>!
 PdfBuilder.Models.PdfPage.PdfPage(float width, float height) -> void
 PdfBuilder.Models.PdfPage.TextDefaults.get -> PdfBuilder.Models.TextStyleDefaults!
 PdfBuilder.Models.PdfPage.TextDefaults.set -> void
 PdfBuilder.Models.PdfPage.Theme.get -> PdfBuilder.Document.DocumentTheme!
 PdfBuilder.Models.PdfPage.Width.get -> float
+PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf14 = 0 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf15 = 1 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf16 = 2 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf17 = 3 -> PdfBuilder.Models.PdfVersion
+PdfBuilder.Models.PdfVersion.Pdf20 = 4 -> PdfBuilder.Models.PdfVersion
 PdfBuilder.Models.RichRun
 PdfBuilder.Models.RichRun.BackgroundColor.get -> string?
 PdfBuilder.Models.RichRun.BackgroundColor.set -> void
@@ -2805,17 +3212,6 @@ PdfBuilder.Writer.Imaging.WebpInspector.Info.Height -> int
 PdfBuilder.Writer.Imaging.WebpInspector.Info.Info() -> void
 PdfBuilder.Writer.Imaging.WebpInspector.Info.PrimaryChunk -> string!
 PdfBuilder.Writer.Imaging.WebpInspector.Info.Width -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Alpha.get -> byte[]?
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Alpha.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Height.get -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Height.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Result() -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Rgb.get -> byte[]!
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Rgb.init -> void
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Width.get -> int
-PdfBuilder.Writer.Imaging.WebpWicDecoder.Result.Width.init -> void
 PdfBuilder.Writer.ListRenderer
 PdfBuilder.Writer.MasterRenderer
 PdfBuilder.Writer.PdfContentRenderer
@@ -2870,6 +3266,7 @@ PdfBuilder.Writer.PdfWriter
 PdfBuilder.Writer.PdfWriter.GenerateBytes(PdfBuilder.Document.PdfDocument! doc) -> byte[]!
 PdfBuilder.Writer.PdfWriter.GeneratePreviewImages(PdfBuilder.Document.PdfDocument! doc, int dpi = 144) -> System.Collections.Generic.IReadOnlyList<PdfBuilder.Writer.PdfPreviewPage!>!
 PdfBuilder.Writer.PdfWriter.GenerateStream(PdfBuilder.Document.PdfDocument! doc, System.IO.Stream! destination) -> void
+PdfBuilder.Writer.PdfWriter.LastGenerationMetrics.get -> PdfBuilder.Models.PdfGenerationMetrics?
 PdfBuilder.Writer.PdfWriter.PdfWriter() -> void
 PdfBuilder.Writer.PdfWriter.Save(PdfBuilder.Document.PdfDocument! doc, string! path) -> void
 PdfBuilder.Writer.RichTextRenderer
@@ -3007,6 +3404,12 @@ static PdfBuilder.Document.HeaderFooterTokens.PageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.SectionPageCount.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.SectionPageNumber.get -> int
 static PdfBuilder.Document.HeaderFooterTokens.Title.get -> string?
+static PdfBuilder.Document.ImageSource.FromBytes(byte[]! data) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromEmbeddedResource(System.Reflection.Assembly! assembly, string! resourceName) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromFile(string! path) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromLazy(System.Func<byte[]!>! byteFactory) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromMemory(System.ReadOnlyMemory<byte> data) -> PdfBuilder.Document.ImageSource!
+static PdfBuilder.Document.ImageSource.FromStream(System.IO.Stream! stream) -> PdfBuilder.Document.ImageSource!
 static PdfBuilder.Document.Layout.LayoutMeasurement.Wrap(float usedWidth = 0, object? metadata = null) -> PdfBuilder.Document.Layout.LayoutMeasurement!
 static PdfBuilder.Document.PageSizes.A3.get -> PdfBuilder.Document.PageSize
 static PdfBuilder.Document.PageSizes.A4.get -> PdfBuilder.Document.PageSize
@@ -3057,10 +3460,16 @@ PdfBuilder.Document.Layout.PdfDiagnosticsOptions
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.PdfDiagnosticsOptions() -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.get -> int
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.LayoutIterationLimit.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.ShowFlowGuides.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.ShowFlowGuides.set -> void
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry.PdfLayoutTraceEntry() -> void
 PdfBuilder.Document.Layout.PdfLayoutTraceEntry.Event.get -> string!
@@ -3192,7 +3601,6 @@ static PdfBuilder.Writer.Imaging.PngDecoder.Decode(byte[]! data) -> PdfBuilder.W
 static PdfBuilder.Writer.Imaging.PngDecoder.LooksLikePng(System.ReadOnlySpan<byte> data) -> bool
 static PdfBuilder.Writer.Imaging.WebpInspector.GetInfo(byte[]! data) -> PdfBuilder.Writer.Imaging.WebpInspector.Info!
 static PdfBuilder.Writer.Imaging.WebpInspector.LooksLikeWebp(System.ReadOnlySpan<byte> s) -> bool
-static PdfBuilder.Writer.Imaging.WebpWicDecoder.Decode(byte[]! webpBytes) -> PdfBuilder.Writer.Imaging.WebpWicDecoder.Result!
 static PdfBuilder.Writer.ListRenderer.Append(System.Text.StringBuilder! sb, ListElement! list, float pageHeight, PdfBuilder.Writer.PdfRenderContext! context, System.Collections.Generic.List<PdfBuilder.Writer.RichTextRenderer.LinkRect!>! outLinks) -> void
 static PdfBuilder.Writer.MasterRenderer.AppendBackground(System.Text.StringBuilder! sb, PdfBuilder.Models.PdfPage! page, PdfBuilder.Models.MasterPageSpec! master) -> void
 static PdfBuilder.Writer.MasterRenderer.AppendWatermark(System.Text.StringBuilder! sb, PdfBuilder.Models.PdfPage! page, PdfBuilder.Models.WatermarkSpec! wm, PdfBuilder.Writer.PdfRenderContext! context, bool aboveContent) -> void
@@ -3361,3 +3769,50 @@ TextSpan.Underline.get -> bool?
 TextSpan.Underline.set -> void
 TextSpan.WordSpacing.get -> float?
 TextSpan.WordSpacing.set -> void
+PdfBuilder.Document.IDocumentDescriptor.Tagged(System.Action<PdfBuilder.Document.ITaggedPdfDescriptor!>! configure) -> void
+PdfBuilder.Document.IContainer.AlternativeText(string! text) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Decorative() -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Heading(int level) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.ReadingOrder(int order) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IContainer.Semantic(PdfBuilder.Document.PdfSemanticRole role) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.ITaggedPdfDescriptor
+PdfBuilder.Document.ITaggedPdfDescriptor.Enabled(bool value = true) -> void
+PdfBuilder.Document.ITaggedPdfDescriptor.Language(string! language) -> void
+PdfBuilder.Document.ITaggedPdfDescriptor.RoleMap(string! customRole, string! standardRole) -> void
+PdfBuilder.Document.PdfDocument.Tagging.get -> PdfBuilder.Document.PdfTaggingOptions!
+PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Caption = 24 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Code = 29 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Document = 0 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Figure = 23 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Footer = 22 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Header = 21 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading = 2 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading1 = 3 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading2 = 4 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading3 = 5 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading4 = 6 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading5 = 7 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Heading6 = 8 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Label = 12 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Link = 25 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.List = 10 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.ListBody = 13 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.ListItem = 11 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Note = 28 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Paragraph = 9 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Quote = 27 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Section = 1 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Span = 26 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.Table = 14 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableBody = 19 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableCell = 17 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableFoot = 20 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableHead = 18 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableHeaderCell = 16 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfSemanticRole.TableRow = 15 -> PdfBuilder.Document.PdfSemanticRole
+PdfBuilder.Document.PdfTaggingOptions
+PdfBuilder.Document.PdfTaggingOptions.Enabled.get -> bool
+PdfBuilder.Document.PdfTaggingOptions.Enabled.set -> void
+PdfBuilder.Document.PdfTaggingOptions.PdfTaggingOptions() -> void
+PdfBuilder.Document.PdfTaggingOptions.RoleMap.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
