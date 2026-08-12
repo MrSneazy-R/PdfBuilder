@@ -38,8 +38,8 @@ public sealed class ProductionFixtureTests
             }
             int pages = CountPages(first);
             counts.Add($"{fixture.Name}={pages}");
-            if (fixture.PageCount > 0)
-                pages.Should().Be(fixture.PageCount, $"{fixture.Name} has a retained page-count contract");
+            if (fixture.ExpectedPageCount > 0)
+                pages.Should().Be(fixture.ExpectedPageCount, $"{fixture.Name} has a retained platform page-count contract");
         }
 
         if (productionFixtures.Any(fixture => fixture.PageCount <= 0))

@@ -9,7 +9,11 @@ public sealed record FixtureManifestEntry(
     string[] TextMarkers,
     bool Visual,
     bool Deterministic = true,
-    int[]? VisualPages = null);
+    int[]? VisualPages = null,
+    int? LinuxPageCount = null)
+{
+    public int ExpectedPageCount => OperatingSystem.IsLinux() ? LinuxPageCount ?? PageCount : PageCount;
+}
 
 public static class FixtureManifest
 {

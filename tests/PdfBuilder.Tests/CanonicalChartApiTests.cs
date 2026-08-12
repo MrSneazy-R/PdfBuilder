@@ -110,6 +110,7 @@ public sealed class CanonicalChartApiTests
             chart.Line("Trend", [1f, 4f, 2f]).Smooth();
             chart.GroupedBars("Bars", [2f, 3f, 5f]);
         })));
+        document.ApplyOutputPreset(PdfOutputPreset.Deterministic);
         document.OutputOptions.ReadableContentStreams = true;
         return document;
     }

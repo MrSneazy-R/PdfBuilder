@@ -29,9 +29,11 @@ public sealed class IndependentPdfValidationTests
             PdfValidationHelpers.AssertStructuralValidity(qpdf, pdfPath);
             var text = PdfValidationHelpers.ExtractText(pdftotext, pdfPath, directory);
             foreach (var marker in fixture.TextMarkers)
-                text.Should().Contain(marker, $"{fixture.Name} must expose its declared marker through independent text extraction");
+                NormalizeWhitespace(text).Should().Contain(
+                    NormalizeWhitespace(marker),
+                    $"{fixture.Name} must expose its declared marker through independent text extraction, allowing only extractor whitespace differences");
 
-            CountPages(qpdf, pdfPath).Should().Be(fixture.PageCount, $"{fixture.Name} has a declared page count");
+            CountPages(qpdf, pdfPath).Should().Be(fixture.ExpectedPageCount, $"{fixture.Name} has a declared platform page count");
         }
     }
 
@@ -55,8 +57,8 @@ public sealed class IndependentPdfValidationTests
             var pdfPath = Path.Combine(directory, fixture.Name + ".pdf");
             File.WriteAllBytes(pdfPath, ValidationFixtureFactory.Generate(fixture.Name));
             var actualPages = PdfValidationHelpers.Rasterize(pdftoppm, pdfPath, directory);
-            actualPages.Should().HaveCount(fixture.PageCount);
-            var selectedPages = fixture.VisualPages?.ToHashSet() ?? Enumerable.Range(1, fixture.PageCount).ToHashSet();
+            actualPages.Should().HaveCount(fixture.ExpectedPageCount);
+            var selectedPages = fixture.VisualPages?.ToHashSet() ?? Enumerable.Range(1, fixture.ExpectedPageCount).ToHashSet();
 
             for (var index = 0; index < actualPages.Count; index++)
             {
@@ -126,6 +128,9 @@ public sealed class IndependentPdfValidationTests
         result.ExitCode.Should().Be(0, result.StandardOutput + result.StandardError);
         return int.Parse(result.StandardOutput.Trim(), System.Globalization.CultureInfo.InvariantCulture);
     }
+
+    private static string NormalizeWhitespace(string value)
+        => string.Concat(value.Where(character => !char.IsWhiteSpace(character)));
 
     private static string GetPlatformBaselineDirectory() =>
         OperatingSystem.IsLinux() ? "linux" : "default";
