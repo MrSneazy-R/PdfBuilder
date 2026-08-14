@@ -16,12 +16,15 @@ namespace PdfBuilder.TextShaping
     {
         private const int MaxGlyphsPerRun = 512;
         private const int MaxTokenTextElements = 256;
+        private const int MaxShapedLineCacheEntries = 8192;
 
         private static readonly TextShaper _shared = new();
         public static TextShaper Shared => _shared;
 
         private readonly SKFontManager _fontManager;
         private readonly ConcurrentDictionary<string, SKTypeface> _typefaceCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<ShapedLineCacheKey, ShapedLine> _shapedLineCache = new();
+        private readonly ConcurrentQueue<ShapedLineCacheKey> _shapedLineCacheOrder = new();
 
         private TextShaper()
         {
@@ -292,6 +295,35 @@ namespace PdfBuilder.TextShaping
                 return new ShapedLine(string.Empty, new List<ShapedRun> { emptyRun }, 0f, emptyRun.Ascent, emptyRun.Descent, GetLineHeight(request.FontSize, request.LineHeight, emptyRun.Ascent, emptyRun.Descent));
             }
 
+            var cacheKey = new ShapedLineCacheKey(
+                text,
+                FontCatalog.Version,
+                request.FontFamily,
+                request.FontSize,
+                request.LineHeight,
+                request.Bold,
+                request.Italic,
+                request.Monospace,
+                request.FallbackFontsCacheKey,
+                request.FlowDirection,
+                request.LetterSpacing,
+                request.WordSpacing);
+            if (_shapedLineCache.TryGetValue(cacheKey, out ShapedLine? cached))
+                return cached;
+
+            ShapedLine shaped = ShapeLineCore(text, request);
+            if (!_shapedLineCache.TryAdd(cacheKey, shaped))
+                return _shapedLineCache.TryGetValue(cacheKey, out cached) ? cached : shaped;
+
+            _shapedLineCacheOrder.Enqueue(cacheKey);
+            while (_shapedLineCache.Count > MaxShapedLineCacheEntries && _shapedLineCacheOrder.TryDequeue(out ShapedLineCacheKey expired))
+                _shapedLineCache.TryRemove(expired, out _);
+            return shaped;
+        }
+
+        private ShapedLine ShapeLineCore(string text, TextShapingRequest request)
+        {
+
             var runs = new List<ShapedRun>();
             float width = 0f;
             float lineAscent = 0f;
@@ -376,6 +408,8 @@ namespace PdfBuilder.TextShaping
 
             var cachedShaper = GetShaper(segment.Typeface);
             List<ShapedGlyph> glyphs;
+            using var font = new SKFont(segment.Typeface, segment.FontSize);
+            var metrics = font.Metrics;
             lock (cachedShaper.SyncRoot)
             {
                 var result = cachedShaper.Shaper.Shape(segment.Text, 0, 0, paint);
@@ -384,7 +418,6 @@ namespace PdfBuilder.TextShaping
                 {
                     var clusterRanges = BuildClusterRanges(result.Clusters, segment.Text);
                     var emittedClusters = new HashSet<int>();
-                    using var font = new SKFont(segment.Typeface, segment.FontSize);
                     var glyphCodes = result.Codepoints;
                     var glyphWidths = glyphCodes.Length > 0 ? new float[glyphCodes.Length] : Array.Empty<float>();
                     if (glyphCodes.Length > 0)
@@ -433,8 +466,6 @@ namespace PdfBuilder.TextShaping
             var adjustedGlyphs = ApplySpacing(glyphs, request);
             glyphs = adjustedGlyphs;
             float runWidth = glyphs.Sum(g => g.AdvanceX);
-            using var metricsFont = new SKFont(segment.Typeface, segment.FontSize);
-            var metrics = metricsFont.Metrics;
             float ascent = Math.Abs(metrics.Ascent);
             float descent = Math.Abs(metrics.Descent);
 
@@ -448,6 +479,20 @@ namespace PdfBuilder.TextShaping
             public SKShaper Shaper { get; }
             public object SyncRoot { get; } = new();
         }
+
+        private readonly record struct ShapedLineCacheKey(
+            string Text,
+            int FontCatalogVersion,
+            string FontFamily,
+            float FontSize,
+            float LineHeight,
+            bool Bold,
+            bool Italic,
+            bool Monospace,
+            string FallbackFonts,
+            FlowDirection FlowDirection,
+            float? LetterSpacing,
+            float? WordSpacing);
 
         private static Dictionary<int, (int start, int end)> BuildClusterRanges(IReadOnlyList<uint> clusters, string text)
         {
@@ -539,7 +584,6 @@ namespace PdfBuilder.TextShaping
                         glyph.DesignAdvance,
                         glyph.Cluster,
                         glyph.Unicode);
-                    modified.AssignedCid = glyph.AssignedCid;
                     adjusted.Add(modified);
                 }
                 else

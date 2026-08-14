@@ -10,7 +10,11 @@ internal static class BenchmarkScenarios
             Pdf("minimal-document", BenchmarkDocuments.Minimal),
             Pdf("invoice", () => BenchmarkDocuments.Invoice(20)),
             Pdf("multi-page-invoice", () => BenchmarkDocuments.Invoice(200)),
-            Pdf("1000-row-table", () => BenchmarkDocuments.Invoice(1_000), exactOutputGate: false, allocationGate: false),
+            Pdf("table-100-rows", () => BenchmarkDocuments.Table(100), exactOutputGate: false, allocationGate: false, rowCount: 100),
+            Pdf("table-500-rows", () => BenchmarkDocuments.Table(500), exactOutputGate: false, allocationGate: false, rowCount: 500),
+            Pdf("table-1000-rows", () => BenchmarkDocuments.Table(1_000), exactOutputGate: false, allocationGate: false, rowCount: 1_000),
+            Pdf("table-2000-rows", () => BenchmarkDocuments.Table(2_000), exactOutputGate: false, allocationGate: false, rowCount: 2_000),
+            Pdf("table-5000-rows", () => BenchmarkDocuments.Table(5_000), exactOutputGate: false, allocationGate: false, rowCount: 5_000),
             Pdf("500-page-report", BenchmarkDocuments.FiveHundredPages, exactOutputGate: false, allocationGate: false),
             Pdf("multilingual-shaping", BenchmarkDocuments.Multilingual, exactOutputGate: false, allocationGate: false),
             Pdf("image-heavy-report", BenchmarkDocuments.ImageHeavy),
@@ -31,8 +35,19 @@ internal static class BenchmarkScenarios
             ? definition.Execute()
             : throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown benchmark scenario.");
 
-    private static ScenarioDefinition Pdf(string name, Func<PdfDocument> factory, bool exactOutputGate = true, bool allocationGate = true) =>
-        new(name, () => Generate(factory), exactOutputGate, allocationGate);
+    private static ScenarioDefinition Pdf(
+        string name,
+        Func<PdfDocument> factory,
+        bool exactOutputGate = true,
+        bool allocationGate = true,
+        int? rowCount = null) =>
+        new(
+            name,
+            () => Generate(factory),
+            exactOutputGate,
+            allocationGate,
+            rowCount,
+            rowCount.HasValue ? checked((rowCount.Value + 1L) * 3L) : null);
 
     private static ScenarioResult Generate(Func<PdfDocument> factory)
     {
@@ -81,7 +96,14 @@ internal static class BenchmarkScenarios
             results.Sum(result => result.ImageReferences),
             results.Sum(result => result.UniqueImageResources),
             results.Sum(result => result.ImageDeduplicationHits),
-            results.All(result => result.Deterministic));
+            results.All(result => result.Deterministic),
+            results.Sum(result => result.TableMeasurementCount),
+            results.Sum(result => result.TableRowMeasurementCount),
+            results.Sum(result => result.TableCellMeasurementCount),
+            results.Sum(result => result.TableCloneCount),
+            results.Sum(result => result.TableRowCloneCount),
+            results.Sum(result => result.ContentFactoryInvocationCount),
+            results.Sum(result => result.TableCellDrawBufferAllocationCount));
     }
 
     private static ScenarioResult RunCancellation()
@@ -135,7 +157,14 @@ internal static class BenchmarkScenarios
             metrics.ImageReferences,
             metrics.UniqueImageResources,
             Math.Max(0, metrics.ImageReferences - metrics.UniqueImageResources),
-            deterministic);
+            deterministic,
+            metrics.TableMeasurementCount,
+            metrics.TableRowMeasurementCount,
+            metrics.TableCellMeasurementCount,
+            metrics.TableCloneCount,
+            metrics.TableRowCloneCount,
+            metrics.ContentFactoryInvocationCount,
+            metrics.TableCellDrawBufferAllocationCount);
     }
 }
 
@@ -143,7 +172,9 @@ internal sealed record ScenarioDefinition(
     string Name,
     Func<ScenarioResult> Execute,
     bool ExactOutputGate,
-    bool AllocationGate);
+    bool AllocationGate,
+    int? RowCount = null,
+    long? ExpectedContentFactoryInvocationCount = null);
 
 internal sealed record ScenarioResult(
     long OutputBytes,
@@ -154,4 +185,11 @@ internal sealed record ScenarioResult(
     int ImageReferences,
     int UniqueImageResources,
     int ImageDeduplicationHits,
-    bool Deterministic);
+    bool Deterministic,
+    long TableMeasurementCount = 0,
+    long TableRowMeasurementCount = 0,
+    long TableCellMeasurementCount = 0,
+    long TableCloneCount = 0,
+    long TableRowCloneCount = 0,
+    long ContentFactoryInvocationCount = 0,
+    long TableCellDrawBufferAllocationCount = 0);

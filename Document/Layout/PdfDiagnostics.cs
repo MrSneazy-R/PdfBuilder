@@ -21,6 +21,9 @@ public sealed class PdfDiagnosticsOptions
     /// <summary>Gets or sets whether document-scoped layout timing is collected.</summary>
     public bool EnableProfiler { get; set; }
 
+    /// <summary>Gets or sets whether table measurement, cloning, and content-factory counters are collected.</summary>
+    public bool EnableTableLayoutCounters { get; set; }
+
     /// <summary>Gets or sets the maximum number of placement attempts before a layout failure is reported.</summary>
     public int LayoutIterationLimit { get; set; } = 32;
 
@@ -31,6 +34,7 @@ public sealed class PdfDiagnosticsOptions
         DrawBoundingBoxes = DrawBoundingBoxes,
         ShowFlowGuides = ShowFlowGuides,
         EnableProfiler = EnableProfiler,
+        EnableTableLayoutCounters = EnableTableLayoutCounters,
         LayoutIterationLimit = LayoutIterationLimit
     };
 }

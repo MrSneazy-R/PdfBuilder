@@ -39,6 +39,8 @@ namespace PdfBuilder.Document
 
         public LayoutProfilerSession ProfilerSession { get; } = new();
 
+        internal TableLayoutDiagnosticsSession TableLayoutDiagnostics { get; } = new();
+
         /// <summary>Gets the structured layout trace recorded when diagnostics are enabled.</summary>
         public PdfLayoutTrace LayoutTrace { get; } = new();
 

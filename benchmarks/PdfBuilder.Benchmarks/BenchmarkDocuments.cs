@@ -46,6 +46,42 @@ internal static class BenchmarkDocuments
         });
     }));
 
+    public static PdfDocument Table(int rows)
+    {
+        if (rows < 0) throw new ArgumentOutOfRangeException(nameof(rows));
+
+        return Create(document => document.Page(page =>
+        {
+            page.Margin(36);
+            page.Content().Table(table =>
+            {
+                table.Columns(columns =>
+                {
+                    columns.RelativeColumn(4);
+                    columns.RelativeColumn(1);
+                    columns.RelativeColumn(2);
+                });
+                table.RepeatHeaders();
+                table.Header(header =>
+                {
+                    header.Cell().Text("Description");
+                    header.Cell().Text("Quantity");
+                    header.Cell().Text("Amount");
+                });
+
+                for (int index = 1; index <= rows; index++)
+                {
+                    table.Row(row =>
+                    {
+                        row.Cell().Text($"Service line {index:00000}");
+                        row.Cell().Text((index % 7 + 1).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        row.Cell().Text($"USD {index * 3.75m:N2}");
+                    });
+                }
+            });
+        }), enableTableLayoutCounters: true);
+    }
+
     public static PdfDocument FiveHundredPages()
     {
         var document = CreateRaw();
@@ -134,9 +170,11 @@ internal static class BenchmarkDocuments
         return document;
     }
 
-    private static PdfDocument Create(Action<IDocumentDescriptor> compose) => PdfDocument.Create(document =>
+    private static PdfDocument Create(Action<IDocumentDescriptor> compose, bool enableTableLayoutCounters = false) => PdfDocument.Create(document =>
     {
         document.OutputPreset(PdfOutputPreset.Deterministic);
+        if (enableTableLayoutCounters)
+            document.Diagnostics(options => options.EnableTableLayoutCounters = true);
         compose(document);
     });
 

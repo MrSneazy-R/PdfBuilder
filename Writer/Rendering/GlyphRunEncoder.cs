@@ -46,8 +46,7 @@ namespace PdfBuilder.Writer
                     embeddedFont = font;
                 }
 
-                glyph.AssignedCid ??= embeddedGlyph.Cid;
-                glyphBuffer.AppendFormat("{0:X4}", glyph.AssignedCid.Value);
+                glyphBuffer.AppendFormat("{0:X4}", embeddedGlyph.Cid);
 
                 float designAdvance = glyph.DesignAdvance;
                 float actualAdvance = glyph.AdvanceX;

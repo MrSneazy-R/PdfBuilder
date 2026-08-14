@@ -7,76 +7,90 @@ internal sealed class TableComponent : IMeasurable
 {
     private const float Epsilon = 0.1f;
 
-    private readonly TableElement _workingTable;
-    private readonly TableElement _rootTable;
+    private readonly TableElement _table;
+    private readonly TableLayoutPlanState _planState;
+    private readonly int _startBodyRow;
+    private readonly TableRow? _pendingBodyRow;
     private readonly bool _isContinuation;
     private readonly SplitProgressState _splitProgress;
 
+    internal TableElement SourceTable => _table;
+    internal TableLayoutPlan? LayoutPlan => _planState.Plan;
+    internal int StartBodyRow => _startBodyRow;
+    internal bool HasPendingBodyRow => _pendingBodyRow != null;
+
     public TableComponent(TableElement table)
-        : this(table ?? throw new ArgumentNullException(nameof(table)), table, isContinuation: false, new SplitProgressState())
     {
+        _table = table ?? throw new ArgumentNullException(nameof(table));
+        TableGridValidator.Validate(_table);
+        _planState = new TableLayoutPlanState();
+        _startBodyRow = 0;
+        _pendingBodyRow = null;
+        _isContinuation = false;
+        _splitProgress = new SplitProgressState();
     }
 
-    private TableComponent(TableElement workingTable, TableElement rootTable, bool isContinuation, SplitProgressState splitProgress)
+    private TableComponent(TableComponent source, int startBodyRow, TableRow? pendingBodyRow)
     {
-        _workingTable = workingTable;
-        _rootTable = rootTable;
-        _isContinuation = isContinuation;
-        _splitProgress = splitProgress;
+        _table = source._table;
+        _planState = source._planState;
+        _startBodyRow = startBodyRow;
+        _pendingBodyRow = pendingBodyRow;
+        _isContinuation = true;
+        _splitProgress = source._splitProgress;
     }
 
     public LayoutMeasurement Measure(LayoutMeasureContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        TableGridValidator.Validate(_rootTable);
-        TableGridValidator.Validate(_workingTable);
+        TableLayoutDiagnosticsSession? diagnostics = context.Page.Owner?.TableLayoutDiagnostics;
+        if (diagnostics != null && context.Options.Diagnostics.EnableTableLayoutCounters)
+            diagnostics.Enabled = true;
+        _table.LayoutDiagnostics ??= diagnostics;
 
-        float width = ResolveWidth(context.AvailableWidth);
-        EnsureStableColumnWidths(width);
+        float requestedWidth = ResolveWidth(context.AvailableWidth);
+        TableLayoutPlan plan = GetOrCreatePlan(requestedWidth, context);
+        float width = plan.Width;
+        TableRowLayout? pendingBodyLayout = _pendingBodyRow == null
+            ? null
+            : plan.MeasureStandaloneRow(_table, _pendingBodyRow, context.Page, context.Options);
+        var body = new BodyRowLayoutView(plan.BodyRows, _startBodyRow, pendingBodyLayout);
+        bool showHeader = plan.HeaderRows.Length > 0 && (!_isContinuation || _table.RepeatHeaders);
+        IReadOnlyList<TableRowLayout> segmentHeaders = showHeader ? plan.HeaderRows : Array.Empty<TableRowLayout>();
+        float captionHeight = _isContinuation ? 0f : ComputeCaptionHeight(_table);
 
-        List<TableRow> headers = _rootTable.Rows.Where(row => row.IsHeader).ToList();
-        List<TableRow> footers = _rootTable.Rows.Where(row => row.IsFooter).ToList();
-        List<TableRow> body = _workingTable.Rows.Where(row => !row.IsHeader && !row.IsFooter).ToList();
-        bool showHeader = headers.Count > 0 && (!_isContinuation || _rootTable.RepeatHeaders);
-        IReadOnlyList<TableRow> segmentHeaders = showHeader ? headers : Array.Empty<TableRow>();
-        float captionHeight = _isContinuation ? 0f : ComputeCaptionHeight(_workingTable);
-
-        float[] headerHeights = showHeader ? MeasureRows(headers, width, context).RowHeights : Array.Empty<float>();
-        float[] footerHeights = footers.Count > 0 ? MeasureRows(footers, width, context).RowHeights : Array.Empty<float>();
-        float[] bodyHeights = body.Count > 0 ? MeasureRows(body, width, context).RowHeights : Array.Empty<float>();
-
-        float headerHeight = Sum(headerHeights);
-        float footerHeight = Sum(footerHeights);
-        float bodyHeight = Sum(bodyHeights);
+        float headerHeight = showHeader ? plan.HeaderHeight : 0f;
+        float footerHeight = plan.FooterHeight;
+        float bodyHeight = plan.GetRemainingBodyHeight(_startBodyRow) + (pendingBodyLayout?.Height ?? 0f);
         float completeHeight = captionHeight + headerHeight + bodyHeight + footerHeight;
         float pageContentHeight = context.Column.TopY - context.Column.BottomY;
         float maximumBodyHeight = Math.Max(0f, pageContentHeight - captionHeight - headerHeight - footerHeight);
-        ValidateOversizedRows(headers, headerHeights, pageContentHeight, "header");
-        ValidateOversizedRows(footers, footerHeights, pageContentHeight, "footer");
-        ValidateBodySplitPolicies(body, bodyHeights, maximumBodyHeight);
+        ValidatePlannedRowsOnce(plan, pageContentHeight, maximumBodyHeight);
+        if (pendingBodyLayout != null)
+            ValidateBodySplitPolicies([pendingBodyLayout], maximumBodyHeight);
 
         if (completeHeight <= context.AvailableHeight + Epsilon)
-            return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
+            return FullMeasurement(width, completeHeight, BuildSegment(plan, segmentHeaders, body, plan.FooterRows, includeCaption: captionHeight > 0f));
 
-        if (!_workingTable.EnablePageBreaks || _workingTable.AvoidBreakInside || context.AvailableHeight <= Epsilon)
-            return LayoutMeasurement.Wrap(width);
+        if (!_table.EnablePageBreaks || _table.AvoidBreakInside || context.AvailableHeight <= Epsilon)
+            return LayoutMeasurement.Wrap(plan.Width);
 
         float reserved = captionHeight + headerHeight + footerHeight;
         if (reserved > context.AvailableHeight + Epsilon)
             return WrapOrThrow(context, width, "Table header/footer groups leave no usable space for a body row.");
 
-        int rowsTaken = FindRowsToTake(body, bodyHeights, context.AvailableHeight - reserved);
+        int rowsTaken = FindRowsToTake(plan, body, context.AvailableHeight - reserved);
         if (rowsTaken <= 0)
         {
-            if (body.Count > 0 && bodyHeights[0] > maximumBodyHeight + Epsilon && IsRowSplittable(body[0]))
+            if (body.Count > 0 && body[0].Height > maximumBodyHeight + Epsilon && IsRowSplittable(body[0].Row))
             {
                 if (!IsFullPage(context))
                     return LayoutMeasurement.Wrap(width);
                 return SplitFirstBodyRow(
                     context,
-                    width,
+                    plan,
                     segmentHeaders,
-                    footers,
+                    plan.FooterRows,
                     body,
                     context.AvailableHeight - reserved,
                     captionHeight,
@@ -90,15 +104,16 @@ internal sealed class TableComponent : IMeasurable
         }
 
         if (rowsTaken >= body.Count)
-            return FullMeasurement(width, completeHeight, BuildSegment(segmentHeaders, body, footers, width, includeCaption: captionHeight > 0f));
+            return FullMeasurement(width, completeHeight, BuildSegment(plan, segmentHeaders, body, plan.FooterRows, includeCaption: captionHeight > 0f));
 
-        bool repeatFooter = _rootTable.FooterRepeatMode == TableFooterRepeatMode.EveryPage
-            || (_rootTable.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
-        List<TableRow> segmentFooter = repeatFooter ? footers : [];
-        List<TableRow> segmentBody = body.Take(rowsTaken).ToList();
-        float segmentHeight = captionHeight + headerHeight + Sum(bodyHeights.Take(rowsTaken)) + (repeatFooter ? footerHeight : 0f);
-        TableElement segment = BuildSegment(segmentHeaders, segmentBody, segmentFooter, width, includeCaption: captionHeight > 0f);
-        TableComponent remainder = CreateRemainder(body.Skip(rowsTaken).ToList(), rowsTaken);
+        bool repeatFooter = _table.FooterRepeatMode == TableFooterRepeatMode.EveryPage
+            || (_table.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
+        IReadOnlyList<TableRowLayout> segmentFooter = repeatFooter ? plan.FooterRows : Array.Empty<TableRowLayout>();
+        TableRowLayout[] segmentBody = body.Take(rowsTaken).ToArray();
+        float segmentHeight = captionHeight + headerHeight + SumHeights(segmentBody) + (repeatFooter ? footerHeight : 0f);
+        TableSegmentElement segment = BuildSegment(plan, segmentHeaders, segmentBody, segmentFooter, includeCaption: captionHeight > 0f);
+        int nextBodyRow = _startBodyRow + rowsTaken - (_pendingBodyRow == null ? 0 : 1);
+        TableComponent remainder = CreateRemainder(nextBodyRow, pendingBodyRow: null);
 
         return PartialMeasurement(width, segmentHeight, segment, remainder);
     }
@@ -107,39 +122,34 @@ internal sealed class TableComponent : IMeasurable
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(measurement);
-        if (measurement.Metadata is not TableLayoutMetadata metadata)
+        if (measurement.Metadata is not TableSegmentElement segmentElement)
             throw new InvalidOperationException("Table measurement metadata missing.");
 
-        TableElement element = metadata.Element;
-        element.EnablePageBreaks = false;
-        element.X = context.ContentLeft;
-        element.Y = context.ContentTop;
-        element.TableWidth ??= metadata.Width;
-        element.PageTopY = context.Column.TopY;
-        element.PageBottomY = context.Column.BottomY;
-        context.Page.AddElement(element);
-        TableCellContainerLayout.AddContentGroups(element, context.Page, context.Options);
+        segmentElement.X = context.ContentLeft;
+        segmentElement.Y = context.ContentTop;
+        context.Page.AddElement(segmentElement);
+        TableCellContainerLayout.AddContentGroups(segmentElement, context.Page, context.Options);
     }
 
-    private LayoutMeasurement FullMeasurement(float width, float height, TableElement element)
+    private LayoutMeasurement FullMeasurement(float width, float height, TableSegmentElement segment)
         => new(
             marginTop: 0f,
             contentHeight: height,
             marginBottom: 0f,
             usedWidth: width,
-            metadata: new TableLayoutMetadata(element, width),
-            avoidBreakInside: _workingTable.AvoidBreakInside,
+            metadata: segment,
+            avoidBreakInside: _table.AvoidBreakInside,
             result: LayoutResultKind.Full,
             remainder: null);
 
-    private LayoutMeasurement PartialMeasurement(float width, float height, TableElement element, TableComponent remainder)
+    private LayoutMeasurement PartialMeasurement(float width, float height, TableSegmentElement segment, TableComponent remainder)
         => new(
             marginTop: 0f,
             contentHeight: height,
             marginBottom: 0f,
             usedWidth: width,
-            metadata: new TableLayoutMetadata(element, width),
-            avoidBreakInside: _workingTable.AvoidBreakInside,
+            metadata: segment,
+            avoidBreakInside: _table.AvoidBreakInside,
             result: LayoutResultKind.Partial,
             remainder: remainder);
 
@@ -151,126 +161,140 @@ internal sealed class TableComponent : IMeasurable
         throw new InvalidOperationException(message + " Reduce the configured row constraints or repeated table groups.");
     }
 
-    private int FindRowsToTake(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float budget)
+    private int FindRowsToTake(TableLayoutPlan plan, IReadOnlyList<TableRowLayout> rows, float budget)
     {
         int count = 0;
         float used = 0f;
-        while (count < heights.Count && used + heights[count] <= budget + Epsilon)
+        while (count < rows.Count && used + rows[count].Height <= budget + Epsilon)
         {
-            used += heights[count];
+            used += rows[count].Height;
             count++;
         }
         if (count == 0 || count >= rows.Count)
             return count;
 
-        bool[] blockedBreaks = ComputeBlockedBreaks(rows);
-        while (count > 0 && blockedBreaks[count - 1]) count--;
+        while (count > 0 && IsBreakBlocked(plan, rows, count - 1)) count--;
         if (count == 0)
             return 0;
 
-        int minimumAtEnd = Math.Min(_rootTable.MinRowsAtPageEnd, rows.Count);
+        int minimumAtEnd = Math.Min(_table.MinRowsAtPageEnd, rows.Count);
         if (count < minimumAtEnd)
             return 0;
 
         int remaining = rows.Count - count;
-        int minimumAtStart = Math.Min(_rootTable.MinRowsAtPageStart, rows.Count);
+        int minimumAtStart = Math.Min(_table.MinRowsAtPageStart, rows.Count);
         if (remaining > 0 && remaining < minimumAtStart)
         {
             count -= minimumAtStart - remaining;
-            while (count > 0 && blockedBreaks[count - 1]) count--;
+            while (count > 0 && IsBreakBlocked(plan, rows, count - 1)) count--;
         }
 
         return Math.Max(0, count);
     }
 
-    private static bool[] ComputeBlockedBreaks(IReadOnlyList<TableRow> rows)
+    private static bool IsBreakBlocked(
+        TableLayoutPlan plan,
+        IReadOnlyList<TableRowLayout> rows,
+        int breakAfterIndex)
     {
-        var blocked = new bool[rows.Count];
-        for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
-        {
-            if (rows[rowIndex].KeepWithNext && rowIndex < rows.Count - 1)
-                blocked[rowIndex] = true;
-
-            foreach (TableCell cell in rows[rowIndex].Cells)
-            {
-                int finalCoveredRow = Math.Min(rows.Count - 1, rowIndex + Math.Max(1, cell.RowSpan) - 1);
-                for (int breakAfter = rowIndex; breakAfter < finalCoveredRow; breakAfter++)
-                    blocked[breakAfter] = true;
-            }
-        }
-        return blocked;
+        TableRowLayout row = rows[breakAfterIndex];
+        if (row.Row.KeepWithNext && breakAfterIndex < rows.Count - 1)
+            return true;
+        return row.BodyIndex >= 0
+            && row.BodyIndex < plan.BlockedBreaks.Length
+            && plan.BlockedBreaks[row.BodyIndex];
     }
 
-    private TableElement BuildSegment(
-        IReadOnlyList<TableRow> headers,
-        IReadOnlyList<TableRow> body,
-        IReadOnlyList<TableRow> footers,
-        float width,
+    private TableLayoutPlan GetOrCreatePlan(float width, LayoutMeasureContext context)
+    {
+        _planState.Plan ??= TableLayoutPlan.Create(_table, width, context.Page, context.Options);
+        return _planState.Plan;
+    }
+
+    private void ValidatePlannedRowsOnce(TableLayoutPlan plan, float pageContentHeight, float maximumBodyHeight)
+    {
+        if (_planState.RowsValidated)
+            return;
+
+        ValidateOversizedRows(plan.HeaderRows, pageContentHeight, "header");
+        ValidateOversizedRows(plan.FooterRows, pageContentHeight, "footer");
+        ValidateBodySplitPolicies(plan.BodyRows, maximumBodyHeight);
+        _planState.RowsValidated = true;
+    }
+
+    private TableSegmentElement BuildSegment(
+        TableLayoutPlan plan,
+        IReadOnlyList<TableRowLayout> headers,
+        IReadOnlyList<TableRowLayout> body,
+        IReadOnlyList<TableRowLayout> footers,
         bool includeCaption)
     {
-        var rows = new List<TableRow>(headers.Count + body.Count + footers.Count);
-        rows.AddRange(headers);
-        rows.AddRange(body);
-        rows.AddRange(footers);
-        var segment = LayoutSplitUtils.CloneTableWithRows(_rootTable, rows);
-        segment.EnablePageBreaks = false;
-        segment.TableWidth = width;
-        segment.HeaderRowCount = headers.Count;
-        segment.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
-        if (!includeCaption) segment.CaptionText = null;
-        TableGridValidator.Validate(segment);
-        return segment;
+        var layouts = new List<TableRowLayout>(headers.Count + body.Count + footers.Count);
+        layouts.AddRange(headers);
+        layouts.AddRange(body);
+        layouts.AddRange(footers);
+        TableRowLayout[] segmentRows = layouts.ToArray();
+        int startBodyRow = body.Count == 0
+            ? _startBodyRow
+            : body[0].BodyIndex >= 0 ? body[0].BodyIndex : _startBodyRow;
+        var segment = new TableSegment(
+            startBodyRow,
+            body.Count,
+            headers.Count > 0,
+            footers.Count > 0,
+            includeCaption);
+
+        return new TableSegmentElement(
+            _table,
+            segment,
+            plan.Width,
+            plan.ColumnWidths,
+            segmentRows,
+            segmentRows.Select(layout => layout.Height).ToArray());
     }
 
-    private TableComponent CreateRemainder(List<TableRow> remainingBody, int rowsConsumed)
-    {
-        var remainderTable = LayoutSplitUtils.CloneTableWithRows(_workingTable, remainingBody);
-        remainderTable.CaptionText = null;
-        remainderTable.HeaderRowCount = 0;
-        remainderTable.EnablePageBreaks = _workingTable.EnablePageBreaks;
-        remainderTable.RowBandOffset = _workingTable.RowBandOffset + rowsConsumed;
-        remainderTable.TableWidth = _workingTable.TableWidth;
-        remainderTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
-        return new TableComponent(remainderTable, _rootTable, isContinuation: true, _splitProgress);
-    }
+    private TableComponent CreateRemainder(int nextBodyRow, TableRow? pendingBodyRow)
+        => new(this, nextBodyRow, pendingBodyRow);
 
     private LayoutMeasurement SplitFirstBodyRow(
         LayoutMeasureContext context,
-        float width,
-        IReadOnlyList<TableRow> headers,
-        IReadOnlyList<TableRow> footers,
-        IReadOnlyList<TableRow> body,
+        TableLayoutPlan plan,
+        IReadOnlyList<TableRowLayout> headers,
+        IReadOnlyList<TableRowLayout> footers,
+        IReadOnlyList<TableRowLayout> body,
         float availableBodyHeight,
         float captionHeight,
         float headerHeight,
         float footerHeight)
     {
-        int rowIndex = body[0].BandIndex ?? _workingTable.RowBandOffset;
-        SplitRowResult split = SplitRow(body[0], rowIndex, availableBodyHeight, context);
+        int rowIndex = ResolveBodyRowIndex(body[0].Row, localIndex: 0);
+        SplitRowResult split = SplitRow(body[0].Row, rowIndex, availableBodyHeight, context);
         if (!split.MadeProgress)
         {
             RecordZeroProgress(context, rowIndex);
-            return LayoutMeasurement.Wrap(width);
+            return LayoutMeasurement.Wrap(plan.Width);
         }
 
         _splitProgress.ZeroProgressAttempts = 0;
-        var remaining = new List<TableRow>();
-        if (split.Remainder != null) remaining.Add(split.Remainder);
-        remaining.AddRange(body.Skip(1));
-
-        bool hasRemainder = remaining.Count > 0;
+        int nextBodyRow = _startBodyRow + (_pendingBodyRow == null ? 1 : 0);
+        TableRow? pendingBodyRow = split.Remainder;
+        split.Segment.BandIndex ??= rowIndex;
+        if (pendingBodyRow != null)
+            pendingBodyRow.BandIndex ??= rowIndex;
+        bool hasRemainder = pendingBodyRow != null || nextBodyRow < plan.BodyRows.Length;
         bool repeatFooter = !hasRemainder
-            || _rootTable.FooterRepeatMode == TableFooterRepeatMode.EveryPage
-            || (_rootTable.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
-        IReadOnlyList<TableRow> segmentFooter = repeatFooter ? footers : Array.Empty<TableRow>();
+            || _table.FooterRepeatMode == TableFooterRepeatMode.EveryPage
+            || (_table.FooterRepeatMode == TableFooterRepeatMode.ContinuationPages && _isContinuation);
+        IReadOnlyList<TableRowLayout> segmentFooter = repeatFooter ? footers : Array.Empty<TableRowLayout>();
         float segmentHeight = captionHeight + headerHeight + split.Height + (repeatFooter ? footerHeight : 0f);
-        TableElement segment = BuildSegment(headers, [split.Segment], segmentFooter, width, includeCaption: captionHeight > 0f);
+        TableRowLayout segmentRow = plan.CreatePreparedRowLayout(split.Segment, split.Height);
+        TableSegmentElement segment = BuildSegment(plan, headers, [segmentRow], segmentFooter, includeCaption: captionHeight > 0f);
 
         if (!hasRemainder)
-            return FullMeasurement(width, segmentHeight, segment);
+            return FullMeasurement(plan.Width, segmentHeight, segment);
 
-        TableComponent remainder = CreateRemainder(remaining, split.Remainder == null ? 1 : 0);
-        return PartialMeasurement(width, segmentHeight, segment, remainder);
+        TableComponent remainder = CreateRemainder(nextBodyRow, pendingBodyRow);
+        return PartialMeasurement(plan.Width, segmentHeight, segment, remainder);
     }
 
     private SplitRowResult SplitRow(TableRow source, int rowIndex, float availableHeight, LayoutMeasureContext context)
@@ -282,7 +306,7 @@ internal sealed class TableComponent : IMeasurable
 
         TableRow segment = CloneSingleRow(source);
         TableRow remainder = CloneSingleRow(source);
-        float[] widths = _rootTable.ResolvedColumnWidths ?? throw new InvalidOperationException("Resolved table columns are unavailable.");
+        float[] widths = _table.ResolvedColumnWidths ?? throw new InvalidOperationException("Resolved table columns are unavailable.");
         int column = 0;
         float segmentHeight = 0f;
         bool hasRemainder = false;
@@ -297,13 +321,18 @@ internal sealed class TableComponent : IMeasurable
             float cellWidth = Sum(widths.Skip(column).Take(span));
             column += span;
 
-            float uniform = sourceCell.Padding ?? _rootTable.CellPadding;
+            float uniform = sourceCell.Padding ?? _table.CellPadding;
             float left = sourceCell.PaddingLeft ?? uniform;
             float top = sourceCell.PaddingTop ?? uniform;
             float right = sourceCell.PaddingRight ?? uniform;
             float bottom = sourceCell.PaddingBottom ?? uniform;
             float innerHeight = Math.Max(0f, availableHeight - top - bottom);
-            IMeasurable? component = sourceCell.ContinuationContent ?? sourceCell.ContentFactory?.Invoke();
+            IMeasurable? component = sourceCell.ContinuationContent ?? sourceCell.MeasuredContent;
+            if (component == null && sourceCell.ContentFactory != null)
+            {
+                _table.LayoutDiagnostics?.RecordContentFactoryInvocation();
+                component = sourceCell.ContentFactory();
+            }
 
             if (component == null)
             {
@@ -350,8 +379,8 @@ internal sealed class TableComponent : IMeasurable
         if (!hasRemainder)
             return new SplitRowResult(segment, null, segmentHeight, MadeProgress: true);
 
-        ApplyContinuationEdges(segment, isTopSegment: true, _rootTable.CellPadding);
-        ApplyContinuationEdges(remainder, isTopSegment: false, _rootTable.CellPadding);
+        ApplyContinuationEdges(segment, isTopSegment: true, _table.CellPadding);
+        ApplyContinuationEdges(remainder, isTopSegment: false, _table.CellPadding);
         segmentHeight = segment.Cells.Max(cell => cell.CachedContentHeight);
         segment.RowHeight = Math.Max(Epsilon, segmentHeight);
         remainder.RowHeight = null;
@@ -365,32 +394,45 @@ internal sealed class TableComponent : IMeasurable
         return LayoutSplitUtils.CloneTable(table).Rows.Single();
     }
 
-    private void ValidateOversizedRows(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float maximumHeight, string group)
+    private void ValidateOversizedRows(IReadOnlyList<TableRowLayout> rows, float maximumHeight, string group)
     {
-        for (int index = 0; index < heights.Count; index++)
+        for (int index = 0; index < rows.Count; index++)
         {
-            if (heights[index] > maximumHeight + Epsilon)
+            if (rows[index].Height > maximumHeight + Epsilon)
                 throw SplitFailure(index, null, $"oversized-{group}", $"Table {group} rows cannot split. Reduce the repeated group content or page reservations.");
         }
     }
 
-    private void ValidateBodySplitPolicies(IReadOnlyList<TableRow> rows, IReadOnlyList<float> heights, float maximumHeight)
+    private void ValidateBodySplitPolicies(IReadOnlyList<TableRowLayout> rows, float maximumHeight)
     {
-        for (int index = 0; index < heights.Count; index++)
+        for (int index = 0; index < rows.Count; index++)
         {
-            if (heights[index] <= maximumHeight + Epsilon)
+            TableRow row = rows[index].Row;
+            if (rows[index].Height <= maximumHeight + Epsilon)
                 continue;
-            int bodyIndex = rows[index].BandIndex ?? _workingTable.RowBandOffset + index;
-            if (!IsRowSplittable(rows[index]))
+            int bodyIndex = ResolveBodyRowIndex(row, index);
+            if (!IsRowSplittable(row))
                 throw SplitFailure(bodyIndex, null, "row-splitting-disabled", "Enable table.AllowRowSplitting() or row.AllowSplit() for oversized canonical container content.");
-            if (rows[index].RowHeight.HasValue)
+            if (row.RowHeight.HasValue)
                 throw SplitFailure(bodyIndex, null, "fixed-row-height", "An oversized exact row height cannot be split. Remove Height(...) or reduce it.");
-            if (rows[index].Cells.Any(cell => cell.RowSpan > 1))
+            if (row.Cells.Any(cell => cell.RowSpan > 1))
                 throw SplitFailure(bodyIndex, null, "row-span", "Rows containing RowSpan greater than one cannot be split.");
         }
     }
 
-    private bool IsRowSplittable(TableRow row) => row.AllowSplit ?? _rootTable.AllowRowSplitting;
+    private int ResolveBodyRowIndex(TableRow row, int localIndex)
+    {
+        if (row.BandIndex.HasValue)
+            return row.BandIndex.Value;
+
+        int pendingOffset = _pendingBodyRow == null ? 0 : 1;
+        int originalIndex = localIndex < pendingOffset
+            ? _startBodyRow - 1
+            : _startBodyRow + localIndex - pendingOffset;
+        return _table.RowBandOffset + Math.Max(0, originalIndex);
+    }
+
+    private bool IsRowSplittable(TableRow row) => row.AllowSplit ?? _table.AllowRowSplitting;
 
     private PdfTableRowSplitException SplitFailure(int rowIndex, int? columnIndex, string reason, string action)
         => new(rowIndex, columnIndex, reason, $"Table body row {rowIndex} cannot continue ({reason}). {action}");
@@ -471,32 +513,8 @@ internal sealed class TableComponent : IMeasurable
         cell.CachedContentHeight = 0f;
     }
 
-    private TableMeasurementHelper.TableMetrics MeasureRows(IReadOnlyList<TableRow> rows, float width, LayoutMeasureContext context)
-    {
-        var table = LayoutSplitUtils.CloneTableWithRows(_rootTable, rows);
-        table.CaptionText = null;
-        table.TableWidth = width;
-        table.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths?.ToArray();
-        return TableMeasurementHelper.Measure(table, width, context.Page, context.Options);
-    }
-
-    private void EnsureStableColumnWidths(float width)
-    {
-        if (_rootTable.ResolvedColumnWidths is { Length: > 0 })
-        {
-            _workingTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths.ToArray();
-            return;
-        }
-
-        int totalColumns = _rootTable.ColumnDefinitions.Count > 0
-            ? _rootTable.ColumnDefinitions.Count
-            : _rootTable.Rows.Max(row => row.Cells.Sum(cell => Math.Max(1, cell.ColSpan)));
-        _rootTable.ResolvedColumnWidths = TableColumnWidthCalculator.Calculate(_rootTable, totalColumns, width);
-        _workingTable.ResolvedColumnWidths = _rootTable.ResolvedColumnWidths.ToArray();
-    }
-
     private float ResolveWidth(float availableWidth)
-        => _workingTable.TableWidth is > 0f ? Math.Min(availableWidth, _workingTable.TableWidth.Value) : availableWidth;
+        => _table.TableWidth is > 0f ? Math.Min(availableWidth, _table.TableWidth.Value) : availableWidth;
 
     private static float ComputeCaptionHeight(TableElement table)
         => string.IsNullOrWhiteSpace(table.CaptionText)
@@ -505,16 +523,60 @@ internal sealed class TableComponent : IMeasurable
 
     private static float Sum(IEnumerable<float> values) => values.Sum();
 
-    private sealed class TableLayoutMetadata
+    private static float SumHeights(IEnumerable<TableRowLayout> rows)
+        => rows.Sum(row => row.Height);
+
+    private sealed class TableLayoutPlanState
     {
-        public TableLayoutMetadata(TableElement element, float width) { Element = element; Width = width; }
-        public TableElement Element { get; }
-        public float Width { get; }
+        public TableLayoutPlan? Plan { get; set; }
+        public bool RowsValidated { get; set; }
     }
 
     private sealed class SplitProgressState
     {
         public int ZeroProgressAttempts { get; set; }
+    }
+
+    private sealed class BodyRowLayoutView : IReadOnlyList<TableRowLayout>
+    {
+        private readonly IReadOnlyList<TableRowLayout> _rows;
+        private readonly int _startIndex;
+        private readonly TableRowLayout? _pendingRow;
+
+        public BodyRowLayoutView(IReadOnlyList<TableRowLayout> rows, int startIndex, TableRowLayout? pendingRow)
+        {
+            _rows = rows;
+            _startIndex = startIndex;
+            _pendingRow = pendingRow;
+        }
+
+        public int Count => (_pendingRow == null ? 0 : 1) + Math.Max(0, _rows.Count - _startIndex);
+
+        public TableRowLayout this[int index]
+        {
+            get
+            {
+                if ((uint)index >= (uint)Count)
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                if (_pendingRow != null)
+                {
+                    if (index == 0)
+                        return _pendingRow;
+                    index--;
+                }
+                return _rows[_startIndex + index];
+            }
+        }
+
+        public IEnumerator<TableRowLayout> GetEnumerator()
+        {
+            if (_pendingRow != null)
+                yield return _pendingRow;
+            for (int index = _startIndex; index < _rows.Count; index++)
+                yield return _rows[index];
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 
     private sealed record SplitRowResult(TableRow Segment, TableRow? Remainder, float Height, bool MadeProgress);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using FluentAssertions;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Models;
 using Xunit;
@@ -60,7 +61,7 @@ namespace PdfBuilder.Tests
             column.Section("Background", level: 2);
             column.TableOfContents();
 
-            var tocTable = page.Elements.OfType<TableElement>().Last();
+            var tocTable = page.Elements.OfType<TableSegmentElement>().Last();
             tocTable.Rows.Should().HaveCount(2);
 
             var lookup = new Dictionary<string, (int pageIndex, float x, float y)>();
@@ -70,8 +71,8 @@ namespace PdfBuilder.Tests
             InvokeApplyPageLookup(document.Pagination, lookup);
 
             document.Pagination.Sections.All(s => s.PageNumber == 1).Should().BeTrue();
-            tocTable.Rows[0].Cells[1].Text.Should().Be("1");
-            tocTable.Rows[1].Cells[1].Text.Should().Be("1");
+            tocTable.Rows[0].Row.Cells[1].Text.Should().Be("1");
+            tocTable.Rows[1].Row.Cells[1].Text.Should().Be("1");
         }
 
         [Fact]

@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using FluentAssertions;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Writer;
 using Xunit;
@@ -161,10 +162,11 @@ namespace PdfBuilder.Tests
                 .Where(text => text.Text.Contains("Themed", StringComparison.Ordinal))
                 .Should().OnlyContain(text => text.Color == "#123456");
 
-            var table = document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().First();
+            var segment = document.Pages.SelectMany(page => page.Elements).OfType<TableSegmentElement>().First();
+            var table = segment.SourceTable;
             table.BorderColor.Should().Be(Color.FromArgb(0xAA, 0xBB, 0xCC));
             table.HeaderBackground.Should().Be(Color.FromArgb(0xE8, 0xEE, 0xF7));
-            table.Rows.SelectMany(row => row.Cells).Should().OnlyContain(cell =>
+            segment.Rows.SelectMany(row => row.Row.Cells).Should().OnlyContain(cell =>
                 cell.BackgroundColor == Color.FromArgb(0xE8, 0xEE, 0xF7)
                 && cell.BorderColor == Color.FromArgb(0xAA, 0xBB, 0xCC));
             PdfContentHelper.FlattenElements(document.Pages.SelectMany(page => page.Elements)).OfType<TextElement>()

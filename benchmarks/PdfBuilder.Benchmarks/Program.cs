@@ -24,6 +24,14 @@ if (args.Length > 0 && string.Equals(args[0], "--capture-scenario", StringCompar
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "--capture-table-baseline", StringComparison.OrdinalIgnoreCase))
+{
+    string output = args.Length > 1 ? args[1] : throw new ArgumentException("--capture-table-baseline requires an output path.");
+    int iterations = args.Length > 2 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 1;
+    BenchmarkBaselineRunner.CaptureTables(output, iterations);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "--compare-baseline", StringComparison.OrdinalIgnoreCase))
 {
     string baseline = args.Length > 1 ? args[1] : throw new ArgumentException("--compare-baseline requires a baseline path.");

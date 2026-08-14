@@ -108,7 +108,7 @@ namespace PdfBuilder.Document.Layout.Components
             if (measurement.Metadata is not RichTextMetadata metadata)
                 throw new InvalidOperationException("RichText measurement metadata missing.");
 
-            var rt = metadata.Element;
+            var rt = LayoutSplitUtils.CloneRichText(metadata.Element);
             float contentLeft = context.ContentLeft + metadata.MarginLeft + metadata.PaddingLeft;
 
             rt.X = contentLeft;

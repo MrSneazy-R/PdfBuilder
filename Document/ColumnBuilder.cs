@@ -428,16 +428,16 @@ namespace PdfBuilder.Document
 
             table.Add();
 
-            var addedTable = _page.Elements.OfType<TableElement>().LastOrDefault();
+            var addedTable = _page.Elements.OfType<TableSegmentElement>().LastOrDefault();
             if (addedTable != null)
             {
                 foreach (var entry in pending)
                 {
                     if (entry.rowIndex >= 0 &&
-                        entry.rowIndex < addedTable.Rows.Count &&
-                        addedTable.Rows[entry.rowIndex].Cells.Count > 1)
+                        entry.rowIndex < addedTable.Rows.Length &&
+                        addedTable.Rows[entry.rowIndex].Row.Cells.Count > 1)
                     {
-                        var cell = addedTable.Rows[entry.rowIndex].Cells[1];
+                        var cell = addedTable.Rows[entry.rowIndex].Row.Cells[1];
                         _pagination.RegisterPageReference(cell, entry.section, options);
                     }
                 }

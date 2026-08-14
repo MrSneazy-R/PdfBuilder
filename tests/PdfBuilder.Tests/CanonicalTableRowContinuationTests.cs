@@ -60,16 +60,16 @@ public sealed class CanonicalTableRowContinuationTests
         PdfDocument document = CreateSplitDocument();
         document.GenerateBytes().Should().NotBeEmpty();
 
-        List<TableElement> segments = document.Pages
+        List<TableSegmentElement> segments = document.Pages
             .SelectMany(page => page.Elements)
-            .OfType<TableElement>()
+            .OfType<TableSegmentElement>()
             .ToList();
         segments.Should().HaveCount(document.Pages.Count);
-        segments.Should().OnlyContain(table => table.Rows.Any(row => row.IsHeader));
-        segments.Should().OnlyContain(table => table.Rows.Any(row => row.IsFooter));
+        segments.Should().OnlyContain(segment => segment.Segment.IncludeHeader);
+        segments.Should().OnlyContain(segment => segment.Segment.IncludeFooter);
 
         List<TableCell> bodyCells = segments
-            .Select(table => table.Rows.Single(row => !row.IsHeader && !row.IsFooter).Cells.Single())
+            .Select(segment => segment.Rows.Single(row => !row.Row.IsHeader && !row.Row.IsFooter).Row.Cells.Single())
             .ToList();
         bodyCells.Should().HaveCountGreaterThan(1);
         bodyCells[0].BorderTop.Should().BeTrue();

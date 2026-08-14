@@ -139,6 +139,7 @@ namespace PdfBuilder.Writer
             var laidOut = doc;
             int pageCount = laidOut.Pages.Count;
             var metrics = new PdfGenerationMetrics { PagesPlanned = pageCount };
+            doc.TableLayoutDiagnostics.CopyTo(metrics);
             LastGenerationMetrics = metrics;
 
             var generationOptions = laidOut.GenerationOptions;
@@ -820,6 +821,10 @@ namespace PdfBuilder.Writer
                             TextRenderer.Append(sb, text, page.Height, context, pageContext);
                             break;
 
+                        case TableSegmentElement tableSegment:
+                            TableRenderer.Append(sb, tableSegment, context);
+                            break;
+
                         case TableElement table:
                             TableRenderer.Append(sb, table, context);
                             break;
@@ -952,6 +957,40 @@ namespace PdfBuilder.Writer
                     AddFont(name);
             }
 
+            void AddTableFonts(TableElement table, IEnumerable<TableRow> rows)
+            {
+                AddFont(table.DefaultFont);
+                if (table.DefaultTextStyle != null)
+                {
+                    AddFont(table.DefaultTextStyle.FontFamily, table.DefaultTextStyle.Bold, table.DefaultTextStyle.Italic);
+                    AddFallbacks(table.DefaultTextStyle.FallbackFonts);
+                }
+
+                foreach (TableColumnStyle column in table.ColumnStyles)
+                    AddFont(column.Font);
+
+                foreach (TableCell cell in rows.SelectMany(row => row.Cells))
+                {
+                    AddFont(cell.Font, cell.Bold, cell.Italic);
+                    if (cell.TextStyle != null)
+                    {
+                        AddFont(cell.TextStyle.FontFamily, cell.TextStyle.Bold, cell.TextStyle.Italic);
+                        AddFallbacks(cell.TextStyle.FallbackFonts);
+                    }
+
+                    foreach (PdfBuilder.Elements.Table.InlineRun inline in cell.TextRuns)
+                    {
+                        if (inline?.Style != null)
+                        {
+                            AddFont(inline.Style.FontFamily, inline.Style.Bold, inline.Style.Italic);
+                            AddFallbacks(inline.Style.FallbackFonts);
+                        }
+
+                        AddFallbacks(inline?.FallbackFonts);
+                    }
+                }
+            }
+
             // Document-level header/footer + master watermark fonts
             if (UsesLegacyHeaderFooterText(doc.HeaderFooter))
                 AddFont(doc.HeaderFooter.FontFamily);
@@ -987,45 +1026,12 @@ namespace PdfBuilder.Writer
                                 AddFont(run.FontFamily, run.Bold, run.Italic);
                             break;
 
+                        case TableSegmentElement tableSegment:
+                            AddTableFonts(tableSegment.SourceTable, tableSegment.Rows.Select(row => row.Row));
+                            break;
+
                         case TableElement table:
-                            AddFont(table.DefaultFont);
-                            if (table.DefaultTextStyle != null)
-                            {
-                                AddFont(table.DefaultTextStyle.FontFamily, table.DefaultTextStyle.Bold, table.DefaultTextStyle.Italic);
-                                AddFallbacks(table.DefaultTextStyle.FallbackFonts);
-                            }
-
-                            foreach (var column in table.ColumnStyles)
-                                AddFont(column.Font);
-
-                            foreach (var cell in table.Rows.SelectMany(r => r.Cells))
-                            {
-                                AddFont(cell.Font, cell.Bold, cell.Italic);
-
-                                if (cell.TextStyle != null)
-                                {
-                                    AddFont(cell.TextStyle.FontFamily, cell.TextStyle.Bold, cell.TextStyle.Italic);
-                                    AddFallbacks(cell.TextStyle.FallbackFonts);
-                                }
-
-                                if (cell.TextRuns.Count > 0)
-                                {
-                                    foreach (var inline in cell.TextRuns)
-                                    {
-                                        if (inline?.Style != null)
-                                        {
-                                            AddFont(inline.Style.FontFamily, inline.Style.Bold, inline.Style.Italic);
-                                            AddFallbacks(inline.Style.FallbackFonts);
-                                        }
-
-                                        if (inline?.FallbackFonts != null)
-                                        {
-                                            foreach (var fallback in inline.FallbackFonts)
-                                                AddFont(fallback);
-                                        }
-                                    }
-                                }
-                            }
+                            AddTableFonts(table, table.Rows);
                             break;
 
                         case ChartElement chart:

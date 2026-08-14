@@ -6,22 +6,24 @@ namespace PdfBuilder.Document.Layout;
 
 internal static class TableCellContainerLayout
 {
-    internal static void AddContentGroups(TableElement table, PdfPage page, LayoutOptions options)
+    internal static void AddContentGroups(
+        TableSegmentElement segmentElement,
+        PdfPage page,
+        LayoutOptions options)
     {
-        if (!table.Rows.SelectMany(row => row.Cells).Any(cell => cell.HasContainerContent))
+        TableElement table = segmentElement.SourceTable;
+        if (!segmentElement.Rows.SelectMany(row => row.Cells).Any(cell => cell.Content != null && cell.Measurement != null))
             return;
 
-        float width = table.TableWidth ?? page.Width;
-        TableMeasurementHelper.TableMetrics metrics = TableMeasurementHelper.Measure(table, width, page, options);
-        float[] columnWidths = metrics.ColumnWidths;
-        float[] rowHeights = metrics.RowHeights;
-        int totalColumns = columnWidths.Length;
-        float rowTop = table.Y - CaptionHeight(table);
+        var drawBuffer = new CellDrawBuffer(page, options);
+        int totalColumns = segmentElement.ColumnWidths.Length;
+        float rowTop = segmentElement.Y - (segmentElement.Segment.IncludeCaption ? CaptionHeight(table) : 0f);
         var covered = new HashSet<(int Row, int Column)>();
 
-        for (int rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
+        for (int rowIndex = 0; rowIndex < segmentElement.Rows.Length; rowIndex++)
         {
-            TableRow row = table.Rows[rowIndex];
+            TableRowLayout rowLayout = segmentElement.Rows[rowIndex];
+            TableRow row = rowLayout.Row;
             IDisposable? semanticScope = null;
             if (row.SemanticDescriptor != null && page.Owner?.Tagging.Enabled == true)
             {
@@ -30,29 +32,31 @@ internal static class TableCellContainerLayout
             }
             try
             {
-                float cellX = table.X;
+                float cellX = segmentElement.X;
                 int columnIndex = 0;
                 while (columnIndex < totalColumns && covered.Contains((rowIndex, columnIndex)))
                 {
-                    cellX += columnWidths[columnIndex];
+                    cellX += segmentElement.ColumnWidths[columnIndex];
                     columnIndex++;
                 }
 
-                foreach (TableCell cell in row.Cells)
+                for (int cellIndex = 0; cellIndex < row.Cells.Count; cellIndex++)
                 {
+                    TableCell cell = row.Cells[cellIndex];
+                    TableCellLayout cellLayout = rowLayout.Cells[cellIndex];
                     while (columnIndex < totalColumns && covered.Contains((rowIndex, columnIndex)))
                     {
-                        cellX += columnWidths[columnIndex];
+                        cellX += segmentElement.ColumnWidths[columnIndex];
                         columnIndex++;
                     }
 
                     int columnSpan = Math.Max(1, cell.ColSpan);
                     int rowSpan = Math.Max(1, cell.RowSpan);
-                    float cellWidth = Sum(columnWidths, columnIndex, columnSpan);
-                    float cellHeight = Sum(rowHeights, rowIndex, rowSpan);
+                    float cellWidth = Sum(segmentElement.ColumnWidths, columnIndex, columnSpan);
+                    float cellHeight = Sum(segmentElement.RowHeights, rowIndex, rowSpan);
 
-                    if (cell.MeasuredContent != null && cell.MeasuredContentLayout != null)
-                        AddContentGroup(page, options, table, cell, cellX, rowTop, cellWidth, cellHeight);
+                    if (cellLayout.Content != null && cellLayout.Measurement != null)
+                        AddContentGroup(page, drawBuffer, table, cell, cellLayout, cellX, rowTop, cellWidth, cellHeight);
 
                     if (rowSpan > 1 || columnSpan > 1)
                     {
@@ -68,7 +72,7 @@ internal static class TableCellContainerLayout
                     columnIndex += columnSpan;
                 }
 
-                rowTop -= rowHeights[rowIndex];
+                rowTop -= segmentElement.RowHeights[rowIndex];
             }
             finally
             {
@@ -79,9 +83,10 @@ internal static class TableCellContainerLayout
 
     private static void AddContentGroup(
         PdfPage page,
-        LayoutOptions options,
+        CellDrawBuffer drawBuffer,
         TableElement table,
         TableCell cell,
+        TableCellLayout cellLayout,
         float cellX,
         float cellTop,
         float cellWidth,
@@ -94,7 +99,7 @@ internal static class TableCellContainerLayout
         float bottomPadding = cell.PaddingBottom ?? uniform;
         float contentWidth = Math.Max(0f, cellWidth - leftPadding - rightPadding);
         float contentHeight = Math.Max(0f, cellHeight - topPadding - bottomPadding);
-        LayoutMeasurement measurement = cell.MeasuredContentLayout!;
+        LayoutMeasurement measurement = cellLayout.Measurement!;
 
         float contentLeft = cellX + leftPadding;
         if (cell.HorizontalAlign == HorizontalAlign.Center)
@@ -108,50 +113,22 @@ internal static class TableCellContainerLayout
         else if (cell.VerticalAlign == VerticalAlign.Bottom)
             contentTop -= Math.Max(0f, contentHeight - measurement.ReservedHeight);
 
-        var temporaryPage = new PdfPage(page.Width, page.Height)
-        {
-            Owner = page.Owner,
-            Pagination = page.Pagination,
-            ProfilerSession = page.ProfilerSession,
-            CompositionPageNumber = page.CompositionPageNumber,
-            LayoutOptions = options,
-            TextDefaults = page.TextDefaults.Clone(),
-            Theme = page.Theme.Clone()
-        };
-        var column = new FlowColumn(0, contentLeft, contentWidth, contentTop, contentTop - contentHeight);
-        var drawContext = new LayoutDrawContext(temporaryPage, column, contentLeft, contentTop, contentWidth, options);
-        cell.MeasuredContent!.Draw(drawContext, measurement);
-        NormalizeTextBaselines(temporaryPage.Elements);
+        PdfElement[] children = drawBuffer.Draw(
+            cellLayout.Content!,
+            measurement,
+            contentLeft,
+            contentTop,
+            contentWidth,
+            contentHeight);
 
-        if (temporaryPage.Elements.Count > 0)
+        if (children.Length > 0)
         {
             page.AddElement(new ClipGroupElement(
                 cellX,
                 cellTop - cellHeight,
                 cellWidth,
                 cellHeight,
-                temporaryPage.Elements.ToArray()));
-        }
-    }
-
-    private static void NormalizeTextBaselines(IEnumerable<PdfElement> elements)
-    {
-        foreach (PdfElement element in elements)
-        {
-            switch (element)
-            {
-                case TextElement text when text.ShapedLayout is { Lines.Count: > 0 } layout:
-                    int textLine = Math.Clamp(text.ShapedStartLine, 0, layout.Lines.Count - 1);
-                    text.Y -= layout.Lines[textLine].Ascent;
-                    break;
-                case RichTextElement richText when richText.ShapedLayout is { Lines.Count: > 0 } layout:
-                    int richTextLine = Math.Clamp(richText.ShapedStartLine, 0, layout.Lines.Count - 1);
-                    richText.Y -= layout.Lines[richTextLine].Ascent;
-                    break;
-                case ClipGroupElement clipGroup:
-                    NormalizeTextBaselines(clipGroup.Children);
-                    break;
-            }
+                children));
         }
     }
 

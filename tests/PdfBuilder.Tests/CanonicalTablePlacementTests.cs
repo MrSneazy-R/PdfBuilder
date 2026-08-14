@@ -1,6 +1,7 @@
 using System.Drawing;
 using FluentAssertions;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using PdfBuilder.Elements.Table;
 using PdfBuilder.Models;
@@ -36,12 +37,12 @@ public sealed class CanonicalTablePlacementTests
         })));
 
         document.GenerateBytes().Should().NotBeEmpty();
-        TableElement rendered = document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().Single();
+        TableRow[] rendered = document.Pages.SelectMany(page => page.Elements).OfType<TableSegmentElement>().Single().Rows.Select(row => row.Row).ToArray();
 
-        rendered.Rows.Should().HaveCount(2);
-        rendered.Rows[0].Cells.Should().Contain(cell => cell.Text == "row-span" && cell.RowSpan == 2);
-        rendered.Rows[0].Cells.Should().Contain(cell => cell.Text == "column-span" && cell.ColSpan == 2);
-        rendered.Rows[1].Cells.Select(cell => cell.Text).Should().ContainInOrder("row-1-col-1", "row-1-col-2");
+        rendered.Should().HaveCount(2);
+        rendered[0].Cells.Should().Contain(cell => cell.Text == "row-span" && cell.RowSpan == 2);
+        rendered[0].Cells.Should().Contain(cell => cell.Text == "column-span" && cell.ColSpan == 2);
+        rendered[1].Cells.Select(cell => cell.Text).Should().ContainInOrder("row-1-col-1", "row-1-col-2");
     }
 
     [Fact]
@@ -121,13 +122,13 @@ public sealed class CanonicalTablePlacementTests
         }, threeColumns: true);
 
         document.GenerateBytes().Should().NotBeEmpty();
-        List<TableElement> segments = document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().ToList();
+        List<TableSegmentElement> segments = document.Pages.SelectMany(page => page.Elements).OfType<TableSegmentElement>().ToList();
         segments.Should().HaveCount(document.Pages.Count);
-        segments.Should().OnlyContain(table => table.ResolvedColumnWidths != null && table.ResolvedColumnWidths.SequenceEqual(segments[0].ResolvedColumnWidths!));
+        segments.Should().OnlyContain(segment => segment.ColumnWidths.SequenceEqual(segments[0].ColumnWidths));
 
-        int[] indices = segments.SelectMany(table => table.Rows)
-            .Where(row => !row.IsHeader && !row.IsFooter)
-            .Select(row => row.BandIndex!.Value)
+        int[] indices = segments.SelectMany(segment => segment.Rows)
+            .Where(row => !row.Row.IsHeader && !row.Row.IsFooter)
+            .Select(row => row.BodyIndex)
             .ToArray();
         indices.Should().Equal(Enumerable.Range(0, 80));
     }
@@ -157,8 +158,9 @@ public sealed class CanonicalTablePlacementTests
         });
 
         document.GenerateBytes().Should().NotBeEmpty();
-        TableElement table = document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().Single();
-        TableCell cell = table.Rows.Single().Cells.Single();
+        TableSegmentElement segment = document.Pages.SelectMany(page => page.Elements).OfType<TableSegmentElement>().Single();
+        TableElement table = segment.SourceTable;
+        TableCell cell = segment.Rows.Single().Row.Cells.Single();
         TextElement text = PdfContentHelper.FlattenElements(document.Pages.SelectMany(page => page.Elements)).OfType<TextElement>().Single();
 
         table.BorderCollapse.Should().Be(BorderCollapseMode.Collapse);
@@ -221,7 +223,7 @@ public sealed class CanonicalTablePlacementTests
 
         document.GenerateBytes().Should().NotBeEmpty();
         List<List<TableRow>> pageRows = document.Pages
-            .Select(page => page.Elements.OfType<TableElement>().Single().Rows.Where(row => !row.IsHeader && !row.IsFooter).ToList())
+            .Select(page => page.Elements.OfType<TableSegmentElement>().Single().Rows.Select(layout => layout.Row).Where(row => !row.IsHeader && !row.IsFooter).ToList())
             .ToList();
 
         pageRows.Should().OnlyContain(rows => rows.Count >= 2);

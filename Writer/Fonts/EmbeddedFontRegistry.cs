@@ -11,7 +11,10 @@ namespace PdfBuilder.Writer.Fonts
     internal sealed class EmbeddedFontRegistry
     {
         private readonly Dictionary<string, List<EmbeddedFont>> _fonts = new(StringComparer.Ordinal);
+        private readonly Dictionary<SKTypeface, EmbeddedFont> _fontsByTypeface = new(ReferenceEqualityComparer.Instance);
         private int _fontSequence = 1;
+
+        internal int TypefaceStreamReadCount { get; private set; }
 
         public GlyphRegistration RegisterGlyph(SKTypeface typeface, uint glyphId, string unicode)
         {
@@ -27,12 +30,18 @@ namespace PdfBuilder.Writer.Fonts
         public void Reset()
         {
             _fonts.Clear();
+            _fontsByTypeface.Clear();
             _fontSequence = 1;
+            TypefaceStreamReadCount = 0;
         }
 
         private EmbeddedFont EnsureFont(SKTypeface typeface)
         {
+            if (_fontsByTypeface.TryGetValue(typeface, out EmbeddedFont? resolved))
+                return resolved;
+
             byte[] fontData = ReadTypefaceData(typeface);
+            TypefaceStreamReadCount++;
             string key = Convert.ToHexString(SHA256.HashData(fontData));
             if (!_fonts.TryGetValue(key, out var candidates))
             {
@@ -44,12 +53,16 @@ namespace PdfBuilder.Writer.Fonts
             foreach (var candidate in candidates)
             {
                 if (candidate.HasFontData(fontData))
+                {
+                    _fontsByTypeface.Add(typeface, candidate);
                     return candidate;
+                }
             }
 
             string resourceName = $"/Ff{_fontSequence++}";
             var embedded = new EmbeddedFont(resourceName, typeface, fontData);
             candidates.Add(embedded);
+            _fontsByTypeface.Add(typeface, embedded);
             return embedded;
         }
 

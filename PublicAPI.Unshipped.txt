@@ -2909,6 +2909,7 @@ PdfBuilder.Models.PdfColor.PdfColor() -> void
 PdfBuilder.Models.PdfColor.Red.init -> void
 PdfBuilder.Models.PdfGenerationMetrics
 PdfBuilder.Models.PdfGenerationMetrics.BaseFontResources.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.ContentFactoryInvocationCount.get -> long
 PdfBuilder.Models.PdfGenerationMetrics.Elapsed.get -> System.TimeSpan
 PdfBuilder.Models.PdfGenerationMetrics.EmbeddedFontResources.get -> int
 PdfBuilder.Models.PdfGenerationMetrics.ExtGStateResources.get -> int
@@ -2918,6 +2919,12 @@ PdfBuilder.Models.PdfGenerationMetrics.ObjectsWritten.get -> int
 PdfBuilder.Models.PdfGenerationMetrics.OutputBytes.get -> long
 PdfBuilder.Models.PdfGenerationMetrics.PageContentStreamsWritten.get -> int
 PdfBuilder.Models.PdfGenerationMetrics.PagesPlanned.get -> int
+PdfBuilder.Models.PdfGenerationMetrics.TableCellMeasurementCount.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.TableCellDrawBufferAllocationCount.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.TableCloneCount.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.TableMeasurementCount.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.TableRowCloneCount.get -> long
+PdfBuilder.Models.PdfGenerationMetrics.TableRowMeasurementCount.get -> long
 PdfBuilder.Models.PdfGenerationMetrics.UniqueImageResources.get -> int
 PdfBuilder.Models.PdfGenerationOptions
 PdfBuilder.Models.PdfGenerationOptions.CreationTime.get -> System.DateTimeOffset?
@@ -3462,6 +3469,8 @@ PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableLayoutTrace.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableProfiler.set -> void
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableTableLayoutCounters.get -> bool
+PdfBuilder.Document.Layout.PdfDiagnosticsOptions.EnableTableLayoutCounters.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.get -> bool
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.DrawBoundingBoxes.set -> void
 PdfBuilder.Document.Layout.PdfDiagnosticsOptions.IncludeTextContent.get -> bool

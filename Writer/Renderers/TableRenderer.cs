@@ -105,9 +105,43 @@ namespace PdfBuilder.Writer
 
         public static void Append(StringBuilder sb, TableElement table, PdfRenderContext context)
         {
-            if (table == null || table.Rows == null || table.Rows.Count == 0) return;
-            TableGridValidator.Validate(table);
-            var rows = table.Rows!;
+            if (table == null) return;
+            Append(sb, table, table.Rows, null, null, null, table.X, table.Y, includeCaption: true, validateGrid: true, context);
+        }
+
+        internal static void Append(StringBuilder sb, TableSegmentElement segment, PdfRenderContext context)
+        {
+            ArgumentNullException.ThrowIfNull(segment);
+            Append(
+                sb,
+                segment.SourceTable,
+                segment.RenderRows,
+                segment.Rows,
+                segment.ColumnWidths,
+                segment.RowHeights,
+                segment.X,
+                segment.Y,
+                segment.Segment.IncludeCaption,
+                validateGrid: false,
+                context);
+        }
+
+        private static void Append(
+            StringBuilder sb,
+            TableElement table,
+            IReadOnlyList<TableRow> rows,
+            IReadOnlyList<TableRowLayout>? plannedRows,
+            float[]? plannedColumnWidths,
+            float[]? plannedRowHeights,
+            float startX,
+            float startY,
+            bool includeCaption,
+            bool validateGrid,
+            PdfRenderContext context)
+        {
+            if (rows.Count == 0) return;
+            if (validateGrid)
+                TableGridValidator.Validate(table);
 
             // local helper: a side is "explicit" if caller set color and/or width on that side
             static bool IsExplicitSide(Color? c, float? w) => c.HasValue || w.HasValue && w.Value > 0f;
@@ -122,7 +156,11 @@ namespace PdfBuilder.Writer
             float tableWidth = table.TableWidth ?? 500f;
 
             float[] colWidths;
-            if (table.ColumnWidths != null && table.ColumnWidths.Count == totalCols && table.ColumnWidths.All(w => w > 0f))
+            if (plannedColumnWidths != null)
+            {
+                colWidths = plannedColumnWidths;
+            }
+            else if (table.ColumnWidths != null && table.ColumnWidths.Count == totalCols && table.ColumnWidths.All(w => w > 0f))
             {
                 colWidths = table.ColumnWidths.ToArray();
             }
@@ -136,11 +174,11 @@ namespace PdfBuilder.Writer
             }
 
             // -- Heights (row/colspan-aware) --
-            var rowHeights = ComputeRowHeights(table, colWidths);
+            float[] rowHeights = plannedRowHeights ?? ComputeRowHeights(table, colWidths);
 
             // -- Caption --
-            float y = table.Y;
-            if (!string.IsNullOrWhiteSpace(table.CaptionText))
+            float y = startY;
+            if (includeCaption && !string.IsNullOrWhiteSpace(table.CaptionText))
             {
                 string captionText = table.CaptionText;
                 string captionFont = string.IsNullOrWhiteSpace(table.DefaultFont) ? "Helvetica" : table.DefaultFont;
@@ -165,11 +203,11 @@ namespace PdfBuilder.Writer
                 float textWidth = capLine?.Width ?? 0f;
 
                 float totalWidth = colWidths.Sum();
-                float xCap = table.X;
+                float xCap = startX;
                 if (table.CaptionAlign == HorizontalAlign.Center)
-                    xCap = table.X + Math.Max(0, (totalWidth - textWidth) / 2f);
+                    xCap = startX + Math.Max(0, (totalWidth - textWidth) / 2f);
                 else if (table.CaptionAlign == HorizontalAlign.Right)
-                    xCap = table.X + Math.Max(0, totalWidth - textWidth);
+                    xCap = startX + Math.Max(0, totalWidth - textWidth);
 
                 if (capLine != null)
                 {
@@ -210,7 +248,7 @@ namespace PdfBuilder.Writer
 
                 StrokeRoundedRect(
                     sb,
-                    table.X,
+                    startX,
                     frameBottom,
                     frameW,
                     frameH,
@@ -235,13 +273,16 @@ namespace PdfBuilder.Writer
             int rowIndex = 0;
 
             // -- Rows --
-            while (rowIndex < table.Rows.Count)
+            while (rowIndex < rows.Count)
             {
                 float rowHeight = rowHeights[rowIndex];
-                float x = table.X;
+                float x = startX;
                 int colIndex = 0;
-                var row = table.Rows[rowIndex];
-                int absoluteBodyIndex = row.BandIndex ?? table.RowBandOffset + bodyRowCounter;
+                var row = rows[rowIndex];
+                int absoluteBodyIndex = row.BandIndex
+                    ?? (plannedRows != null && plannedRows[rowIndex].BodyIndex >= 0
+                        ? plannedRows[rowIndex].BodyIndex
+                        : table.RowBandOffset + bodyRowCounter);
                 var rowBand = row.IsHeader || row.IsFooter ? null : ResolveRowBand(table, absoluteBodyIndex);
 
                 while (colIndex < totalCols && covered.Contains((rowIndex, colIndex)))
@@ -323,7 +364,7 @@ namespace PdfBuilder.Writer
                             float segW = colWidths[logicalColIndex + s];
 
                             BuildTopVsAboveBottom(
-                                table, rowIndex, logicalColIndex + s, covered,
+                                table, rows, rowIndex, logicalColIndex + s, covered,
                                 eff.BorderTop, eff.DrawTop,
                                 out var top, out var aboveBottom);
 
@@ -368,7 +409,7 @@ namespace PdfBuilder.Writer
                             float segW = colWidths[logicalColIndex + s];
 
                             BuildBottomVsBelowTop(
-                                table, rowIndex, logicalColIndex + s, rowSpan, covered,
+                                table, rows, rowIndex, logicalColIndex + s, rowSpan, covered,
                                 eff.BorderBottom, eff.DrawBottom,
                                 out var bottom, out var belowTop);
 
@@ -1734,6 +1775,7 @@ namespace PdfBuilder.Writer
         // Build an Edge for TOP of (row,col), and the competing BOTTOM of the row above
         private static void BuildTopVsAboveBottom(
             TableElement table,
+            IReadOnlyList<TableRow> rows,
             int rowIndex,
             int colIndex,
             HashSet<(int row, int col)> covered,
@@ -1757,7 +1799,7 @@ namespace PdfBuilder.Writer
                 BorderStyle = topSpec?.Style
             };
 
-            var currRow = table.Rows[rowIndex];
+            var currRow = rows[rowIndex];
             if (currRow.ThickTopBorder)
             {
                 top.Exists = true;
@@ -1771,7 +1813,7 @@ namespace PdfBuilder.Writer
             if (rowIndex <= 0) return;
             if (covered.Contains((rowIndex, colIndex))) return;
 
-            var aboveRow = table.Rows[rowIndex - 1];
+            var aboveRow = rows[rowIndex - 1];
             if (aboveRow.ThickBottomBorder)
             {
                 aboveBottom = new Edge
@@ -1815,7 +1857,7 @@ namespace PdfBuilder.Writer
 
         // BOTTOM (this cell) vs TOP (row below)
         private static void BuildBottomVsBelowTop(
-            TableElement table, int rowIndex, int colIndex, int rowSpan, HashSet<(int row, int col)> covered,
+            TableElement table, IReadOnlyList<TableRow> rows, int rowIndex, int colIndex, int rowSpan, HashSet<(int row, int col)> covered,
             bool cellBottomOn, BorderDrawSpec? bottomSpec,
             out Edge bottom, out Edge belowTop)
         {
@@ -1834,7 +1876,7 @@ namespace PdfBuilder.Writer
                 BorderStyle = bottomSpec?.Style
             };
 
-            var currRow = table.Rows[rowIndex];
+            var currRow = rows[rowIndex];
             if (currRow.ThickBottomBorder)
             {
                 bottom.Exists = true;
@@ -1847,10 +1889,10 @@ namespace PdfBuilder.Writer
             belowTop = new Edge { Exists = false };
 
             int belowRowIndex = rowIndex + Math.Max(1, rowSpan);
-            if (belowRowIndex >= table.Rows.Count) return;
+            if (belowRowIndex >= rows.Count) return;
             if (covered.Contains((belowRowIndex, colIndex))) return;
 
-            var belowRow = table.Rows[belowRowIndex];
+            var belowRow = rows[belowRowIndex];
             if (belowRow.ThickTopBorder)
             {
                 belowTop = new Edge

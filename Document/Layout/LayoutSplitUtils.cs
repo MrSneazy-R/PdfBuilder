@@ -71,7 +71,10 @@ namespace PdfBuilder.Document.Layout
                 PageReferenceFormat = source.PageReferenceFormat,
                 PageReferencePendingText = source.PageReferencePendingText,
                 ThemeStyleName = source.ThemeStyleName,
-                CanonicalStyleOverrides = source.CanonicalStyleOverrides?.Clone()
+                CanonicalStyleOverrides = source.CanonicalStyleOverrides?.Clone(),
+                ShapedLayout = source.ShapedLayout,
+                ShapedStartLine = source.ShapedStartLine,
+                ShapedLineCount = source.ShapedLineCount
             };
 
             if (overrideText != null)
@@ -142,7 +145,11 @@ namespace PdfBuilder.Document.Layout
                 FlowDirection = source.FlowDirection,
                 Direction = source.Direction,
                 KeepWithNext = source.KeepWithNext,
-                AvoidBreakInside = source.AvoidBreakInside
+                AvoidBreakInside = source.AvoidBreakInside,
+                ShapedLayout = source.ShapedLayout,
+                ShapedLayoutWidth = source.ShapedLayoutWidth,
+                ShapedStartLine = source.ShapedStartLine,
+                ShapedLineCount = source.ShapedLineCount
             };
             foreach (var run in source.Runs)
             {
@@ -178,7 +185,22 @@ namespace PdfBuilder.Document.Layout
 
         public static TableElement CloneTable(TableElement source)
         {
+            var clone = CloneTableStructure(source);
+
+            foreach (var row in source.Rows)
+            {
+                source.LayoutDiagnostics?.RecordTableRowClone();
+                clone.Rows.Add(CloneRow(row));
+            }
+
+            return clone;
+        }
+
+        public static TableElement CloneTableStructure(TableElement source)
+        {
             if (source == null) throw new ArgumentNullException(nameof(source));
+
+            source.LayoutDiagnostics?.RecordTableClone();
 
             var clone = new TableElement(source.X, source.Y)
             {
@@ -226,6 +248,7 @@ namespace PdfBuilder.Document.Layout
                 KeepWithNext = source.KeepWithNext,
                 AvoidBreakInside = source.AvoidBreakInside
             };
+            clone.LayoutDiagnostics = source.LayoutDiagnostics;
 
             clone.ColumnWidths.AddRange(source.ColumnWidths);
             foreach (var definition in source.ColumnDefinitions)
@@ -250,17 +273,19 @@ namespace PdfBuilder.Document.Layout
                 });
             }
 
-            foreach (var row in source.Rows)
-                clone.Rows.Add(CloneRow(row));
-
             return clone;
         }
 
         public static TableElement CloneTableWithRows(TableElement source, IReadOnlyList<TableRow> rows)
         {
-            var clone = CloneTable(source);
-            clone.Rows.Clear();
-            clone.Rows.AddRange(rows.Select(CloneRow));
+            if (rows == null) throw new ArgumentNullException(nameof(rows));
+
+            var clone = CloneTableStructure(source);
+            foreach (TableRow row in rows)
+            {
+                source.LayoutDiagnostics?.RecordTableRowClone();
+                clone.Rows.Add(CloneRow(row));
+            }
             return clone;
         }
 

@@ -151,7 +151,7 @@ namespace PdfBuilder.Document.Layout.Components
             if (measurement.Metadata is not TextLayoutMetadata data)
                 throw new InvalidOperationException("Text measurement metadata missing.");
 
-            var element = data.Element;
+            var element = LayoutSplitUtils.CloneText(data.Element);
 
             element.X = context.ContentLeft + data.MarginLeft + data.PaddingLeft;
             element.Y = context.ContentTop;

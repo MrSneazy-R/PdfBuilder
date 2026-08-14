@@ -4,12 +4,29 @@ using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Models;
+using PdfBuilder.Writer.Fonts;
+using SkiaSharp;
 using Xunit;
 
 namespace PdfBuilder.Tests
 {
     public class EmbeddedFontTests
     {
+        [Fact]
+        public void EmbeddedFontRegistry_RepeatedGlyphRegistration_ReadsTypefaceOnce()
+        {
+            using var typeface = SKTypeface.FromFamilyName("Arial") ?? SKTypeface.Default;
+            var registry = new EmbeddedFontRegistry();
+
+            registry.RegisterGlyph(typeface, 1, "A");
+            registry.RegisterGlyph(typeface, 2, "B");
+            registry.RegisterGlyph(typeface, 1, "A");
+
+            registry.TypefaceStreamReadCount.Should().Be(1);
+            registry.GetFonts().Should().ContainSingle();
+            registry.GetFonts().Single().Glyphs.Should().HaveCount(2);
+        }
+
         [Fact]
         public void PdfWriter_Writes_Type0_FontResources()
         {

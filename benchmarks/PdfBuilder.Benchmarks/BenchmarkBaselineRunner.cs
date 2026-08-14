@@ -19,7 +19,22 @@ internal static class BenchmarkBaselineRunner
             Write(outputPath, new BenchmarkBaseline(DateTimeOffset.UtcNow, environment, scenarios));
         }
         BenchmarkBaseline report = new(DateTimeOffset.UtcNow, environment, scenarios);
+        WriteTableSummary(report.Scenarios);
         Console.WriteLine($"Captured {report.Scenarios.Count} benchmark baselines in '{Path.GetFullPath(outputPath)}'.");
+    }
+
+    public static void CaptureTables(string outputPath, int iterations = 1)
+    {
+        if (iterations <= 0) throw new ArgumentOutOfRangeException(nameof(iterations));
+        BenchmarkEnvironment environment = CaptureEnvironment();
+        ScenarioDefinition[] definitions = BenchmarkScenarios.All.Where(item => item.RowCount.HasValue).ToArray();
+        IReadOnlyList<BenchmarkScenarioBaseline> scenarios = definitions
+            .Select(definition => Measure(definition, iterations))
+            .ToArray();
+        var report = new BenchmarkBaseline(DateTimeOffset.UtcNow, environment, scenarios);
+        Write(outputPath, report);
+        WriteTableSummary(report.Scenarios);
+        Console.WriteLine($"Captured {report.Scenarios.Count} table benchmark baselines in '{Path.GetFullPath(outputPath)}'.");
     }
 
     public static void VerifyDeterministicGates(string baselinePath)
@@ -65,6 +80,7 @@ internal static class BenchmarkBaselineRunner
             report = new BenchmarkBaseline(DateTimeOffset.UtcNow, CaptureEnvironment(), new[] { measurement });
         }
         Write(outputPath, report);
+        WriteTableSummary(report.Scenarios);
         Console.WriteLine($"Captured '{name}' in '{Path.GetFullPath(outputPath)}'.");
     }
 
@@ -77,8 +93,12 @@ internal static class BenchmarkBaselineRunner
 
     public static void CompareFiles(string baselinePath, string currentPath)
     {
-        BenchmarkBaseline baseline = Read(baselinePath);
-        BenchmarkBaseline current = Read(currentPath);
+        BenchmarkBaseline baseline = Read(baselinePath, requireComplete: false);
+        BenchmarkBaseline current = Read(currentPath, requireComplete: false);
+        string[] baselineNames = baseline.Scenarios.Select(item => item.Name).ToArray();
+        string[] currentNames = current.Scenarios.Select(item => item.Name).ToArray();
+        if (!baselineNames.SequenceEqual(currentNames, StringComparer.Ordinal))
+            throw new InvalidDataException("Benchmark files must contain the same scenarios in canonical order.");
         var regressions = new List<string>();
         foreach (BenchmarkScenarioBaseline actual in current.Scenarios)
         {
@@ -116,43 +136,129 @@ internal static class BenchmarkBaselineRunner
             _ = definition.Execute();
         var elapsed = new double[iterations];
         var allocations = new long[iterations];
+        var gen0Collections = new int[iterations];
+        var gen1Collections = new int[iterations];
+        var gen2Collections = new int[iterations];
         ScenarioResult? latest = null;
         for (int iteration = 0; iteration < iterations; iteration++)
         {
             long before = GC.GetTotalAllocatedBytes(precise: false);
+            int gen0Before = GC.CollectionCount(0);
+            int gen1Before = GC.CollectionCount(1);
+            int gen2Before = GC.CollectionCount(2);
             var stopwatch = Stopwatch.StartNew();
             latest = definition.Execute();
             stopwatch.Stop();
+            AssertContentFactoryInvocations(definition, latest);
+            AssertRetainedTableSegments(definition, latest);
+            AssertReusableCellDrawBuffers(definition, latest);
             allocations[iteration] = Math.Max(0, GC.GetTotalAllocatedBytes(precise: false) - before);
+            gen0Collections[iteration] = Math.Max(0, GC.CollectionCount(0) - gen0Before);
+            gen1Collections[iteration] = Math.Max(0, GC.CollectionCount(1) - gen1Before);
+            gen2Collections[iteration] = Math.Max(0, GC.CollectionCount(2) - gen2Before);
             elapsed[iteration] = stopwatch.Elapsed.TotalMilliseconds;
         }
         Array.Sort(elapsed);
         Array.Sort(allocations);
+        Array.Sort(gen0Collections);
+        Array.Sort(gen1Collections);
+        Array.Sort(gen2Collections);
         if (latest == null)
             throw new InvalidOperationException($"Scenario '{definition.Name}' produced no result.");
         double medianMs = elapsed[elapsed.Length / 2];
         long medianAllocation = allocations[allocations.Length / 2];
+        int rowCount = definition.RowCount ?? 0;
         long allocationLimit = checked((long)Math.Ceiling(medianAllocation * 1.35d + 65_536d));
         var result = new BenchmarkScenarioBaseline(
             definition.Name,
+            definition.RowCount,
             iterations,
             medianMs,
             medianAllocation,
+            rowCount <= 0 ? 0 : medianAllocation / rowCount,
             allocationLimit,
             latest.OutputBytes,
             latest.Pages,
             medianMs <= 0 ? 0 : latest.Pages / (medianMs / 1000d),
+            gen0Collections[gen0Collections.Length / 2],
+            gen1Collections[gen1Collections.Length / 2],
+            gen2Collections[gen2Collections.Length / 2],
             latest.MaximumRetainedStreams,
             latest.ResourceCount,
             latest.FontResources,
             latest.ImageReferences,
             latest.UniqueImageResources,
             latest.ImageDeduplicationHits,
+            latest.TableMeasurementCount,
+            latest.TableRowMeasurementCount,
+            latest.TableCellMeasurementCount,
+            latest.TableCloneCount,
+            latest.TableRowCloneCount,
+            latest.ContentFactoryInvocationCount,
+            latest.TableCellDrawBufferAllocationCount,
             latest.Deterministic,
             definition.ExactOutputGate,
             definition.AllocationGate);
-        Console.WriteLine($"  {result.MedianMilliseconds:N2} ms, {result.AllocatedBytes:N0} B allocated, {result.OutputBytes:N0} B output, {result.Pages} page(s)");
+        Console.WriteLine($"  {result.MedianMilliseconds:N2} ms, {result.AllocatedBytes:N0} B allocated, {result.OutputBytes:N0} B output, {result.Pages} page(s), {result.TableCellMeasurementCount:N0} cell measure(s)");
         return result;
+    }
+
+    private static void AssertContentFactoryInvocations(ScenarioDefinition definition, ScenarioResult result)
+    {
+        if (!definition.ExpectedContentFactoryInvocationCount.HasValue)
+            return;
+
+        long expected = definition.ExpectedContentFactoryInvocationCount.Value;
+        if (result.ContentFactoryInvocationCount != expected)
+        {
+            throw new InvalidOperationException(
+                $"Scenario '{definition.Name}' invoked canonical table cell factories {result.ContentFactoryInvocationCount:N0} times; expected exactly {expected:N0}. " +
+                "A completed TableLayoutPlan must preserve cell content and measurements across pagination.");
+        }
+    }
+
+    private static void AssertRetainedTableSegments(ScenarioDefinition definition, ScenarioResult result)
+    {
+        if (!definition.RowCount.HasValue)
+            return;
+        if (result.TableCloneCount == 0 && result.TableRowCloneCount == 0)
+            return;
+
+        throw new InvalidOperationException(
+            $"Scenario '{definition.Name}' cloned {result.TableCloneCount:N0} table(s) and {result.TableRowCloneCount:N0} row(s). " +
+            "Normal pagination must render retained TableSegment views without cloning table structures.");
+    }
+
+    private static void AssertReusableCellDrawBuffers(ScenarioDefinition definition, ScenarioResult result)
+    {
+        if (!definition.RowCount.HasValue)
+            return;
+        if (result.TableCellDrawBufferAllocationCount == result.Pages)
+            return;
+
+        throw new InvalidOperationException(
+            $"Scenario '{definition.Name}' allocated {result.TableCellDrawBufferAllocationCount:N0} cell draw buffer(s) for {result.Pages:N0} page(s). " +
+            "Canonical table cells must share one reusable draw buffer per retained page segment.");
+    }
+
+    private static void WriteTableSummary(IEnumerable<BenchmarkScenarioBaseline> scenarios)
+    {
+        BenchmarkScenarioBaseline[] tables = scenarios.Where(item => item.RowCount.HasValue).ToArray();
+        if (tables.Length == 0)
+            return;
+
+        Console.WriteLine();
+        Console.WriteLine("| Rows | Time (ms) | Allocation (B) | Alloc/row (B) | Pages | Output (B) | Gen0/1/2 | Retained streams | Table measures | Row measures | Cell measures | Factory calls | Draw buffers | Table clones | Row clones |");
+        Console.WriteLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
+        foreach (BenchmarkScenarioBaseline table in tables)
+        {
+            Console.WriteLine(
+                $"| {table.RowCount:N0} | {table.MedianMilliseconds:N2} | {table.AllocatedBytes:N0} | {table.AllocatedBytesPerRow:N0} | " +
+                $"{table.Pages:N0} | {table.OutputBytes:N0} | {table.Gen0Collections:N0}/{table.Gen1Collections:N0}/{table.Gen2Collections:N0} | " +
+                $"{table.MaximumRetainedStreams:N0} | {table.TableMeasurementCount:N0} | {table.TableRowMeasurementCount:N0} | " +
+                $"{table.TableCellMeasurementCount:N0} | {table.ContentFactoryInvocationCount:N0} | {table.TableCellDrawBufferAllocationCount:N0} | {table.TableCloneCount:N0} | {table.TableRowCloneCount:N0} |");
+        }
+        Console.WriteLine();
     }
 
     private static BenchmarkBaseline Read(string path, bool requireComplete = true)
@@ -193,19 +299,31 @@ internal sealed record BenchmarkEnvironment(
 
 internal sealed record BenchmarkScenarioBaseline(
     string Name,
+    int? RowCount,
     int Iterations,
     double MedianMilliseconds,
     long AllocatedBytes,
+    long AllocatedBytesPerRow,
     long AllocationLimitBytes,
     long OutputBytes,
     int Pages,
     double PagesPerSecond,
+    int Gen0Collections,
+    int Gen1Collections,
+    int Gen2Collections,
     int MaximumRetainedStreams,
     int ResourceCount,
     int FontResources,
     int ImageReferences,
     int UniqueImageResources,
     int ImageDeduplicationHits,
+    long TableMeasurementCount,
+    long TableRowMeasurementCount,
+    long TableCellMeasurementCount,
+    long TableCloneCount,
+    long TableRowCloneCount,
+    long ContentFactoryInvocationCount,
+    long TableCellDrawBufferAllocationCount,
     bool Deterministic,
     bool ExactOutputGate,
     bool AllocationGate);

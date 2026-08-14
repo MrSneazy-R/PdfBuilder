@@ -1,6 +1,7 @@
 using System.Text;
 using FluentAssertions;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Elements;
 using Xunit;
 
@@ -91,7 +92,7 @@ public sealed class CanonicalTableContainerCellTests
         });
 
         document.GenerateBytes().Should().NotBeEmpty();
-        var tableCell = document.Pages.SelectMany(page => page.Elements).OfType<TableElement>().Single().Rows.Single().Cells.Single();
+        var tableCell = document.Pages.SelectMany(page => page.Elements).OfType<TableSegmentElement>().Single().Rows.Single().Row.Cells.Single();
         var elements = PdfContentHelper.FlattenElements(document.Pages.SelectMany(page => page.Elements)).ToList();
 
         tableCell.Padding.Should().Be(7);

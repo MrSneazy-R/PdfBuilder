@@ -11,7 +11,11 @@ public class PdfGenerationBenchmarks
     [Benchmark(Baseline = true)] public long MinimalDocument() => BenchmarkScenarios.Run("minimal-document").OutputBytes;
     [Benchmark] public long Invoice() => BenchmarkScenarios.Run("invoice").OutputBytes;
     [Benchmark] public long MultiPageInvoice() => BenchmarkScenarios.Run("multi-page-invoice").OutputBytes;
-    [Benchmark] public long ThousandRowTable() => BenchmarkScenarios.Run("1000-row-table").OutputBytes;
+    [Benchmark] public long Table100Rows() => BenchmarkScenarios.Run("table-100-rows").OutputBytes;
+    [Benchmark] public long Table500Rows() => BenchmarkScenarios.Run("table-500-rows").OutputBytes;
+    [Benchmark] public long Table1000Rows() => BenchmarkScenarios.Run("table-1000-rows").OutputBytes;
+    [Benchmark] public long Table2000Rows() => BenchmarkScenarios.Run("table-2000-rows").OutputBytes;
+    [Benchmark] public long Table5000Rows() => BenchmarkScenarios.Run("table-5000-rows").OutputBytes;
     [Benchmark] public long FiveHundredPageReport() => BenchmarkScenarios.Run("500-page-report").OutputBytes;
     [Benchmark] public long MultilingualShaping() => BenchmarkScenarios.Run("multilingual-shaping").OutputBytes;
     [Benchmark] public long ImageHeavyReport() => BenchmarkScenarios.Run("image-heavy-report").OutputBytes;

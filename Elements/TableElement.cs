@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using PdfBuilder.Document;
+using PdfBuilder.Document.Layout;
 using PdfBuilder.Document.TextShaping;
 using PdfBuilder.Models;
 using PdfBuilder.Writer;
@@ -63,6 +64,7 @@ namespace PdfBuilder.Elements
         internal int RowBandOffset { get; set; } = 0;
         internal float[]? ResolvedColumnWidths { get; set; }
         internal TableFooterRepeatMode FooterRepeatMode { get; set; } = TableFooterRepeatMode.Never;
+        internal TableLayoutDiagnosticsSession? LayoutDiagnostics { get; set; }
 
         // Per-column style defaults (optional, cell overrides win)
         public List<TableColumnStyle> ColumnStyles { get; set; } = new();
@@ -245,7 +247,11 @@ namespace PdfBuilder.Elements
         internal RichTextLayoutResult? CachedLayout { get; set; }
         internal float CachedLayoutWidth { get; set; } = -1f;
         internal float CachedContentHeight { get; set; }
-        internal bool HasContainerContent => ContentBuilder != null || ContentFactory != null || ContinuationContent != null || PreparedSplitContent;
+        internal bool HasContainerContent => ContentBuilder != null
+            || ContentFactory != null
+            || ContinuationContent != null
+            || MeasuredContent != null
+            || PreparedSplitContent;
     }
 }
 

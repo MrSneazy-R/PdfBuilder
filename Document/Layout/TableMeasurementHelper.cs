@@ -45,6 +45,9 @@ namespace PdfBuilder.Document.Layout
         {
             if (table == null) throw new ArgumentNullException(nameof(table));
 
+            table.LayoutDiagnostics ??= page?.Owner?.TableLayoutDiagnostics;
+            table.LayoutDiagnostics?.RecordTableMeasurement();
+
             if (table.Rows == null || table.Rows.Count == 0)
                 return new TableMetrics(0, Array.Empty<float>(), Array.Empty<float>());
 
@@ -84,12 +87,14 @@ namespace PdfBuilder.Document.Layout
 
             for (int rowIndex = 0; rowIndex < rowCount; rowIndex++)
             {
+                table.LayoutDiagnostics?.RecordTableRowMeasurement();
                 var row = table.Rows[rowIndex];
                 int colIndex = 0;
                 while (colIndex < totalCols && covered.Contains((rowIndex, colIndex))) colIndex++;
 
                 foreach (var cell in row.Cells)
                 {
+                    table.LayoutDiagnostics?.RecordTableCellMeasurement();
                     while (colIndex < totalCols && covered.Contains((rowIndex, colIndex))) colIndex++;
                     int colSpan = Math.Max(1, cell.ColSpan);
                     int rowSpan = Math.Max(1, cell.RowSpan);
@@ -173,7 +178,12 @@ namespace PdfBuilder.Document.Layout
                 LayoutOptions measureOptions = options ?? measurePage.LayoutOptions;
                 var column = new FlowColumn(0, 0f, usable, 0f, -1_000_000f);
                 var context = new LayoutMeasureContext(measurePage, column, measureOptions);
-                var component = cell.ContinuationContent ?? cell.ContentFactory!();
+                IMeasurable? component = cell.ContinuationContent;
+                if (component == null)
+                {
+                    table.LayoutDiagnostics?.RecordContentFactoryInvocation();
+                    component = cell.ContentFactory!();
+                }
                 LayoutMeasurement measurement = component.Measure(context);
                 if (measurement.IsWrap || measurement.Remainder != null)
                 {

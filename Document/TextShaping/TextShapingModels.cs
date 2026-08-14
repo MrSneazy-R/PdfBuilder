@@ -34,6 +34,9 @@ namespace PdfBuilder.TextShaping
             SmallCaps = smallCaps;
             Monospace = monospace;
             FallbackFonts = fallbackFonts;
+            FallbackFontsCacheKey = fallbackFonts == null
+                ? "\0"
+                : "\u0001" + string.Join('\u001F', fallbackFonts);
             FlowDirection = flowDirection;
             LetterSpacing = letterSpacing;
             WordSpacing = wordSpacing;
@@ -51,6 +54,7 @@ namespace PdfBuilder.TextShaping
         public bool SmallCaps { get; }
         public bool Monospace { get; }
         public IReadOnlyList<string>? FallbackFonts { get; }
+        internal string FallbackFontsCacheKey { get; }
         public FlowDirection FlowDirection { get; }
         public float? LetterSpacing { get; }
         public float? WordSpacing { get; }
@@ -169,6 +173,5 @@ namespace PdfBuilder.TextShaping
         public int Cluster { get; }
         public string Unicode { get; }
 
-        public ushort? AssignedCid { get; set; }
     }
 }
