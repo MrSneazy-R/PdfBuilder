@@ -6,6 +6,10 @@ using System.Text.Json;
 internal static class BenchmarkBaselineRunner
 {
     private const double TimingRegressionThreshold = 0.15d;
+    private const double TableAllocationRegressionMultiplier = 1.20d;
+    private const double TableAllocationScalingMultiplier = 12d;
+    private const double TableStructuralRegressionMultiplier = 1.10d;
+    private static readonly string[] TableRegressionScenarioNames = ["table-100-rows", "table-1000-rows"];
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public static void Capture(string outputPath, int iterations = 1)
@@ -59,6 +63,55 @@ internal static class BenchmarkBaselineRunner
         if (failures.Count > 0)
             throw new InvalidOperationException("Deterministic benchmark gates failed:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
         Console.WriteLine($"Deterministic output-size, allocation, retained-stream, and resource ceilings passed for {gated.Length} scenarios.");
+    }
+
+    public static void VerifyTableRegressionGates(string baselinePath, string currentPath)
+    {
+        BenchmarkBaseline baseline = Read(baselinePath, requireComplete: false);
+        BenchmarkBaseline current = Read(currentPath, requireComplete: false);
+        RequireTableRegressionScenarios(baseline, baselinePath, allowAdditionalScenarios: false);
+        RequireTableRegressionScenarios(current, currentPath, allowAdditionalScenarios: true);
+
+        var failures = new List<string>();
+        foreach (string name in TableRegressionScenarioNames)
+        {
+            ScenarioDefinition definition = BenchmarkScenarios.All.Single(item => item.Name == name);
+            BenchmarkScenarioBaseline expected = baseline.Scenarios.Single(item => item.Name == name);
+            BenchmarkScenarioBaseline actual = current.Scenarios.Single(item => item.Name == name);
+
+            long allocationCeiling = UpperBound(expected.AllocatedBytes, TableAllocationRegressionMultiplier);
+            if (actual.AllocatedBytes > allocationCeiling)
+                failures.Add($"{name}: allocated {actual.AllocatedBytes:N0} > 120% baseline ceiling {allocationCeiling:N0}");
+
+            long expectedFactoryCalls = definition.ExpectedContentFactoryInvocationCount
+                ?? throw new InvalidDataException($"Table regression scenario '{name}' does not declare its expected cell count.");
+            long factoryCeiling = UpperBound(expectedFactoryCalls, TableStructuralRegressionMultiplier);
+            if (actual.ContentFactoryInvocationCount > factoryCeiling)
+                failures.Add($"{name}: content factories {actual.ContentFactoryInvocationCount:N0} > cells + 10% ceiling {factoryCeiling:N0}");
+
+            long expectedRows = definition.RowCount
+                ?? throw new InvalidDataException($"Table regression scenario '{name}' does not declare its row count.");
+            long rowMeasurementCeiling = UpperBound(expectedRows, TableStructuralRegressionMultiplier);
+            if (actual.TableRowMeasurementCount > rowMeasurementCeiling)
+                failures.Add($"{name}: row measurements {actual.TableRowMeasurementCount:N0} > rows + 10% ceiling {rowMeasurementCeiling:N0}");
+        }
+
+        BenchmarkScenarioBaseline table100 = current.Scenarios.Single(item => item.Name == TableRegressionScenarioNames[0]);
+        BenchmarkScenarioBaseline table1000 = current.Scenarios.Single(item => item.Name == TableRegressionScenarioNames[1]);
+        long scalingCeiling = UpperBound(table100.AllocatedBytes, TableAllocationScalingMultiplier);
+        if (table1000.AllocatedBytes > scalingCeiling)
+        {
+            failures.Add(
+                $"table allocation scaling: 1,000 rows allocated {table1000.AllocatedBytes:N0} > " +
+                $"12 x 100-row ceiling {scalingCeiling:N0}");
+        }
+
+        if (failures.Count > 0)
+            throw new InvalidOperationException("Table regression gates failed:" + Environment.NewLine + string.Join(Environment.NewLine, failures));
+
+        Console.WriteLine(
+            $"Table allocation and structural gates passed. Allocation scaling: " +
+            $"{table1000.AllocatedBytes / (double)Math.Max(1L, table100.AllocatedBytes):N2}x (maximum {TableAllocationScalingMultiplier:N0}x).");
     }
 
     public static void CaptureScenario(string name, string outputPath, int iterations = 1)
@@ -168,7 +221,9 @@ internal static class BenchmarkBaselineRunner
         double medianMs = elapsed[elapsed.Length / 2];
         long medianAllocation = allocations[allocations.Length / 2];
         int rowCount = definition.RowCount ?? 0;
-        long allocationLimit = checked((long)Math.Ceiling(medianAllocation * 1.35d + 65_536d));
+        long allocationLimit = IsTableRegressionScenario(definition)
+            ? UpperBound(medianAllocation, TableAllocationRegressionMultiplier)
+            : checked((long)Math.Ceiling(medianAllocation * 1.35d + 65_536d));
         var result = new BenchmarkScenarioBaseline(
             definition.Name,
             definition.RowCount,
@@ -239,6 +294,30 @@ internal static class BenchmarkBaselineRunner
         throw new InvalidOperationException(
             $"Scenario '{definition.Name}' allocated {result.TableCellDrawBufferAllocationCount:N0} cell draw buffer(s) for {result.Pages:N0} page(s). " +
             "Canonical table cells must share one reusable draw buffer per retained page segment.");
+    }
+
+    private static bool IsTableRegressionScenario(ScenarioDefinition definition) =>
+        TableRegressionScenarioNames.Contains(definition.Name, StringComparer.Ordinal);
+
+    private static long UpperBound(long value, double multiplier) =>
+        checked((long)Math.Floor(value * multiplier));
+
+    private static void RequireTableRegressionScenarios(
+        BenchmarkBaseline report,
+        string path,
+        bool allowAdditionalScenarios)
+    {
+        string[] present = report.Scenarios
+            .Where(item => TableRegressionScenarioNames.Contains(item.Name, StringComparer.Ordinal))
+            .Select(item => item.Name)
+            .ToArray();
+        if (!present.SequenceEqual(TableRegressionScenarioNames, StringComparer.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Benchmark file '{path}' must contain {string.Join(" and ", TableRegressionScenarioNames)} in canonical order.");
+        }
+        if (!allowAdditionalScenarios && report.Scenarios.Count != TableRegressionScenarioNames.Length)
+            throw new InvalidDataException($"Table regression baseline '{path}' must contain only the ordinary-CI table scenarios.");
     }
 
     private static void WriteTableSummary(IEnumerable<BenchmarkScenarioBaseline> scenarios)

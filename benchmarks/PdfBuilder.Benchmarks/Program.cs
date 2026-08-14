@@ -15,6 +15,14 @@ if (args.Length > 0 && string.Equals(args[0], "--verify-gates", StringComparison
     return;
 }
 
+if (args.Length > 0 && string.Equals(args[0], "--verify-table-gates", StringComparison.OrdinalIgnoreCase))
+{
+    string baseline = args.Length > 1 ? args[1] : throw new ArgumentException("--verify-table-gates requires a baseline path.");
+    string current = args.Length > 2 ? args[2] : throw new ArgumentException("--verify-table-gates requires a current-results path.");
+    BenchmarkBaselineRunner.VerifyTableRegressionGates(baseline, current);
+    return;
+}
+
 if (args.Length > 0 && string.Equals(args[0], "--capture-scenario", StringComparison.OrdinalIgnoreCase))
 {
     string name = args.Length > 1 ? args[1] : throw new ArgumentException("--capture-scenario requires a scenario name.");

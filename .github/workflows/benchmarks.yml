@@ -18,7 +18,9 @@ jobs:
         run: |
           $baseline = 'BenchmarkDotNet.Artifacts/current-baseline.json'
           $names = @(
-            'minimal-document', 'invoice', 'multi-page-invoice', '1000-row-table', '500-page-report',
+            'minimal-document', 'invoice', 'multi-page-invoice',
+            'table-100-rows', 'table-500-rows', 'table-1000-rows', 'table-2000-rows', 'table-5000-rows',
+            '500-page-report',
             'multilingual-shaping', 'image-heavy-report', 'core-charts', 'advanced-charts', 'previews',
             'streaming', 'concurrent-invoices', 'cancellation', 'resource-deduplication', 'deterministic-generation'
           )
@@ -28,6 +30,8 @@ jobs:
           }
       - name: Compare reference timing
         run: dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --compare-files benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10.json BenchmarkDotNet.Artifacts/current-baseline.json
+      - name: Verify table allocation regression gates
+        run: dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --verify-table-gates benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10-tables.json BenchmarkDotNet.Artifacts/current-baseline.json
       - name: Run BenchmarkDotNet suite
         run: dotnet run -c Release --no-build --project benchmarks/PdfBuilder.Benchmarks -- --filter '*' --join
       - uses: actions/upload-artifact@v4

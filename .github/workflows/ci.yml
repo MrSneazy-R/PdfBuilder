@@ -105,6 +105,16 @@ jobs:
       - name: Run deterministic benchmark gates
         if: runner.os == 'Windows'
         run: dotnet run --project benchmarks/PdfBuilder.Benchmarks -c Release --no-build -- --verify-gates benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10.json
+      - name: Run table allocation regression gates
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $current = Join-Path $env:RUNNER_TEMP 'pdfbuilder-table-gates.json'
+          foreach ($name in @('table-100-rows', 'table-1000-rows')) {
+            dotnet run --project benchmarks/PdfBuilder.Benchmarks -c Release --no-build -- --capture-scenario $name $current 1
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          dotnet run --project benchmarks/PdfBuilder.Benchmarks -c Release --no-build -- --verify-table-gates benchmarks/PdfBuilder.Benchmarks/baselines/windows-x64-net10-tables.json $current
       - name: Run independent PDF validation
         if: runner.os == 'Linux'
         env:

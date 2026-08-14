@@ -4,7 +4,9 @@
 
 The reference was captured on the hardware recorded inside the JSON file. Timing is comparable only after reviewing that metadata. The scheduled Windows workflow captures every scenario in an isolated process, compares its timings with a 15% review threshold, emits workflow warnings for regressions, runs BenchmarkDotNet, and uploads both result sets. Timing variance does not block ordinary pull requests.
 
-Normal Windows CI runs `--verify-gates` against the bounded deterministic subset. It requires output-size and resource-count non-regression ceilings, retained-stream ceilings, and allocation limits. Dedicated unit tests verify byte-for-byte determinism within each runtime environment; compressed byte counts may differ slightly between runtime/zlib revisions. Heavy/noisy cases such as the 1,000-row table, 500-page report, multilingual platform fonts, previews, concurrency, and cancellation remain measured but are not ordinary-CI gates.
+Normal Windows CI runs `--verify-gates` against the bounded deterministic subset. It requires output-size and resource-count non-regression ceilings, retained-stream ceilings, and allocation limits. Dedicated unit tests verify byte-for-byte determinism within each runtime environment; compressed byte counts may differ slightly between runtime/zlib revisions.
+
+Table performance has a separate ordinary-CI baseline in `windows-x64-net10-tables.json`. The 100-row and 1,000-row fixtures are captured in isolated processes and checked with `--verify-table-gates`. Each allocation result may be at most 120% of its baseline, the 1,000-row result may be at most 12 times the 100-row result, content-factory calls may be at most 110% of the canonical cell count, and row measurements may be at most 110% of the requested body-row count. The 5,000-row fixture remains scheduled-only.
 
 To refresh a scenario without retaining previous-process allocation pressure:
 

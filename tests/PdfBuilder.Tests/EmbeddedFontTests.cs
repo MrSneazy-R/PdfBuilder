@@ -28,6 +28,31 @@ namespace PdfBuilder.Tests
         }
 
         [Fact]
+        public void PdfWriter_ShapedLineCache_DoesNotLeakCidsAcrossDocuments()
+        {
+            var first = new PdfDocument();
+            var firstPage = first.AddPage();
+            new PdfPageBuilder(firstPage)
+                .Margin(36)
+                .Content(column =>
+                {
+                    column.Text("\u03A9").Add();
+                    column.Text("caf\u00E9").Add();
+                });
+            _ = PdfContentHelper.Generate(first);
+
+            var second = new PdfDocument();
+            var secondPage = second.AddPage();
+            new PdfPageBuilder(secondPage)
+                .Margin(36)
+                .Content(column => column.Text("caf\u00E9").Add());
+
+            byte[] pdf = PdfContentHelper.Generate(second);
+
+            PdfTextExtractor.ExtractTextBlocks(pdf).Should().Contain("caf\u00E9");
+        }
+
+        [Fact]
         public void PdfWriter_Writes_Type0_FontResources()
         {
             var doc = new PdfDocument();
