@@ -326,14 +326,14 @@ namespace PdfBuilder.Writer
                 canvas.Translate(destRect.MidX, destRect.MidY);
                 canvas.RotateDegrees(-element.Rotation);
                 var rotatedRect = new SKRect(-width / 2f, -height / 2f, width / 2f, height / 2f);
-                using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
-                canvas.DrawBitmap(bitmap, rotatedRect, paint);
+                using var paint = new SKPaint { IsAntialias = true };
+                canvas.DrawBitmap(bitmap, rotatedRect, new SKSamplingOptions(SKFilterMode.Linear), paint);
                 canvas.Restore();
             }
             else
             {
-                using var paint = new SKPaint { IsAntialias = true, FilterQuality = SKFilterQuality.Medium };
-                canvas.DrawBitmap(bitmap, destRect, paint);
+                using var paint = new SKPaint { IsAntialias = true };
+                canvas.DrawBitmap(bitmap, destRect, new SKSamplingOptions(SKFilterMode.Linear), paint);
             }
         }
 
@@ -341,14 +341,14 @@ namespace PdfBuilder.Writer
         {
             using var paint = new SKPaint
             {
-                Typeface = run.Typeface,
-                TextSize = run.FontSize,
                 Color = color,
-                IsAntialias = true,
-                SubpixelText = true,
-                TextEncoding = SKTextEncoding.Utf16,
-                HintingLevel = SKPaintHinting.NoHinting,
-                LcdRenderText = true
+                IsAntialias = true
+            };
+            using var font = new SKFont(run.Typeface, run.FontSize)
+            {
+                Subpixel = true,
+                Hinting = SKFontHinting.None,
+                Edging = SKFontEdging.SubpixelAntialias
             };
 
             if (Math.Abs(rotationDegrees) > 0.0001f)
@@ -356,12 +356,12 @@ namespace PdfBuilder.Writer
                 canvas.Save();
                 canvas.Translate(originX, baselineY);
                 canvas.RotateDegrees(rotationDegrees);
-                canvas.DrawText(run.Text, 0f, 0f, paint);
+                canvas.DrawText(run.Text, 0f, 0f, SKTextAlign.Left, font, paint);
                 canvas.Restore();
             }
             else
             {
-                canvas.DrawText(run.Text, originX, baselineY, paint);
+                canvas.DrawText(run.Text, originX, baselineY, SKTextAlign.Left, font, paint);
             }
         }
 

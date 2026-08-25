@@ -41,13 +41,13 @@ internal static class SkiaImageOptimiser
         SKBitmap final = oriented.Copy();
         if (target.HasValue && (target.Value.Width != oriented.Width || target.Value.Height != oriented.Height))
         {
-            SKFilterQuality filter = quality switch
+            SKSamplingOptions sampling = quality switch
             {
-                ImageQuality.Low => SKFilterQuality.Low,
-                ImageQuality.Medium => SKFilterQuality.Medium,
-                _ => SKFilterQuality.High
+                ImageQuality.Low => new SKSamplingOptions(SKFilterMode.Nearest),
+                ImageQuality.Medium => new SKSamplingOptions(SKFilterMode.Linear),
+                _ => new SKSamplingOptions(SKCubicResampler.Mitchell)
             };
-            SKBitmap? resized = oriented.Resize(new SKImageInfo(target.Value.Width, target.Value.Height, SKColorType.Bgra8888, SKAlphaType.Premul), filter);
+            SKBitmap? resized = oriented.Resize(new SKImageInfo(target.Value.Width, target.Value.Height, SKColorType.Bgra8888, SKAlphaType.Premul), sampling);
             final.Dispose();
             final = resized ?? throw new InvalidOperationException("Image downsampling failed.");
         }
@@ -120,7 +120,8 @@ internal static class SkiaImageOptimiser
             case ImageOrientation.RightBottom: canvas.Translate(width, height); canvas.RotateDegrees(90); canvas.Scale(-1, 1); break;
             case ImageOrientation.LeftBottom: canvas.Translate(0, height); canvas.RotateDegrees(-90); break;
         }
-        canvas.DrawBitmap(source, 0, 0);
+        using var paint = new SKPaint { IsAntialias = true };
+        canvas.DrawBitmap(source, 0, 0, SKSamplingOptions.Default, paint);
         canvas.Flush();
         return output;
     }

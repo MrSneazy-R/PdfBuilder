@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 using SkiaSharp;
+using Svg.Skia;
 
 namespace PdfBuilder.Writer.Imaging;
 
@@ -28,14 +29,12 @@ internal sealed class SecureSvgRenderer : ISvgRenderer
     {
         string sanitized = Sanitize(markup, widthPoints, heightPoints, dpi);
 
-        var svg = new SkiaSharp.Extended.Svg.SKSvg();
+        using var svg = new SKSvg();
         using var source = new MemoryStream(Encoding.UTF8.GetBytes(sanitized));
         svg.Load(source);
 
         var picture = svg.Picture ?? throw new InvalidDataException("SVG markup could not be parsed.");
-        var bounds = svg.ViewBox;
-        if (bounds.Width <= 0f || bounds.Height <= 0f)
-            bounds = picture.CullRect;
+        var bounds = picture.CullRect;
         if (bounds.Width <= 0f || bounds.Height <= 0f)
             throw new InvalidDataException("SVG must define a non-empty viewBox or drawable bounds.");
 

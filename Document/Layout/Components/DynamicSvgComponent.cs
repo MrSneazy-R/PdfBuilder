@@ -38,6 +38,10 @@ internal sealed class DynamicSvgComponent : IMeasurable
             try
             {
                 element = new SvgElement(markup, 0f, 0f, width, _height);
+                // A dynamic SVG has an explicit layout height and is commonly used
+                // as a layer background. Implicit flow spacing would enlarge that
+                // box and leave an unpainted strip above the generated artwork.
+                element.MarginTop = 0f;
             }
             catch (InvalidDataException exception)
             {

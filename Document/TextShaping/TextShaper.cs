@@ -395,24 +395,18 @@ namespace PdfBuilder.TextShaping
             _shaperCache.GetOrAdd(tf, t => new CachedShaper(t));
         private ShapedRun ShapeRun(TextSegment segment, TextShapingRequest request)
         {
-            using var paint = new SKPaint
-            {
-                Typeface = segment.Typeface,
-                TextSize = segment.FontSize,
-                IsAntialias = true,
-                SubpixelText = true,
-                HintingLevel = SKPaintHinting.NoHinting,
-                LcdRenderText = true,
-                TextEncoding = SKTextEncoding.Utf16
-            };
-
             var cachedShaper = GetShaper(segment.Typeface);
             List<ShapedGlyph> glyphs;
-            using var font = new SKFont(segment.Typeface, segment.FontSize);
+            using var font = new SKFont(segment.Typeface, segment.FontSize)
+            {
+                Subpixel = true,
+                Hinting = SKFontHinting.None,
+                Edging = SKFontEdging.SubpixelAntialias
+            };
             var metrics = font.Metrics;
             lock (cachedShaper.SyncRoot)
             {
-                var result = cachedShaper.Shaper.Shape(segment.Text, 0, 0, paint);
+                var result = cachedShaper.Shaper.Shape(segment.Text, 0, 0, font);
                 glyphs = new List<ShapedGlyph>(result?.Codepoints?.Length ?? 0);
                 if (result?.Codepoints != null && result.Points != null && result.Clusters != null)
                 {

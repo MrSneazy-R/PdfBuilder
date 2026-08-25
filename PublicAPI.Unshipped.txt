@@ -783,6 +783,10 @@ PdfBuilder.Document.ITableCellDescriptor.BorderTop(float width = 1, string! colo
 PdfBuilder.Document.ITableCellDescriptor.BorderTop(System.Action<PdfBuilder.Document.ITableBorderDescriptor!>! configure) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.ColumnSpan(int value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.CornerRadius(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.CornerRadiusBottomLeft(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.CornerRadiusBottomRight(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.CornerRadiusTopLeft(float value) -> PdfBuilder.Document.ITableCellDescriptor!
+PdfBuilder.Document.ITableCellDescriptor.CornerRadiusTopRight(float value) -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Ellipsis() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.Hyphenate() -> PdfBuilder.Document.ITableCellDescriptor!
 PdfBuilder.Document.ITableCellDescriptor.NoWrap() -> PdfBuilder.Document.ITableCellDescriptor!

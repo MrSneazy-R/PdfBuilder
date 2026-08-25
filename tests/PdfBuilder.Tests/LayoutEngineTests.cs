@@ -11,6 +11,17 @@ namespace PdfBuilder.Tests
 {
     public class LayoutEngineTests
     {
+        private sealed class RecordingComponent : IMeasurable
+        {
+            public float DrawnContentTop { get; private set; }
+
+            public LayoutMeasurement Measure(LayoutMeasureContext context)
+                => new(3f, 10f, 0f, 20f);
+
+            public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
+                => DrawnContentTop = context.ContentTop;
+        }
+
         [Fact]
         public void TextBuilder_MeasureDraw_AdvancesFlowAndAddsElement()
         {
@@ -30,6 +41,70 @@ namespace PdfBuilder.Tests
                 page.Elements.OfType<TextElement>().Should().ContainSingle();
                 endY.Should().BeLessThan(startY);
             });
+        }
+
+        [Fact]
+        public void TextComponent_Draw_PositionsFirstGlyphInsideMeasuredTopPadding()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 240f, 200f, 20f);
+            var options = new LayoutOptions();
+            var source = new TextElement("Aligned text", 0f, 0f)
+            {
+                FontSize = 12f,
+                MarginTop = 0f,
+                PaddingTop = 5f
+            };
+            var component = new TextComponent(source, defaultSpacing: 0f);
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+
+            component.Draw(new LayoutDrawContext(page, column, 20f, 200f, 240f, options), measurement);
+
+            var rendered = page.Elements.OfType<TextElement>().Single();
+            var firstLine = rendered.ShapedLayout!.Lines[0];
+            (rendered.Y + firstLine.Ascent + rendered.PaddingTop!.Value).Should().BeApproximately(200f, 0.01f);
+        }
+
+        [Fact]
+        public void PaddingComponent_Draw_PreservesTheTopInsetAppliedDuringMeasurement()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 240f, 200f, 20f);
+            var options = new LayoutOptions();
+            var child = new RecordingComponent();
+            var component = new PaddingComponent(child, new PaddingValues(0f, 12f, 0f, 0f));
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+            var contentTop = 200f - measurement.MarginTop;
+
+            component.Draw(new LayoutDrawContext(page, column, 20f, contentTop, 240f, options), measurement);
+
+            child.DrawnContentTop.Should().BeApproximately(contentTop, 0.01f);
+        }
+
+        [Fact]
+        public void CellDrawBuffer_DoesNotApplyASecondTextBaselineOffset()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 240f, 200f, 20f);
+            var options = new LayoutOptions();
+            var source = new TextElement("Cell text", 0f, 0f)
+            {
+                FontSize = 12f,
+                MarginTop = 0f
+            };
+            var component = new TextComponent(source, defaultSpacing: 0f);
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+            var buffer = new CellDrawBuffer(page, options);
+
+            var rendered = buffer.Draw(component, measurement, 20f, 200f, 240f, measurement.ReservedHeight)
+                .OfType<TextElement>()
+                .Single();
+
+            var firstLine = rendered.ShapedLayout!.Lines[0];
+            (rendered.Y + firstLine.Ascent).Should().BeApproximately(200f, 0.01f);
         }
 
         [Fact]

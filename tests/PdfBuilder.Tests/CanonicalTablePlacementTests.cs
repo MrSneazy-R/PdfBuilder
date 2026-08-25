@@ -150,6 +150,10 @@ public sealed class CanonicalTablePlacementTests
                 table.Row(row => row.Background("Band").Height(36).Cell()
                     .AlignBottom()
                     .CornerRadius(3)
+                    .CornerRadiusTopLeft(4)
+                    .CornerRadiusTopRight(5)
+                    .CornerRadiusBottomRight(6)
+                    .CornerRadiusBottomLeft(7)
                     .BorderTop(border => { border.Color("Rule"); border.Width(1.5f); border.LineCap(TableBorderLineCap.Round); })
                     .NoWrap()
                     .Ellipsis()
@@ -169,6 +173,10 @@ public sealed class CanonicalTablePlacementTests
         table.InnerBorder!.DashPattern.Should().Equal(2, 1);
         table.OuterCornerRadiusTopLeft.Should().Be(5);
         cell.VerticalAlign.Should().Be(VerticalAlign.Bottom);
+        cell.CornerRadiusTopLeft.Should().Be(4);
+        cell.CornerRadiusTopRight.Should().Be(5);
+        cell.CornerRadiusBottomRight.Should().Be(6);
+        cell.CornerRadiusBottomLeft.Should().Be(7);
         cell.BorderStyleTop!.LineCap.Should().Be(BorderLineCap.Round);
         text.Wrapping.Should().Be(TextWrapping.NoWrap);
         text.EllipsisWhenConstrained.Should().BeTrue();

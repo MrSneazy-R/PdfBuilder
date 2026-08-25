@@ -112,7 +112,11 @@ namespace PdfBuilder.Document.Layout.Components
             float contentLeft = context.ContentLeft + metadata.MarginLeft + metadata.PaddingLeft;
 
             rt.X = contentLeft;
-            rt.Y = context.ContentTop;
+            var lineIndex = Math.Clamp(metadata.StartLine, 0, Math.Max(metadata.Layout.Lines.Count - 1, 0));
+            var ascent = metadata.Layout.Lines.Count > 0
+                ? metadata.Layout.Lines[lineIndex].Ascent
+                : rt.FontSize * 0.8f;
+            rt.Y = context.ContentTop - metadata.PaddingTop - ascent;
             rt.MaxWidth = metadata.InnerWidth + metadata.PaddingLeft + metadata.PaddingRight;
             rt.PaddingLeft = metadata.PaddingLeft;
             rt.PaddingRight = metadata.PaddingRight;

@@ -154,7 +154,9 @@ namespace PdfBuilder.Document.Layout.Components
             var element = LayoutSplitUtils.CloneText(data.Element);
 
             element.X = context.ContentLeft + data.MarginLeft + data.PaddingLeft;
-            element.Y = context.ContentTop;
+            var firstLine = element.ShapedLayout?.Lines.FirstOrDefault();
+            var ascent = firstLine?.Ascent ?? element.FontSize * 0.8f;
+            element.Y = context.ContentTop - data.PaddingTop - ascent;
             element.MaxWidth = data.TextMaxWidth;
             element.PaddingLeft = data.PaddingLeft;
             element.PaddingRight = data.PaddingRight;

@@ -114,6 +114,14 @@ public interface ITableCellDescriptor : IContainer
     ITableCellDescriptor BorderBottom(Action<ITableBorderDescriptor> configure);
     /// <summary>Rounds the cell background and border corners.</summary>
     new ITableCellDescriptor CornerRadius(float value);
+    /// <summary>Rounds the cell's top-left background and border corner.</summary>
+    ITableCellDescriptor CornerRadiusTopLeft(float value);
+    /// <summary>Rounds the cell's top-right background and border corner.</summary>
+    ITableCellDescriptor CornerRadiusTopRight(float value);
+    /// <summary>Rounds the cell's bottom-right background and border corner.</summary>
+    ITableCellDescriptor CornerRadiusBottomRight(float value);
+    /// <summary>Rounds the cell's bottom-left background and border corner.</summary>
+    ITableCellDescriptor CornerRadiusBottomLeft(float value);
     /// <summary>Sets uniform cell padding in points.</summary>
     new ITableCellDescriptor Padding(float value);
     /// <summary>Sets uniform cell padding from the current document theme.</summary>

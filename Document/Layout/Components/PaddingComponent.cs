@@ -79,7 +79,10 @@ namespace PdfBuilder.Document.Layout.Components
 
             var innerMeasurement = metadata.InnerMeasurement;
             float childLeft = context.ContentLeft + _padding.Left;
-            float childContentTop = context.ContentTop + _padding.Top;
+            // The parent flow has already subtracted this component's top margin,
+            // which includes the top padding. Adding it back here would draw the
+            // child above its measured content box and visually erase the inset.
+            float childContentTop = context.ContentTop;
             float childWidth = Math.Max(0f, context.ContentWidth - _padding.Horizontal);
 
             var childContext = new LayoutDrawContext(context.Page, context.Column, childLeft, childContentTop, childWidth, context.Options);

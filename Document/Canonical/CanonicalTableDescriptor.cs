@@ -278,8 +278,32 @@ public partial class PdfDocument
         public ITableCellDescriptor BorderBottom(Action<ITableBorderDescriptor> configure) => SetSideBorder(TableBorderSide.Bottom, configure);
         public new ITableCellDescriptor CornerRadius(float value)
         {
-            if (value < 0f || !float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
+            ValidateCornerRadius(value);
             _cell.CornerRadius = value;
+            return this;
+        }
+        public ITableCellDescriptor CornerRadiusTopLeft(float value)
+        {
+            ValidateCornerRadius(value);
+            _cell.CornerRadiusTopLeft = value;
+            return this;
+        }
+        public ITableCellDescriptor CornerRadiusTopRight(float value)
+        {
+            ValidateCornerRadius(value);
+            _cell.CornerRadiusTopRight = value;
+            return this;
+        }
+        public ITableCellDescriptor CornerRadiusBottomRight(float value)
+        {
+            ValidateCornerRadius(value);
+            _cell.CornerRadiusBottomRight = value;
+            return this;
+        }
+        public ITableCellDescriptor CornerRadiusBottomLeft(float value)
+        {
+            ValidateCornerRadius(value);
+            _cell.CornerRadiusBottomLeft = value;
             return this;
         }
         public new ITableCellDescriptor Padding(float value)
@@ -318,6 +342,10 @@ public partial class PdfDocument
         public ITableCellDescriptor Ellipsis() { _ellipsis = true; return this; }
 
         private string ResolveColor(string color) => _theme.ResolveColor(ValidateColor(color));
+        private static void ValidateCornerRadius(float value)
+        {
+            if (value < 0f || !float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
+        }
         private float ResolveSpacing(string token)
         {
             if (string.IsNullOrWhiteSpace(token)) throw new ArgumentException("A theme spacing token is required.", nameof(token));

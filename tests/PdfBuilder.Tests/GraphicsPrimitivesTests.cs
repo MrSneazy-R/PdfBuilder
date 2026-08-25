@@ -2,6 +2,7 @@ using System.Globalization;
 using FluentAssertions;
 using PdfBuilder.Document;
 using PdfBuilder.Document.Layout;
+using PdfBuilder.Elements;
 using PdfBuilder.Writer;
 using Xunit;
 
@@ -154,6 +155,8 @@ public sealed class GraphicsPrimitivesTests
 
         observed.Width.Should().BeApproximately(PageSizes.A4.Width - 72, 0.01f);
         observed.Height.Should().Be(42);
+        document.Pages.Single().Elements.OfType<SvgElement>().Single().Y
+            .Should().BeApproximately(PageSizes.A4.Height - 36, 0.01f);
         System.Text.Encoding.ASCII.GetString(pdf).Should().Contain("/Subtype /Image");
 
         Action unsafeSvg = () => PdfDocument.Create(descriptor => descriptor.Page(page =>
