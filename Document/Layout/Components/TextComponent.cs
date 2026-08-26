@@ -157,7 +157,10 @@ namespace PdfBuilder.Document.Layout.Components
             var firstLine = element.ShapedLayout?.Lines.FirstOrDefault();
             var ascent = firstLine?.Ascent ?? element.FontSize * 0.8f;
             element.Y = context.ContentTop - data.PaddingTop - ascent;
-            element.MaxWidth = data.TextMaxWidth;
+            float availableTextWidth = Math.Max(
+                0f,
+                context.ContentWidth - data.MarginLeft - data.MarginRight - data.PaddingLeft - data.PaddingRight);
+            element.MaxWidth = Math.Min(data.TextMaxWidth, availableTextWidth);
             element.PaddingLeft = data.PaddingLeft;
             element.PaddingRight = data.PaddingRight;
             element.PaddingTop = data.PaddingTop;

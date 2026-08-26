@@ -11,9 +11,12 @@ namespace PdfBuilder.Document.Layout.Components
         public float Gap { get; set; } = 12f;
 
         internal RowComponent Add(IMeasurable child, RowWidthSpec spec)
+            => Add(child, spec, LayoutVerticalAlignment.Top);
+
+        internal RowComponent Add(IMeasurable child, RowWidthSpec spec, LayoutVerticalAlignment verticalAlignment)
         {
             if (child == null) throw new ArgumentNullException(nameof(child));
-            _entries.Add(new RowEntry(child, spec));
+            _entries.Add(new RowEntry(child, spec, verticalAlignment));
             return this;
         }
 
@@ -54,7 +57,7 @@ namespace PdfBuilder.Document.Layout.Components
                     break;
                 }
 
-                placements.Add(new RowChild(entry.Component, measurement, slice));
+                placements.Add(new RowChild(entry.Component, measurement, slice, entry.VerticalAlignment));
                 maxHeight = Math.Max(maxHeight, measurement.ReservedHeight);
                 usedWidth += width;
                 avoidBreakInside |= measurement.AvoidBreakInside;
@@ -93,7 +96,14 @@ namespace PdfBuilder.Document.Layout.Components
 
             foreach (var child in metadata.Children)
             {
-                float contentTop = context.ContentTop - child.Measurement.MarginTop;
+                float remainingHeight = Math.Max(0f, measurement.ContentHeight - child.Measurement.ReservedHeight);
+                float verticalOffset = child.VerticalAlignment switch
+                {
+                    LayoutVerticalAlignment.Middle => remainingHeight * 0.5f,
+                    LayoutVerticalAlignment.Bottom => remainingHeight,
+                    _ => 0f
+                };
+                float contentTop = context.ContentTop - verticalOffset - child.Measurement.MarginTop;
                 var childContext = new LayoutDrawContext(
                     context.Page,
                     child.Column,
@@ -177,7 +187,11 @@ namespace PdfBuilder.Document.Layout.Components
             return widths;
         }
 
-        private sealed record RowChild(IMeasurable Component, LayoutMeasurement Measurement, FlowColumn Column);
+        private sealed record RowChild(
+            IMeasurable Component,
+            LayoutMeasurement Measurement,
+            FlowColumn Column,
+            LayoutVerticalAlignment VerticalAlignment);
 
         private sealed class RowMetadata
         {
@@ -198,7 +212,7 @@ namespace PdfBuilder.Document.Layout.Components
 
             var remainder = new RowComponent { Gap = Gap };
             for (int r = startIndex; r < _entries.Count; r++)
-                remainder.Add(_entries[r].Component, _entries[r].Spec);
+                remainder.Add(_entries[r].Component, _entries[r].Spec, _entries[r].VerticalAlignment);
             return remainder;
         }
 
@@ -206,10 +220,10 @@ namespace PdfBuilder.Document.Layout.Components
         {
             var remainder = new RowComponent { Gap = Gap };
             if (remainderChild != null)
-                remainder.Add(remainderChild, _entries[currentIndex].Spec);
+                remainder.Add(remainderChild, _entries[currentIndex].Spec, _entries[currentIndex].VerticalAlignment);
 
             for (int r = currentIndex + 1; r < _entries.Count; r++)
-                remainder.Add(_entries[r].Component, _entries[r].Spec);
+                remainder.Add(_entries[r].Component, _entries[r].Spec, _entries[r].VerticalAlignment);
 
             return remainder._entries.Count == 0 ? null : remainder;
         }
@@ -222,7 +236,10 @@ namespace PdfBuilder.Document.Layout.Components
             public static RowWidthSpec Auto() => new RowWidthSpec(RowWidthKind.Auto, 0f);
         }
 
-        private readonly record struct RowEntry(IMeasurable Component, RowWidthSpec Spec);
+        private readonly record struct RowEntry(
+            IMeasurable Component,
+            RowWidthSpec Spec,
+            LayoutVerticalAlignment VerticalAlignment);
 
         internal enum RowWidthKind
         {

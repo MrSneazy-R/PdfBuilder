@@ -174,6 +174,8 @@ public interface IColumnDescriptor
 /// <summary>Describes a horizontal row.</summary>
 public interface IRowDescriptor
 {
+    /// <summary>Sets the gap between row items in points.</summary>
+    void Gap(float value);
     /// <summary>Adds a constant-width item in points.</summary>
     IContainer ConstantItem(float width);
     /// <summary>Adds a proportional-width item.</summary>

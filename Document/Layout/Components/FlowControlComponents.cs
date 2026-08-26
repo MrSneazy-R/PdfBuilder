@@ -43,6 +43,7 @@ namespace PdfBuilder.Document.Layout.Components
         {
             var measurement = _child.Measure(context);
             if (measurement.IsWrap) return measurement;
+            if (measurement.IsPartial) return LayoutMeasurement.Wrap(measurement.UsedWidth);
             return new LayoutMeasurement(measurement.MarginTop, measurement.ContentHeight, measurement.MarginBottom, measurement.UsedWidth, measurement.Metadata, true, measurement.Result, measurement.Remainder);
         }
         public void Draw(LayoutDrawContext context, LayoutMeasurement measurement) => _child.Draw(context, measurement);

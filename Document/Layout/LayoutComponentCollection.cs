@@ -10,20 +10,28 @@ namespace PdfBuilder.Document.Layout
     public sealed class LayoutComponentCollection
     {
         private readonly ColumnBuilder _owner;
+        private readonly float? _defaultSpacingOverride;
         private readonly List<IMeasurable> _components = new();
 
-        internal LayoutComponentCollection(ColumnBuilder owner)
+        internal LayoutComponentCollection(ColumnBuilder owner, float? defaultSpacingOverride = null)
         {
             _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            _defaultSpacingOverride = defaultSpacingOverride;
         }
 
         internal IReadOnlyList<IMeasurable> Components => _components;
         internal ColumnBuilder Owner => _owner;
+        private float EffectiveDefaultSpacing => _defaultSpacingOverride ?? _owner.DefaultSpacing;
 
-        internal IMeasurable BuildComposite(Action<LayoutComponentCollection> configure, string? caller = null)
+        internal IMeasurable BuildComposite(
+            Action<LayoutComponentCollection> configure,
+            string? caller = null,
+            float? defaultSpacingOverride = null)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var childCollection = new LayoutComponentCollection(_owner);
+            var childCollection = new LayoutComponentCollection(
+                _owner,
+                defaultSpacingOverride ?? _defaultSpacingOverride);
             configure(childCollection);
 
             if (childCollection._components.Count == 0)
@@ -41,7 +49,7 @@ namespace PdfBuilder.Document.Layout
         internal IEnumerable<IMeasurable> BuildMany(Action<LayoutComponentCollection> configure, string? caller = null)
         {
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            var childCollection = new LayoutComponentCollection(_owner);
+            var childCollection = new LayoutComponentCollection(_owner, _defaultSpacingOverride);
             configure(childCollection);
             if (childCollection._components.Count == 0)
                 throw new InvalidOperationException($"The {caller ?? "builder"} requires at least one child component.");
@@ -163,7 +171,7 @@ namespace PdfBuilder.Document.Layout
 
             for (int i = 0; i < count; i++)
             {
-                var childCollection = new LayoutComponentCollection(_owner);
+                var childCollection = new LayoutComponentCollection(_owner, _defaultSpacingOverride);
                 configure(i, childCollection);
                 _components.AddRange(childCollection._components);
             }
@@ -179,7 +187,7 @@ namespace PdfBuilder.Document.Layout
             int index = 0;
             foreach (var item in source)
             {
-                var childCollection = new LayoutComponentCollection(_owner);
+                var childCollection = new LayoutComponentCollection(_owner, _defaultSpacingOverride);
                 configure(item, index++, childCollection);
                 _components.AddRange(childCollection._components);
             }
@@ -203,7 +211,7 @@ namespace PdfBuilder.Document.Layout
             element.Color = _owner.ResolveThemeColor(element.Color);
             if (!string.IsNullOrWhiteSpace(element.BackgroundColor)) element.BackgroundColor = _owner.ResolveThemeColor(element.BackgroundColor);
             if (!string.IsNullOrWhiteSpace(element.DecorationColor)) element.DecorationColor = _owner.ResolveThemeColor(element.DecorationColor);
-            _components.Add(new TextComponent(element, _owner.DefaultSpacing));
+            _components.Add(new TextComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -217,7 +225,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             element.CanonicalStyleOverrides?.ApplyTo(element);
             element.Color = _owner.ResolveThemeColor(element.Color);
-            _components.Add(new TextComponent(element, _owner.DefaultSpacing));
+            _components.Add(new TextComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -235,7 +243,7 @@ namespace PdfBuilder.Document.Layout
                 if (!string.IsNullOrWhiteSpace(run.BackgroundColor)) run.BackgroundColor = _owner.ResolveThemeColor(run.BackgroundColor);
                 if (!string.IsNullOrWhiteSpace(run.DecorationColor)) run.DecorationColor = _owner.ResolveThemeColor(run.DecorationColor);
             }
-            _components.Add(new RichTextComponent(element, _owner.DefaultSpacing));
+            _components.Add(new RichTextComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -249,7 +257,7 @@ namespace PdfBuilder.Document.Layout
             };
             _owner.ApplyListDefaults(element);
             configure(element);
-            _components.Add(new ListComponent(element, _owner.DefaultSpacing));
+            _components.Add(new ListComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -491,7 +499,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(run);
             rich.Runs.Add(run);
 
-            _components.Add(new RichTextComponent(rich, _owner.DefaultSpacing));
+            _components.Add(new RichTextComponent(rich, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -578,7 +586,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             element.X = flow.X;
             element.Y = flow.Y;
-            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            _components.Add(new ImageComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -590,7 +598,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             element.X = flow.X;
             element.Y = flow.Y;
-            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            _components.Add(new ImageComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -602,7 +610,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             element.X = flow.X;
             element.Y = flow.Y;
-            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            _components.Add(new ImageComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -615,7 +623,7 @@ namespace PdfBuilder.Document.Layout
             var canvasBuilder = new CanvasBuilder(element);
             draw(canvasBuilder);
             canvasBuilder.Complete();
-            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing));
+            _components.Add(new CanvasComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -625,7 +633,7 @@ namespace PdfBuilder.Document.Layout
             if (!float.IsFinite(height) || height <= 0f) throw new ArgumentOutOfRangeException(nameof(height));
             var flow = _owner.GetFlow();
             var element = new CanvasElement(flow.X, flow.Y, 0f, height);
-            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing, draw, useAvailableWidth: true));
+            _components.Add(new CanvasComponent(element, EffectiveDefaultSpacing, draw, useAvailableWidth: true));
             return this;
         }
 
@@ -641,7 +649,7 @@ namespace PdfBuilder.Document.Layout
             configure?.Invoke(element);
             element.X = flow.X;
             element.Y = flow.Y;
-            _components.Add(new CanvasComponent(element, _owner.DefaultSpacing));
+            _components.Add(new CanvasComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -654,21 +662,21 @@ namespace PdfBuilder.Document.Layout
             element.X = flow.X;
             element.Y = flow.Y;
             element.Refresh();
-            _components.Add(new ImageComponent(element, _owner.DefaultSpacing));
+            _components.Add(new ImageComponent(element, EffectiveDefaultSpacing));
             return this;
         }
 
         public LayoutComponentCollection DynamicSvg(float width, float height, Func<CanvasSize, string> markupFactory)
         {
             if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
-            _components.Add(new DynamicSvgComponent(width, height, markupFactory, _owner.DefaultSpacing));
+            _components.Add(new DynamicSvgComponent(width, height, markupFactory, EffectiveDefaultSpacing));
             return this;
         }
 
         public LayoutComponentCollection DynamicSvg(float height, Func<CanvasSize, string> markupFactory)
         {
             if (markupFactory == null) throw new ArgumentNullException(nameof(markupFactory));
-            _components.Add(new DynamicSvgComponent(null, height, markupFactory, _owner.DefaultSpacing));
+            _components.Add(new DynamicSvgComponent(null, height, markupFactory, EffectiveDefaultSpacing));
             return this;
         }
 
@@ -679,7 +687,7 @@ namespace PdfBuilder.Document.Layout
 
             foreach (var item in source)
             {
-                var childCollection = new LayoutComponentCollection(_owner);
+                var childCollection = new LayoutComponentCollection(_owner, _defaultSpacingOverride);
                 configure(item, childCollection);
                 _components.AddRange(childCollection._components);
             }
@@ -898,7 +906,7 @@ namespace PdfBuilder.Document.Layout
                 {
                     var composer = new ContentComposer(collection);
                     configure(composer);
-                }, "Row.Item");
+                }, "Row.Item", defaultSpacingOverride: 0f);
                 _row.Add(child, RowComponent.RowWidthSpec.Even());
                 _hasItems = true;
                 return this;
@@ -910,41 +918,50 @@ namespace PdfBuilder.Document.Layout
             }
 
             public RowComponentBuilder Constant(float width, Action<ContentComposer> configure)
+                => Constant(width, configure, LayoutVerticalAlignment.Top);
+
+            internal RowComponentBuilder Constant(float width, Action<ContentComposer> configure, LayoutVerticalAlignment verticalAlignment)
             {
                 if (configure == null) throw new ArgumentNullException(nameof(configure));
                 var child = _owner.BuildComposite(collection =>
                 {
                     var composer = new ContentComposer(collection);
                     configure(composer);
-                }, "Row.Constant");
-                _row.Add(child, RowComponent.RowWidthSpec.Fixed(Math.Max(0f, width)));
+                }, "Row.Constant", defaultSpacingOverride: 0f);
+                _row.Add(child, RowComponent.RowWidthSpec.Fixed(Math.Max(0f, width)), verticalAlignment);
                 _hasItems = true;
                 return this;
             }
 
             public RowComponentBuilder Auto(Action<ContentComposer> configure)
+                => Auto(configure, LayoutVerticalAlignment.Top);
+
+            internal RowComponentBuilder Auto(Action<ContentComposer> configure, LayoutVerticalAlignment verticalAlignment)
             {
                 if (configure == null) throw new ArgumentNullException(nameof(configure));
                 var child = _owner.BuildComposite(collection =>
                 {
                     var composer = new ContentComposer(collection);
                     configure(composer);
-                }, "Row.Auto");
-                _row.Add(child, RowComponent.RowWidthSpec.Auto());
+                }, "Row.Auto", defaultSpacingOverride: 0f);
+                _row.Add(child, RowComponent.RowWidthSpec.Auto(), verticalAlignment);
                 _hasItems = true;
                 return this;
             }
 
             public RowComponentBuilder Relative(float weight, Action<ContentComposer> configure)
+                => Relative(weight, configure, LayoutVerticalAlignment.Top);
+
+            internal RowComponentBuilder Relative(float weight, Action<ContentComposer> configure, LayoutVerticalAlignment verticalAlignment)
             {
                 if (configure == null) throw new ArgumentNullException(nameof(configure));
                 var child = _owner.BuildComposite(collection =>
                 {
                     var composer = new ContentComposer(collection);
                     configure(composer);
-                }, "Row.Relative");
+                }, "Row.Relative", defaultSpacingOverride: 0f);
                 float normalized = weight <= 0f ? 1f : weight;
-                _row.Add(child, RowComponent.RowWidthSpec.Relative(normalized));
+                _row.Add(child, RowComponent.RowWidthSpec.Relative(normalized), verticalAlignment);
                 _hasItems = true;
                 return this;
             }

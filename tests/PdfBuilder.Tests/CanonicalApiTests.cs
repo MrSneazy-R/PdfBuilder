@@ -56,6 +56,7 @@ public sealed class CanonicalApiTests
     {
         var document = PdfDocument.Create(descriptor => descriptor.Page(page => page.Content().Row(row =>
         {
+            row.Gap(6);
             row.ConstantItem(100).Text("Fixed");
             row.RelativeItem().Text("Flexible");
         })));

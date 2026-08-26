@@ -35,14 +35,16 @@ namespace PdfBuilder.Document.Layout.Components
             for (int i = 0; i < _children.Count; i++)
             {
                 var child = _children[i];
+                float spacingBefore = placements.Count > 0 ? Spacing : 0f;
+                float childTop = currentTop - spacingBefore;
 
-                if (currentTop <= columnBottom + 0.01f)
+                if (childTop <= columnBottom + 0.01f)
                 {
                     remainder = BuildRemainderFrom(i);
                     break;
                 }
 
-                var slice = new FlowColumn(context.Column.Index, context.Column.X, context.Column.Width, currentTop, columnBottom);
+                var slice = new FlowColumn(context.Column.Index, context.Column.X, context.Column.Width, childTop, columnBottom);
                 var childContext = new LayoutMeasureContext(context.Page, slice, context.Options);
                 var measurement = child.Measure(childContext);
 
@@ -55,12 +57,22 @@ namespace PdfBuilder.Document.Layout.Components
                     break;
                 }
 
+                if (measurement.ReservedHeight > slice.Available + 0.1f)
+                {
+                    if (placements.Count == 0)
+                        return LayoutMeasurement.Wrap(measurement.UsedWidth);
+
+                    remainder = BuildRemainderIncludingCurrent(i);
+                    break;
+                }
+
+                totalHeight += spacingBefore;
                 placements.Add(new ChildLayout(child, measurement));
                 totalHeight += measurement.ReservedHeight;
                 maxWidth = Math.Max(maxWidth, measurement.UsedWidth);
                 avoidBreakInside |= measurement.AvoidBreakInside;
 
-                currentTop = Math.Max(columnBottom, currentTop - measurement.ReservedHeight);
+                currentTop = Math.Max(columnBottom, childTop - measurement.ReservedHeight);
 
                 if (measurement.IsPartial)
                 {
@@ -68,11 +80,6 @@ namespace PdfBuilder.Document.Layout.Components
                     break;
                 }
 
-                if (i < _children.Count - 1)
-                {
-                    totalHeight += Spacing;
-                    currentTop = Math.Max(columnBottom, currentTop - Spacing);
-                }
             }
 
             if (placements.Count == 0)

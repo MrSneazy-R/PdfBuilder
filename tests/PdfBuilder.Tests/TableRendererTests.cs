@@ -202,6 +202,45 @@ namespace PdfBuilder.Tests
         }
 
         [Fact]
+        public void Table_OuterRoundedCorners_ClipSquareCellsBeforePaintingTheFrame()
+        {
+            var doc = CreateTableDocument(table =>
+            {
+                table.DrawOuterFrame = true;
+                table.OuterBorder = new TableModels.BorderStyle
+                {
+                    Color = Color.Black,
+                    Width = 2f
+                };
+                table.OuterCornerRadiusTopLeft = 12f;
+                table.OuterCornerRadiusTopRight = 12f;
+                table.OuterCornerRadiusBottomRight = 12f;
+                table.OuterCornerRadiusBottomLeft = 12f;
+                table.Rows.Add(new TableRow
+                {
+                    Cells =
+                    {
+                        new TableCell
+                        {
+                            Text = string.Empty,
+                            Padding = 0,
+                            BackgroundColor = Color.Red
+                        }
+                    }
+                });
+            });
+
+            var stream = PdfContentHelper.ExtractFirstStream(PdfContentHelper.Generate(doc));
+            var clipIndex = stream.IndexOf("c W n", StringComparison.Ordinal);
+            var fillIndex = stream.IndexOf("1 0 0 rg", StringComparison.Ordinal);
+            var frameIndex = stream.LastIndexOf("0 0 0 RG 2 w", StringComparison.Ordinal);
+
+            clipIndex.Should().BeGreaterThanOrEqualTo(0);
+            fillIndex.Should().BeGreaterThan(clipIndex);
+            frameIndex.Should().BeGreaterThan(fillIndex);
+        }
+
+        [Fact]
         public void TableCell_Text_Underline_And_Strikethrough_Positioned_Correctly()
         {
             var decoColor = Color.FromArgb(32, 160, 220);

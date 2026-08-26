@@ -67,6 +67,7 @@ public partial class PdfDocument
         public IContainer AlignTop() { _vertical = Layout.Components.LayoutVerticalAlignment.Top; return this; }
         public IContainer AlignMiddle() { _vertical = Layout.Components.LayoutVerticalAlignment.Middle; return this; }
         public IContainer AlignBottom() { _vertical = Layout.Components.LayoutVerticalAlignment.Bottom; return this; }
+        internal Layout.Components.LayoutVerticalAlignment VerticalAlignment => _vertical;
         public IContainer Width(float value) { _width = ValidateDimension(value, nameof(value)); return this; }
         public IContainer Height(float value) { _height = ValidateDimension(value, nameof(value)); return this; }
         public IContainer MinWidth(float value) { _minWidth = ValidateDimension(value, nameof(value)); return this; }
@@ -548,7 +549,13 @@ public partial class PdfDocument
         private readonly PaginationRegistry _pagination;
         private readonly CanonicalCompositionState? _compositionState;
         private readonly List<(RowItemKind kind, float value, CanonicalContainer container)> _items = new();
+        private float _gap = 12f;
         public CanonicalRowDescriptor(DocumentTheme theme, List<Type> componentPath, PaginationRegistry pagination, CanonicalCompositionState? compositionState) { _theme = theme; _componentPath = componentPath; _pagination = pagination; _compositionState = compositionState; }
+        public void Gap(float value)
+        {
+            if (value < 0f || !float.IsFinite(value)) throw new ArgumentOutOfRangeException(nameof(value));
+            _gap = value;
+        }
         public IContainer ConstantItem(float width) => Add(RowItemKind.Constant, width);
         public IContainer RelativeItem(float weight = 1f) => Add(RowItemKind.Relative, weight);
         public IContainer AutoItem() => Add(RowItemKind.Auto, 0f);
@@ -559,15 +566,16 @@ public partial class PdfDocument
         }
         public void Compose(Layout.LayoutComponentCollection.RowComponentBuilder builder)
         {
+            builder.Gap(_gap);
             for (var index = 0; index < _items.Count; index++)
             {
                 var item = _items[index];
                 var itemNumber = index + 1;
                 switch (item.kind)
                 {
-                    case RowItemKind.Constant: builder.Constant(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
-                    case RowItemKind.Relative: builder.Relative(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
-                    case RowItemKind.Auto: builder.Auto(composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]")); break;
+                    case RowItemKind.Constant: builder.Constant(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]"), item.container.VerticalAlignment); break;
+                    case RowItemKind.Relative: builder.Relative(item.value, composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]"), item.container.VerticalAlignment); break;
+                    case RowItemKind.Auto: builder.Auto(composer => item.container.Compose(composer, $"Row > Item[{itemNumber}]"), item.container.VerticalAlignment); break;
                 }
             }
         }

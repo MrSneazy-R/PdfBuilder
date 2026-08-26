@@ -22,6 +22,25 @@ namespace PdfBuilder.Tests
                 => DrawnContentTop = context.ContentTop;
         }
 
+        private sealed class PositionRecordingComponent : IMeasurable
+        {
+            private readonly float _height;
+
+            public PositionRecordingComponent(float height) => _height = height;
+
+            public float DrawnContentLeft { get; private set; }
+            public float DrawnContentTop { get; private set; }
+
+            public LayoutMeasurement Measure(LayoutMeasureContext context)
+                => new(0f, _height, 0f, context.Column.Width);
+
+            public void Draw(LayoutDrawContext context, LayoutMeasurement measurement)
+            {
+                DrawnContentLeft = context.ContentLeft;
+                DrawnContentTop = context.ContentTop;
+            }
+        }
+
         [Fact]
         public void TextBuilder_MeasureDraw_AdvancesFlowAndAddsElement()
         {
@@ -81,6 +100,129 @@ namespace PdfBuilder.Tests
             component.Draw(new LayoutDrawContext(page, column, 20f, contentTop, 240f, options), measurement);
 
             child.DrawnContentTop.Should().BeApproximately(contentTop, 0.01f);
+        }
+
+        [Fact]
+        public void AlignComponent_Draw_RightAlignedTextKeepsItsTextBoxWithinAvailableWidth()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 150f, 200f, 20f);
+            var options = new LayoutOptions();
+            var text = new TextElement("1 of 1", 0f, 0f)
+            {
+                FontSize = 7.5f,
+                Alignment = TextAlignment.Right,
+                MarginTop = 0f
+            };
+            var component = new AlignComponent(
+                new TextComponent(text, defaultSpacing: 0f),
+                LayoutHorizontalAlignment.Right,
+                LayoutVerticalAlignment.Top,
+                minHeight: null);
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+
+            component.Draw(new LayoutDrawContext(page, column, 20f, 200f, 150f, options), measurement);
+
+            var rendered = page.Elements.OfType<TextElement>().Single();
+            (rendered.X + rendered.MaxWidth!.Value).Should().BeLessThanOrEqualTo(170f);
+        }
+
+        [Fact]
+        public void RowComponent_Draw_HonorsGapAndPerItemVerticalAlignment()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 100f, 200f, 20f);
+            var options = new LayoutOptions();
+            var tall = new PositionRecordingComponent(20f);
+            var shortCentered = new PositionRecordingComponent(10f);
+            var row = new RowComponent { Gap = 6f };
+            row.Add(tall, RowComponent.RowWidthSpec.Fixed(20f), LayoutVerticalAlignment.Top);
+            row.Add(shortCentered, RowComponent.RowWidthSpec.Fixed(20f), LayoutVerticalAlignment.Middle);
+            var measurement = row.Measure(new LayoutMeasureContext(page, column, options));
+
+            row.Draw(new LayoutDrawContext(page, column, 20f, 200f, 100f, options), measurement);
+
+            tall.DrawnContentLeft.Should().BeApproximately(20f, 0.01f);
+            tall.DrawnContentTop.Should().BeApproximately(200f, 0.01f);
+            shortCentered.DrawnContentLeft.Should().BeApproximately(46f, 0.01f);
+            shortCentered.DrawnContentTop.Should().BeApproximately(195f, 0.01f);
+        }
+
+        [Fact]
+        public void CanonicalRow_AlignMiddle_CentersVisibleSvgAndTextContent()
+        {
+            const string svgMarkup = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><rect width=\"10\" height=\"10\" fill=\"#3514C9\"/></svg>";
+            var document = PdfDocument.Create(descriptor => descriptor.Page(page => page.Content().Row(row =>
+            {
+                row.Gap(4f);
+                row.ConstantItem(20f).AlignMiddle().Svg(svgMarkup, 10f, 10f);
+                row.RelativeItem().AlignMiddle().Text("Aligned text").FontSize(8f);
+            })));
+
+            var page = document.Pages.Single();
+            var icon = page.Elements.OfType<SvgElement>().Single();
+            var text = page.Elements.OfType<TextElement>().Single();
+            var firstLine = text.ShapedLayout!.Lines.Single();
+            float iconCenter = icon.Y - icon.Height * 0.5f;
+            float textCenter = text.Y + firstLine.Ascent - firstLine.LineHeight * 0.5f;
+
+            textCenter.Should().BeApproximately(iconCenter, 0.1f);
+        }
+
+        [Fact]
+        public void ColumnComponent_Measure_DoesNotReserveTrailingSpacingBeforeAPageBreak()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 100f, 200f, 180f);
+            var options = new LayoutOptions();
+            var component = new ColumnComponent { Spacing = 5f };
+            component.Add(new PositionRecordingComponent(20f));
+            component.Add(new PositionRecordingComponent(10f));
+
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+
+            measurement.IsPartial.Should().BeTrue();
+            measurement.ReservedHeight.Should().BeApproximately(20f, 0.01f);
+            measurement.Remainder.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void ColumnComponent_Measure_DefersAChildThatExceedsTheRemainingHeight()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 100f, 200f, 180f);
+            var options = new LayoutOptions();
+            var component = new ColumnComponent { Spacing = 2f };
+            component.Add(new PositionRecordingComponent(15f));
+            component.Add(new PositionRecordingComponent(10f));
+
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+
+            measurement.IsPartial.Should().BeTrue();
+            measurement.ReservedHeight.Should().BeApproximately(15f, 0.01f);
+            measurement.Remainder.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void KeepTogetherComponent_Measure_WrapsInsteadOfReturningAPartialFragment()
+        {
+            var document = new PdfDocument();
+            var page = document.AddPage();
+            var column = new FlowColumn(0, 20f, 100f, 200f, 180f);
+            var options = new LayoutOptions();
+            var children = new ColumnComponent { Spacing = 2f };
+            children.Add(new PositionRecordingComponent(15f));
+            children.Add(new PositionRecordingComponent(10f));
+            var component = new KeepTogetherComponent(children);
+
+            var measurement = component.Measure(new LayoutMeasureContext(page, column, options));
+
+            measurement.IsWrap.Should().BeTrue();
+            measurement.ReservedHeight.Should().Be(0f);
         }
 
         [Fact]

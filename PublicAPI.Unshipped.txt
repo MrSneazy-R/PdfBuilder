@@ -737,6 +737,7 @@ PdfBuilder.Document.IRichTextDescriptor.Span(string! text) -> PdfBuilder.Documen
 PdfBuilder.Document.IRowDescriptor
 PdfBuilder.Document.IRowDescriptor.AutoItem() -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IRowDescriptor.ConstantItem(float width) -> PdfBuilder.Document.IContainer!
+PdfBuilder.Document.IRowDescriptor.Gap(float value) -> void
 PdfBuilder.Document.IRowDescriptor.RelativeItem(float weight = 1) -> PdfBuilder.Document.IContainer!
 PdfBuilder.Document.IScatterChartSeriesDescriptor
 PdfBuilder.Document.IScatterChartSeriesDescriptor.Color(PdfBuilder.Models.PdfColor color) -> void

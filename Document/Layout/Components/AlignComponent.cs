@@ -89,7 +89,9 @@ namespace PdfBuilder.Document.Layout.Components
                 throw new InvalidOperationException("Align measurement metadata missing.");
 
             float contentLeft = context.ContentLeft + metadata.OffsetX;
-            float contentWidth = metadata.Stretch ? context.ContentWidth : context.ContentWidth;
+            float contentWidth = metadata.Stretch
+                ? context.ContentWidth
+                : Math.Min(context.ContentWidth, metadata.InnerMeasurement.UsedWidth);
 
             var childContext = new LayoutDrawContext(context.Page, context.Column, contentLeft, context.ContentTop, contentWidth, context.Options);
             _child.Draw(childContext, metadata.InnerMeasurement);

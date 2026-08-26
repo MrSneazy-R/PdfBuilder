@@ -235,18 +235,24 @@ namespace PdfBuilder.Writer
                 }
             }
 
-            // -- Outer frame (behind cells so cell borders stay visible) --
-            if (table.DrawOuterFrame || table.OuterBorder != null)
+            float frameW = colWidths.Sum();
+            float frameH = rowHeights.Sum();
+            float frameBottom = y - frameH;
+            var outerStyle = table.OuterBorder?.Clone();
+            Color outerColor = outerStyle?.Color ?? table.OuterFrameColor;
+            float outerWidth = outerStyle?.Width ?? table.OuterFrameWidth;
+            bool drawOuterFrame = table.DrawOuterFrame || table.OuterBorder != null;
+            bool clipRoundedOuterEdge = table.OuterCornerRadiusTopLeft > 0f
+                                        || table.OuterCornerRadiusTopRight > 0f
+                                        || table.OuterCornerRadiusBottomRight > 0f
+                                        || table.OuterCornerRadiusBottomLeft > 0f;
+
+            // Cell fills and straight per-side borders are rectangular. Clip them
+            // to the table outline so they cannot protrude through rounded corners.
+            if (clipRoundedOuterEdge)
             {
-                float frameW = colWidths.Sum();
-                float frameH = rowHeights.Sum();
-                float frameBottom = y - frameH;
-
-                var outerStyle = table.OuterBorder?.Clone();
-                Color outerColor = outerStyle?.Color ?? table.OuterFrameColor;
-                float outerWidth = outerStyle?.Width ?? table.OuterFrameWidth;
-
-                StrokeRoundedRect(
+                sb.Append("q ");
+                AppendRoundedRectPath(
                     sb,
                     startX,
                     frameBottom,
@@ -255,10 +261,8 @@ namespace PdfBuilder.Writer
                     table.OuterCornerRadiusTopLeft,
                     table.OuterCornerRadiusTopRight,
                     table.OuterCornerRadiusBottomRight,
-                    table.OuterCornerRadiusBottomLeft,
-                    outerColor,
-                    outerWidth,
-                    outerStyle);
+                    table.OuterCornerRadiusBottomLeft);
+                sb.Append("W n\n");
             }
 
             // -- Alternating rows (OPT-IN) --
@@ -478,6 +482,27 @@ namespace PdfBuilder.Writer
 
                 if (!row.IsHeader && !row.IsFooter) bodyRowCounter++;
                 rowIndex++;
+            }
+
+            if (clipRoundedOuterEdge)
+                sb.Append("Q\n");
+
+            // Paint the rounded outline last so cell borders cannot overdraw it.
+            if (drawOuterFrame)
+            {
+                StrokeRoundedRect(
+                    sb,
+                    startX,
+                    frameBottom,
+                    frameW,
+                    frameH,
+                    table.OuterCornerRadiusTopLeft,
+                    table.OuterCornerRadiusTopRight,
+                    table.OuterCornerRadiusBottomRight,
+                    table.OuterCornerRadiusBottomLeft,
+                    outerColor,
+                    outerWidth,
+                    outerStyle);
             }
 
             sb.Append("Q\n");
