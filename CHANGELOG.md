@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed completely transparent PNG/SVG images becoming opaque black rectangles, and attached soft-mask references to decoded RGB/WebP image dictionaries. Added transparent, mixed-alpha, opaque and PNG predictor regression fixtures.
 - Added the optional `PdfBuilder.Compliance` package for PDF/A-2b, PDF/A-3b, and PDF/UA-1 candidate preparation, caller-approved ICC output intents, embedded-font and semantic preflight, bounded shell-free veraPDF execution, compliance fixtures, and pinned Ubuntu CI validation. Conformance is reported only after independent validation passes.
 - Exposed bubble, waterfall, radar, funnel, Gantt, candlestick, bullet/KPI, Pareto, range-area, error-bar, histogram, box-plot, and heatmap series through typed canonical descriptors, with finite-data validation and explicit rejection of unsupported core/advanced mixing.
 - Fixed HarfBuzz subsetting to retain the original glyph identifiers used by `CIDToGIDMap`, corrected embedded-font bounding-box coordinates, and stopped emitting unused Base-14 font resources. This preserves extraction while fixing corrupt subset rendering and reducing unnecessary PDF content.
