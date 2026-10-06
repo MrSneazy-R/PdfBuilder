@@ -47,6 +47,11 @@ resampling quality, maximum effective DPI, opt-in downsampling, JPEG quality, an
 encoding. Identical prepared content is deduplicated by SHA-256 content hash. Remote URLs are not
 accepted. Barcode output remains vector PDF paths with the configured quiet zone.
 
+PNG and decoded RGB/WebP images retain their per-pixel PDF soft mask even when every pixel is
+fully transparent. Only fully opaque alpha may omit the mask. Empty transparent SVG artwork
+therefore remains invisible instead of exposing its black RGB pixels. The decoded RGB path
+attaches the mask reference to the image dictionary as well as returning its resource ID.
+
 Canonical charts expose line, area, grouped bar, stacked bar, 100% stacked bar, pie, donut,
 and scatter series through typed descriptors. Numeric axes can set ranges, tick counts, and
 formatters; cartesian series can target a secondary Y axis. Line and scatter descriptors expose

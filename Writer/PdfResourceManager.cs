@@ -344,20 +344,20 @@ namespace PdfBuilder.Writer
             int? smask = null;
             if (dec.Alpha != null)
             {
-                // Safety: only write SMask when alpha buffer matches dimensions and is not uniform 0 or 255
+                // Only fully opaque alpha can omit SMask. Dropping an all-zero mask
+                // exposes the RGB pixels of a completely transparent image.
                 bool validSize = dec.Alpha.Length == dec.Width * dec.Height;
                 if (validSize)
                 {
-                    bool allZero = true, allFull = true;
+                    bool allFull = true;
                     for (int i = 0; i < dec.Alpha.Length; i++)
                     {
                         byte a = dec.Alpha[i];
-                        if (a != 0) allZero = false;
                         if (a != 255) allFull = false;
-                        if (!allZero && !allFull) break;
+                        if (!allFull) break;
                     }
 
-                    if (!allZero && !allFull)
+                    if (!allFull)
                     {
                         bool alphaHasPredictor = dec.AlphaContainsFilterBytes;
                         byte[] alphaPayload = dec.Alpha;
@@ -453,32 +453,17 @@ namespace PdfBuilder.Writer
         private (int imObj, int? smaskObj) WriteRawRgbWithOptionalAlpha(
             PdfStreamWriter w, int width, int height, byte[] rgb, byte[]? alpha)
         {
-            // Main image (DeviceRGB, 8bpc) without PNG predictor framing (already raw pixels)
-            int im = w.BeginObject();
-            var deflated = PdfCompression.Flate(rgb, _options.ImageCompressionLevel);
-            w.WriteLine("<< /Type /XObject /Subtype /Image");
-            w.WriteLine($"   /Width {width} /Height {height}");
-            w.WriteLine("   /ColorSpace /DeviceRGB /BitsPerComponent 8");
-            w.WriteLine("   /Filter /FlateDecode");
-            w.WriteLine("   /Interpolate false");
-            w.WriteLine($"   /Length {deflated.Length} >>");
-            w.WriteLine("stream");
-            w.WriteBytes(deflated);
-            w.WriteRaw("\nendstream\n");
-            w.EndObject();
-
             int? smask = null;
             if (alpha != null && alpha.Length == width * height)
             {
-                bool allZero = true, allFull = true;
+                bool allFull = true;
                 for (int i = 0; i < alpha.Length; i++)
                 {
                     byte a = alpha[i];
-                    if (a != 0) allZero = false;
                     if (a != 255) allFull = false;
-                    if (!allZero && !allFull) break;
+                    if (!allFull) break;
                 }
-                if (!allZero && !allFull)
+                if (!allFull)
                 {
                     smask = w.BeginObject();
                     var aDef = PdfCompression.Flate(alpha, _options.ImageCompressionLevel);
@@ -495,6 +480,22 @@ namespace PdfBuilder.Writer
                     w.EndObject();
                 }
             }
+
+            // Write the mask first so the main image can reference it. Returning a
+            // mask ID without /SMask in this dictionary leaves the image opaque.
+            int im = w.BeginObject();
+            var deflated = PdfCompression.Flate(rgb, _options.ImageCompressionLevel);
+            w.WriteLine("<< /Type /XObject /Subtype /Image");
+            w.WriteLine($"   /Width {width} /Height {height}");
+            w.WriteLine("   /ColorSpace /DeviceRGB /BitsPerComponent 8");
+            w.WriteLine("   /Filter /FlateDecode");
+            w.WriteLine("   /Interpolate false");
+            if (smask.HasValue) w.WriteLine($"   /SMask {smask.Value} 0 R");
+            w.WriteLine($"   /Length {deflated.Length} >>");
+            w.WriteLine("stream");
+            w.WriteBytes(deflated);
+            w.WriteRaw("\nendstream\n");
+            w.EndObject();
 
             return (im, smask);
         }
